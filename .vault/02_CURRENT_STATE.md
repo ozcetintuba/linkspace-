@@ -24,6 +24,7 @@
   - `/api/messages`: Ziyaretçi mesaj gönderimi (`POST /`), admin mesaj listesi ve okunmamış sayısı (`GET /`), okundu durumu güncelleme (`PATCH /:id/read`), mesaj silme (`DELETE /:id`), anlık demo mesaj simülasyonu (`POST /simulate`). Dayanıklı bellek içi fallback (offline-resilient in-memory fallback) korumalı.
   - `/api/docs`, `/api/docs/swagger.json`, `/api/docs/postman.json`: İnteraktif Swagger UI, raw OpenAPI 3.0 JSON ve indirilebilir Postman koleksiyonu.
   - `/api/health`: Canlılık kontrolü.
+- **Üretim Dağıtım Mimarisi (Render & GitHub)**: Kök `package.json` ile tek komutta frontend ve backend derleme (`npm run build`), Express üzerinden `frontend/dist` statik SPA sunumu (`express.static` ve catch-all SPA router), `render.yaml` Blueprint ile tek tıkla PostgreSQL veritabanı + Node.js servisi orkestrasyonu.
 - **Veritabanı Katmanı**:
   - `src/db.js`: PostgreSQL havuzu (`pg.Pool`).
   - `src/initDb.js`: `users`, `profiles`, `links`, `settings`, `visit_stats`, `messages` tablolarını kuran ve varsayılan verileri tohumlayan otomatik migration betiği (`links` tablosunda `is_scheduled`, `schedule_start`, `schedule_end`, `show_countdown` sütunları dahil).
