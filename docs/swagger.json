@@ -1,0 +1,330 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "Linkspace REST API",
+    "description": "Full-Stack Linktree & Link Hub (CRM Dark Edition) API Spesifikasyonu. Staj raporu, mentor sunumu ve Postman/Swagger entegrasyonu için hazırlanmıştır.",
+    "version": "1.0.0",
+    "contact": {
+      "name": "Linkspace Geliştirici Ekibi",
+      "url": "https://github.com/linkspace"
+    }
+  },
+  "servers": [
+    {
+      "url": "http://localhost:5000/api",
+      "description": "Yerel Geliştirme Sunucusu"
+    }
+  ],
+  "components": {
+    "securitySchemes": {
+      "BearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT",
+        "description": "Yönetici rotaları için JWT Token. Giriş yapıldığında dönen token bu alana yazılmalıdır."
+      }
+    },
+    "schemas": {
+      "User": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "integer", "example": 1 },
+          "username": { "type": "string", "example": "admin" },
+          "email": { "type": "string", "example": "admin@example.com" },
+          "name": { "type": "string", "example": "Yönetici" }
+        }
+      },
+      "Profile": {
+        "type": "object",
+        "properties": {
+          "name": { "type": "string", "example": "Tuba Gül" },
+          "username": { "type": "string", "example": "@tubagul" },
+          "bio": { "type": "string", "example": "Yazılım Mühendisliği Öğrencisi | Full-Stack Geliştirici Adayı 🚀" },
+          "avatar": { "type": "string", "example": "https://images.unsplash.com/..." },
+          "avatarShape": { "type": "string", "enum": ["circle", "rounded-2xl", "rounded-xl"], "example": "circle" },
+          "avatarGlow": { "type": "string", "enum": ["yellow", "emerald", "cyan", "purple", "rose", "none"], "example": "yellow" },
+          "statusText": { "type": "string", "example": "Yeni Projelere & Fırsatlara Açık" },
+          "statusColor": { "type": "string", "enum": ["emerald", "amber", "blue", "purple", "none"], "example": "emerald" },
+          "isVerified": { "type": "boolean", "example": true },
+          "banner": { "type": "string", "example": "" },
+          "bannerPattern": { "type": "string", "example": "mesh" },
+          "badges": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": { "type": "string", "example": "badge-1" },
+                "text": { "type": "string", "example": "Full-Stack Developer" },
+                "icon": { "type": "string", "example": "Code" },
+                "color": { "type": "string", "example": "default" }
+              }
+            }
+          },
+          "socialLinks": {
+            "type": "object",
+            "properties": {
+              "barVisible": { "type": "boolean", "example": true },
+              "shape": { "type": "string", "example": "rounded-full" },
+              "style": { "type": "string", "example": "glass" },
+              "github": { "type": "string", "example": "https://github.com/..." },
+              "githubActive": { "type": "boolean", "example": true },
+              "linkedin": { "type": "string", "example": "https://linkedin.com/..." },
+              "linkedinActive": { "type": "boolean", "example": true },
+              "instagram": { "type": "string", "example": "https://instagram.com/..." },
+              "instagramActive": { "type": "boolean", "example": true }
+            }
+          }
+        }
+      },
+      "Link": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "integer", "example": 1729600000000 },
+          "title": { "type": "string", "example": "GitHub Hesabım" },
+          "url": { "type": "string", "example": "https://github.com/..." },
+          "isActive": { "type": "boolean", "example": true },
+          "icon": { "type": "string", "example": "Github" },
+          "customColor": { "type": "string", "example": "default" },
+          "clicks": { "type": "integer", "example": 142 },
+          "orderIndex": { "type": "integer", "example": 0 }
+        }
+      },
+      "AnalyticsResponse": {
+        "type": "object",
+        "properties": {
+          "totalVisits": { "type": "integer", "example": 142 },
+          "qrVisits": { "type": "integer", "example": 84 },
+          "directVisits": { "type": "integer", "example": 58 },
+          "qrMobile": { "type": "integer", "example": 76 },
+          "qrDesktop": { "type": "integer", "example": 8 },
+          "totalMobile": { "type": "integer", "example": 105 },
+          "totalDesktop": { "type": "integer", "example": 37 },
+          "qrMobilePercent": { "type": "integer", "example": 90 },
+          "qrDesktopPercent": { "type": "integer", "example": 10 }
+        }
+      }
+    }
+  },
+  "paths": {
+    "/auth/login": {
+      "post": {
+        "tags": ["Kimlik Doğrulama"],
+        "summary": "Yönetici Girişi (JWT Üretimi)",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["username", "password"],
+                "properties": {
+                  "username": { "type": "string", "example": "admin" },
+                  "password": { "type": "string", "example": "admin123" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Giriş başarılı, JWT token döner" },
+          "401": { "description": "Hatalı kullanıcı adı veya şifre" }
+        }
+      }
+    },
+    "/auth/register": {
+      "post": {
+        "tags": ["Kimlik Doğrulama"],
+        "summary": "Yeni Kullanıcı Kaydı",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["username", "password", "name"],
+                "properties": {
+                  "username": { "type": "string", "example": "yeni_kullanici" },
+                  "email": { "type": "string", "example": "kullanici@example.com" },
+                  "password": { "type": "string", "example": "GucluSifre123" },
+                  "name": { "type": "string", "example": "Ad Soyad" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": { "description": "Kullanıcı başarıyla oluşturuldu" },
+          "400": { "description": "Kullanıcı adı veya e-posta zaten kullanımda" }
+        }
+      }
+    },
+    "/profile": {
+      "get": {
+        "tags": ["Profil"],
+        "summary": "Mevcut Profil Bilgilerini Getir",
+        "responses": {
+          "200": {
+            "description": "Profil başarıyla getirildi",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Profile" } } }
+          }
+        }
+      },
+      "put": {
+        "tags": ["Profil"],
+        "summary": "Profil Bilgilerini Güncelle (Yönetici)",
+        "security": [{ "BearerAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Profile" } } }
+        },
+        "responses": {
+          "200": { "description": "Profil güncellendi" },
+          "401": { "description": "Yetkisiz istek" }
+        }
+      }
+    },
+    "/profile/{username}": {
+      "get": {
+        "tags": ["Profil"],
+        "summary": "Herkese Açık Ziyaretçi Profili ve Aktif Bağlantılar",
+        "parameters": [
+          { "name": "username", "in": "path", "required": true, "schema": { "type": "string" }, "description": "Hedef kullanıcı adı (örn: tubagul)" }
+        ],
+        "responses": {
+          "200": { "description": "Profil ve aktif bağlantılar döner" },
+          "404": { "description": "Kullanıcı bulunamadı (Uç Senaryo 404 Ekranı)" }
+        }
+      }
+    },
+    "/links": {
+      "get": {
+        "tags": ["Bağlantılar"],
+        "summary": "Tüm Bağlantıları Sıralı Getir",
+        "responses": {
+          "200": {
+            "description": "Bağlantı listesi",
+            "content": { "application/json": { "schema": { "type": "array", "items": { "$ref": "#/components/schemas/Link" } } } }
+          }
+        }
+      },
+      "post": {
+        "tags": ["Bağlantılar"],
+        "summary": "Yeni Bağlantı Ekle (Regex ve Güvenlik Doğrulamalı)",
+        "security": [{ "BearerAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["title", "url"],
+                "properties": {
+                  "title": { "type": "string", "example": "Kişisel Web Sitem" },
+                  "url": { "type": "string", "example": "https://example.com" },
+                  "icon": { "type": "string", "example": "Globe" },
+                  "customColor": { "type": "string", "example": "default" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": { "description": "Bağlantı eklendi" },
+          "400": { "description": "Geçersiz veya güvensiz URL formatı" }
+        }
+      }
+    },
+    "/links/{id}": {
+      "put": {
+        "tags": ["Bağlantılar"],
+        "summary": "Bağlantıyı Güncelle (Regex Korumalı)",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "integer" } }],
+        "requestBody": { "required": true, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Link" } } } },
+        "responses": {
+          "200": { "description": "Bağlantı güncellendi" },
+          "400": { "description": "Geçersiz veya güvensiz URL" },
+          "404": { "description": "Bağlantı bulunamadı" }
+        }
+      },
+      "delete": {
+        "tags": ["Bağlantılar"],
+        "summary": "Bağlantıyı Sil",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "integer" } }],
+        "responses": {
+          "200": { "description": "Bağlantı silindi" },
+          "404": { "description": "Bağlantı bulunamadı" }
+        }
+      }
+    },
+    "/links/{id}/click": {
+      "post": {
+        "tags": ["Bağlantılar"],
+        "summary": "Bağlantı Tıklama Sayacını Atomik Olarak 1 Artır",
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "integer" } }],
+        "responses": { "200": { "description": "Sayaç artırıldı" } }
+      }
+    },
+    "/links/reorder": {
+      "put": {
+        "tags": ["Bağlantılar"],
+        "summary": "Bağlantı Sıralamasını Güncelle (Sürükle-Bırak)",
+        "security": [{ "BearerAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": { "application/json": { "schema": { "type": "object", "properties": { "orderedIds": { "type": "array", "items": { "type": "integer" } } } } } }
+        },
+        "responses": { "200": { "description": "Sıralama güncellendi" } }
+      }
+    },
+    "/analytics": {
+      "get": {
+        "tags": ["Analitik & QR"],
+        "summary": "Ziyaretçi ve QR Kod Cihaz Analitiği (Mobil vs Masaüstü)",
+        "responses": {
+          "200": {
+            "description": "Analitik özet verileri",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/AnalyticsResponse" } } }
+          }
+        }
+      }
+    },
+    "/analytics/visit": {
+      "post": {
+        "tags": ["Analitik & QR"],
+        "summary": "Yeni Ziyaret Kaydı Oluştur (Cihaz ve Kaynak Tespiti)",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "device": { "type": "string", "enum": ["mobile", "desktop"], "example": "mobile" },
+                  "source": { "type": "string", "enum": ["qr", "direct"], "example": "qr" }
+                }
+              }
+            }
+          }
+        },
+        "responses": { "200": { "description": "Ziyaret kaydedildi" } }
+      }
+    },
+    "/analytics/reset": {
+      "post": {
+        "tags": ["Analitik & QR"],
+        "summary": "Tüm Ziyaret ve QR Analitiklerini Sıfırla",
+        "security": [{ "BearerAuth": [] }],
+        "responses": { "200": { "description": "Analitikler sıfırlandı" } }
+      }
+    },
+    "/health": {
+      "get": {
+        "tags": ["Sistem"],
+        "summary": "Canlılık Kontrolü (Healthcheck)",
+        "responses": { "200": { "description": "Servis ayakta ve çalışır durumda" } }
+      }
+    }
+  }
+}

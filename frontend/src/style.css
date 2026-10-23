@@ -1,0 +1,103 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* 🎨 Özel Banner & Kapak Arka Plan Desenleri */
+.banner-mesh {
+  background: 
+    radial-gradient(circle at 10% 20%, rgba(255, 255, 0, 0.35) 0%, transparent 45%),
+    radial-gradient(circle at 90% 80%, rgba(234, 179, 8, 0.25) 0%, transparent 40%),
+    radial-gradient(circle at 50% 50%, rgba(30, 30, 30, 0.95) 0%, #0C0C0B 100%);
+  background-color: #0C0C0B;
+}
+
+.banner-grid {
+  background-color: #121212;
+  background-image: 
+    linear-gradient(to right, rgba(255, 255, 0, 0.12) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(255, 255, 0, 0.12) 1px, transparent 1px);
+  background-size: 20px 20px;
+}
+
+.banner-dots {
+  background-color: #0e0e0e;
+  background-image: radial-gradient(rgba(255, 255, 0, 0.28) 1.5px, transparent 1.5px);
+  background-size: 16px 16px;
+}
+
+.banner-waves {
+  background: 
+    radial-gradient(ellipse at bottom left, rgba(255, 255, 0, 0.35), transparent 60%),
+    linear-gradient(135deg, #181818 0%, #221c08 60%, #3a3200 100%);
+  background-color: #121212;
+}
+
+.banner-carbon {
+  background-color: #161616;
+  background-image: 
+    repeating-linear-gradient(45deg, rgba(255, 255, 255, 0.03) 0, rgba(255, 255, 255, 0.03) 1px, transparent 0, transparent 50%),
+    repeating-linear-gradient(-45deg, rgba(0, 0, 0, 0.4) 0, rgba(0, 0, 0, 0.4) 1px, transparent 0, transparent 50%);
+  background-size: 12px 12px;
+}
+
+.banner-cyberpunk {
+  background: 
+    radial-gradient(circle at top left, rgba(168, 85, 247, 0.5) 0%, transparent 50%),
+    radial-gradient(circle at bottom right, rgba(6, 182, 212, 0.45) 0%, transparent 50%),
+    linear-gradient(135deg, #0e0517 0%, #170d24 50%, #061826 100%);
+  background-color: #0d0617;
+}
+
+.banner-aurora {
+  background: 
+    radial-gradient(ellipse at 20% 0%, rgba(34, 197, 94, 0.4) 0%, transparent 55%),
+    radial-gradient(ellipse at 80% 100%, rgba(163, 230, 53, 0.3) 0%, transparent 50%),
+    linear-gradient(to right, #081a10, #0c2b18, #07170e);
+  background-color: #07170e;
+}
+
+.banner-sunset {
+  background: 
+    radial-gradient(circle at 10% 90%, rgba(249, 115, 22, 0.5) 0%, transparent 55%),
+    radial-gradient(circle at 85% 15%, rgba(239, 68, 68, 0.45) 0%, transparent 50%),
+    linear-gradient(135deg, #1f0f08 0%, #2e150b 50%, #150905 100%);
+  background-color: #1f0f08;
+}
+
+.banner-matrix {
+  background-color: #040d07;
+  background-image: 
+    linear-gradient(rgba(34, 197, 94, 0.15) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(34, 197, 94, 0.15) 1px, transparent 1px);
+  background-size: 14px 14px;
+}
+
+.banner-luxury {
+  background: 
+    radial-gradient(ellipse at 50% 120%, rgba(59, 130, 246, 0.35) 0%, transparent 60%),
+    radial-gradient(ellipse at 80% 0%, rgba(99, 102, 241, 0.25) 0%, transparent 50%),
+    linear-gradient(135deg, #080d1a 0%, #0f172a 60%, #090e1c 100%);
+  background-color: #080d1a;
+}
+
+.banner-lines {
+  background-color: #111111;
+  background-image: repeating-linear-gradient(
+    45deg,
+    rgba(255, 255, 0, 0.08),
+    rgba(255, 255, 0, 0.08) 2px,
+    transparent 2px,
+    transparent 12px
+  );
+}
+
+/* 🌐 Profesyonel Arka Plan Mikro Izgara ve Ambiyans Dokusu */
+.bg-ambient-grid {
+  background-image: radial-gradient(rgba(255, 255, 255, 0.08) 1.2px, transparent 1.2px);
+  background-size: 26px 26px;
+}
+
+.bg-ambient-grid-light {
+  background-image: radial-gradient(rgba(15, 23, 42, 0.07) 1.2px, transparent 1.2px);
+  background-size: 26px 26px;
+}

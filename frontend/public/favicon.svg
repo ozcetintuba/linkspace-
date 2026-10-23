@@ -1,0 +1,34 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64" fill="none">
+  <!-- Arka Plan Squircle (Koyu Obsidiyen Zemin) -->
+  <rect width="64" height="64" rx="16" fill="#0C0C0B" />
+  <rect x="1" y="1" width="62" height="62" rx="15" stroke="#282828" stroke-width="2" />
+  
+  <!-- Neon Sarı Parıltı Efekti (Glow) -->
+  <circle cx="32" cy="32" r="16" fill="#FFFF00" opacity="0.28" filter="url(#glow)" />
+  
+  <!-- Elektrik Sarısı Şimşek / Linkspace Amblemi -->
+  <path d="M35 9L17 33.5H31.5L27 55L47 28H32.5L35 9Z" fill="url(#yellowGradient)" filter="url(#dropShadow)" />
+  
+  <!-- Sarı İmza Noktası / Çip (Linkspace Brand Square) -->
+  <rect x="42" y="13" width="6" height="6" rx="1.5" fill="#FFFF00" />
+
+  <defs>
+    <!-- Elektrik Siber Sarı Gradyanı -->
+    <linearGradient id="yellowGradient" x1="17" y1="9" x2="47" y2="55" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#FFFFFF" />
+      <stop offset="20%" stop-color="#FFFF00" />
+      <stop offset="100%" stop-color="#FFAA00" />
+    </linearGradient>
+
+    <!-- Parıltı Filtresi -->
+    <filter id="glow" x="4" y="4" width="56" height="56" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+      <feGaussianBlur stdDeviation="7" />
+    </filter>
+
+    <!-- Gölge & Neon Işıma Filtresi -->
+    <filter id="dropShadow" x="11" y="5" width="42" height="54" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+      <feDropShadow dx="0" dy="1.5" stdDeviation="2.5" flood-color="#000000" flood-opacity="0.8" />
+      <feDropShadow dx="0" dy="0" stdDeviation="4.5" flood-color="#FFFF00" flood-opacity="0.6" />
+    </filter>
+  </defs>
+</svg>

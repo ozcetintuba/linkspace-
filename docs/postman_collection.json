@@ -1,0 +1,220 @@
+{
+  "info": {
+    "_postman_id": "c1f7a4e2-9b34-4d8b-9e20-7b28a9b1c034",
+    "name": "Linkspace REST API Collection",
+    "description": "Linkspace Full-Stack Linktree & Link Hub projesinin tüm REST API uç noktaları. Staj raporu ve mentor sunumu için hazırlanmıştır.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:5000/api",
+      "type": "string"
+    },
+    {
+      "key": "token",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "1. Kimlik Doğrulama (Auth)",
+      "item": [
+        {
+          "name": "Yönetici Girişi (Login)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const responseJson = pm.response.json();",
+                  "if (responseJson.token) {",
+                  "    pm.collectionVariables.set('token', responseJson.token);",
+                  "    pm.test('Token başarıyla kaydedildi', () => pm.expect(responseJson.token).to.be.a('string'));",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"admin\",\n  \"password\": \"admin123\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/auth/login", "host": ["{{baseUrl}}"], "path": ["auth", "login"] }
+          }
+        },
+        {
+          "name": "Mevcut Kullanıcı Doğrulama (Me)",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": { "raw": "{{baseUrl}}/auth/me", "host": ["{{baseUrl}}"], "path": ["auth", "me"] }
+          }
+        },
+        {
+          "name": "Yeni Kullanıcı Kaydı (Register)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"yeni_kullanici\",\n  \"email\": \"kullanici@example.com\",\n  \"password\": \"GucluSifre123\",\n  \"name\": \"Test Kullanıcısı\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/auth/register", "host": ["{{baseUrl}}"], "path": ["auth", "register"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "2. Profil Yönetimi",
+      "item": [
+        {
+          "name": "Varsayılan Profili Getir",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/profile", "host": ["{{baseUrl}}"], "path": ["profile"] }
+          }
+        },
+        {
+          "name": "Kullanıcı Adı ile Profil Getir (Ziyaretçi Ekranı)",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/profile/tubagul", "host": ["{{baseUrl}}"], "path": ["profile", "tubagul"] }
+          }
+        },
+        {
+          "name": "Uç Senaryo: Olmayan Kullanıcı 404 Testi",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/profile/olmayan_hesap_xyz_404", "host": ["{{baseUrl}}"], "path": ["profile", "olmayan_hesap_xyz_404"] }
+          }
+        },
+        {
+          "name": "Profili Güncelle (Yönetici)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Tuba Gül\",\n  \"username\": \"@tubagul\",\n  \"bio\": \"Yazılım Mühendisliği Öğrencisi | Full-Stack Geliştirici Adayı 🚀\",\n  \"avatar\": \"https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=300&auto=format&fit=crop&q=80\",\n  \"avatarShape\": \"circle\",\n  \"avatarGlow\": \"yellow\",\n  \"statusText\": \"Yeni Projelere & Fırsatlara Açık\",\n  \"statusColor\": \"emerald\",\n  \"isVerified\": true,\n  \"banner\": \"\",\n  \"bannerPattern\": \"mesh\",\n  \"badges\": [\n    { \"id\": \"b-1\", \"text\": \"Full-Stack Developer\", \"icon\": \"Code\", \"color\": \"default\" }\n  ],\n  \"socialLinks\": {\n    \"barVisible\": true,\n    \"shape\": \"rounded-full\",\n    \"style\": \"glass\",\n    \"github\": \"https://github.com\",\n    \"githubActive\": true\n  }\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/profile", "host": ["{{baseUrl}}"], "path": ["profile"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "3. Bağlantılar (Links CRUD)",
+      "item": [
+        {
+          "name": "Tüm Bağlantıları Getir",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/links", "host": ["{{baseUrl}}"], "path": ["links"] }
+          }
+        },
+        {
+          "name": "Yeni Bağlantı Ekle (Geçerli URL)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Portfolyo Sitem\",\n  \"url\": \"https://example.com\",\n  \"icon\": \"Globe\",\n  \"customColor\": \"default\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/links", "host": ["{{baseUrl}}"], "path": ["links"] }
+          }
+        },
+        {
+          "name": "Uç Senaryo: Hatalı/Güvensiz URL Ekleme Testi (400)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Zararlı Link\",\n  \"url\": \"javascript:alert(1)\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/links", "host": ["{{baseUrl}}"], "path": ["links"] }
+          }
+        },
+        {
+          "name": "Bağlantı Tıklama Sayacını Artır (Click Track)",
+          "request": {
+            "method": "POST",
+            "url": { "raw": "{{baseUrl}}/links/1/click", "host": ["{{baseUrl}}"], "path": ["links", "1", "click"] }
+          }
+        },
+        {
+          "name": "Tıklama Sayaçlarını Sıfırla",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": { "raw": "{{baseUrl}}/links/reset-clicks", "host": ["{{baseUrl}}"], "path": ["links", "reset-clicks"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "4. Ziyaretçi & QR Analitiği",
+      "item": [
+        {
+          "name": "Analitik Özeti (Mobil vs Masaüstü Kırılımı)",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/analytics", "host": ["{{baseUrl}}"], "path": ["analytics"] }
+          }
+        },
+        {
+          "name": "Mobil QR Ziyareti Simüle Et",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"device\": \"mobile\",\n  \"source\": \"qr\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/analytics/visit", "host": ["{{baseUrl}}"], "path": ["analytics", "visit"] }
+          }
+        },
+        {
+          "name": "Masaüstü Web Ziyareti Simüle Et",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"device\": \"desktop\",\n  \"source\": \"direct\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/analytics/visit", "host": ["{{baseUrl}}"], "path": ["analytics", "visit"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "5. Sistem",
+      "item": [
+        {
+          "name": "Canlılık Kontrolü (Health)",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/health", "host": ["{{baseUrl}}"], "path": ["health"] }
+          }
+        }
+      ]
+    }
+  ]
+}
