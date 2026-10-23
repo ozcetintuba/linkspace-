@@ -4,6 +4,15 @@ Tüm önemli mimari değişiklikler, özellik eklemeleri ve düzeltmeler bu dosy
 
 ---
 
+## [v0.31.1] - 2026-10-23 (Render & Canlı Dağıtım İyileştirmesi: Bağlantı Dayanıklılığı)
+
+### 🚀 Render Dağıtım İyileştirmesi (Production Resilience)
+- **`backend/src/db.js`**:
+  - Render ortamında (`RENDER=true` veya `NODE_ENV=production`) harici `DATABASE_URL` henüz tanımlanmadığında `127.0.0.1:5432` yerel portuna bağlanma denemesi ve bu nedenle oluşan kırmızı `ECONNREFUSED` log çıktısı engellendi.
+  - Veritabanı tanımlanana kadar sistem kesintisiz bellek ve yerel depolama dayanıklılığı ile çalışacak şekilde yapılandırıldı.
+
+---
+
 ## [v0.31.0] - 2026-10-23 (Zengin Link Türleri: Akıllı Embed Oynatıcı & Kilitli/Hassas Linkler - Smart / Rich Links & Lock Protection)
 
 ### 🎵 Akıllı Embed Oynatıcı (YouTube, Spotify, SoundCloud) & Kilitli/Hassas Link Koruması (PIN / 18+)
