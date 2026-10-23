@@ -5,7 +5,11 @@ dotenv.config()
 
 const { Pool } = pg
 
-const dbConfig = process.env.DATABASE_URL
+const isProduction = process.env.NODE_ENV === 'production' || process.env.RENDER === 'true'
+const hasDatabaseUrl = !!process.env.DATABASE_URL
+const hasExplicitDbHost = !!process.env.DB_HOST && process.env.DB_HOST !== 'localhost'
+
+const dbConfig = hasDatabaseUrl
   ? {
       connectionString: process.env.DATABASE_URL,
       ssl: (process.env.DATABASE_URL.includes('localhost') || process.env.DATABASE_URL.includes('127.0.0.1'))
@@ -21,21 +25,33 @@ const dbConfig = process.env.DATABASE_URL
       user: process.env.DB_USER || 'postgres',
       password: process.env.DB_PASSWORD || 'postgres',
       database: process.env.DB_NAME || 'linktree_db',
-      connectionTimeoutMillis: 5000,
+      connectionTimeoutMillis: 3000,
       idleTimeoutMillis: 30000,
-      max: 20
+      max: 10
     }
 
 export const pool = new Pool(dbConfig)
 
 pool.on('error', (err) => {
-  console.error('Beklenmeyen PostgreSQL havuz hatası:', err)
+  if (err.code !== 'ECONNREFUSED') {
+    console.warn('⚠️ PostgreSQL havuz bildirimi:', err.message)
+  }
 })
 
-export const query = (text, params) => pool.query(text, params)
+export const query = (text, params) => {
+  if (isProduction && !hasDatabaseUrl && !hasExplicitDbHost) {
+    throw new Error('DATABASE_URL_NOT_CONFIGURED')
+  }
+  return pool.query(text, params)
+}
 
 // Veritabanı bağlantı kontrol fonksiyonu
 export const testConnection = async () => {
+  if (isProduction && !hasDatabaseUrl && !hasExplicitDbHost) {
+    console.log('ℹ️ Render üzerinde DATABASE_URL henüz tanımlanmadı. Sistem kesintisiz bellek/çevrimdışı modunda çalışıyor.')
+    return false
+  }
+
   try {
     const client = await pool.connect()
     const result = await client.query('SELECT NOW()')
