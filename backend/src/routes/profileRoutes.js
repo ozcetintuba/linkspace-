@@ -4,35 +4,62 @@ import { requireAuth } from '../middleware/authMiddleware.js'
 
 const router = Router()
 
+// Varsayılan bellek içi profil (DB çevrimdışı fallback)
+const mockProfile = {
+  name: 'Tuba Gül',
+  username: '@tubagul',
+  bio: 'Full-Stack Web Geliştirici & UI/UX Meraklısı 🚀\nModern web teknolojileri ve açık kaynak projeler üretiyorum.',
+  avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=300&auto=format&fit=crop&q=80',
+  avatarShape: 'circle',
+  avatarGlow: 'yellow',
+  statusText: 'Yeni Projelere & Fırsatlara Açık',
+  statusColor: 'emerald',
+  isVerified: true,
+  banner: '',
+  bannerPattern: 'mesh',
+  badges: ['Full-Stack', 'Vue.js', 'Open Source'],
+  socialLinks: {
+    github: 'https://github.com',
+    twitter: 'https://twitter.com',
+    linkedin: 'https://linkedin.com',
+    instagram: 'https://instagram.com'
+  }
+}
+
 // GET /api/profile (Herkese açık)
 router.get('/', async (req, res) => {
   try {
-    const result = await query(`
-      SELECT 
-        name, 
-        username, 
-        bio, 
-        avatar, 
-        COALESCE(avatar_shape, 'circle') AS "avatarShape",
-        COALESCE(avatar_glow, 'yellow') AS "avatarGlow",
-        COALESCE(status_text, 'Yeni Projelere & Fırsatlara Açık') AS "statusText",
-        COALESCE(status_color, 'emerald') AS "statusColor",
-        COALESCE(is_verified, true) AS "isVerified",
-        COALESCE(banner, '') AS "banner",
-        COALESCE(banner_pattern, 'mesh') AS "bannerPattern",
-        COALESCE(badges, '[]'::jsonb) AS "badges",
-        COALESCE(social_links, '{}'::jsonb) AS "socialLinks" 
-      FROM profiles 
-      ORDER BY id ASC 
-      LIMIT 1
-    `)
-    if (result.rows.length === 0) {
-      return res.status(404).json({ error: 'Profil bulunamadı' })
+    try {
+      const result = await query(`
+        SELECT 
+          name, 
+          username, 
+          bio, 
+          avatar, 
+          COALESCE(avatar_shape, 'circle') AS "avatarShape",
+          COALESCE(avatar_glow, 'yellow') AS "avatarGlow",
+          COALESCE(status_text, 'Yeni Projelere & Fırsatlara Açık') AS "statusText",
+          COALESCE(status_color, 'emerald') AS "statusColor",
+          COALESCE(is_verified, true) AS "isVerified",
+          COALESCE(banner, '') AS "banner",
+          COALESCE(banner_pattern, 'mesh') AS "bannerPattern",
+          COALESCE(badges, '[]'::jsonb) AS "badges",
+          COALESCE(social_links, '{}'::jsonb) AS "socialLinks" 
+        FROM profiles 
+        ORDER BY id ASC 
+        LIMIT 1
+      `)
+      if (result.rows.length > 0) {
+        return res.json(result.rows[0])
+      }
+    } catch (dbErr) {
+      console.warn('⚠️ [DB Çevrimdışı] Profil verisi bellekten dönülüyor:', dbErr.message)
+      return res.json(mockProfile)
     }
-    res.json(result.rows[0])
+    res.json(mockProfile)
   } catch (error) {
     console.error('Profil getirme hatası:', error)
-    res.status(500).json({ error: 'Profil bilgisi alınamadı' })
+    res.json(mockProfile)
   }
 })
 

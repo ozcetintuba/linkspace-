@@ -4,37 +4,105 @@ import { requireAuth } from '../middleware/authMiddleware.js'
 
 const router = Router()
 
+// Varsayılan bellek içi linkler (DB çevrimdışı fallback)
+const mockLinks = [
+  {
+    id: 1,
+    title: 'Kişisel Web Sitem & Portfolyom',
+    url: 'https://github.com/tubaaa7',
+    isActive: true,
+    icon: 'globe',
+    customColor: 'default',
+    clicks: 12,
+    orderIndex: 0,
+    category: '🌐 Web & Portfolyo',
+    embedType: 'none',
+    showEmbed: false,
+    isLocked: false
+  },
+  {
+    id: 2,
+    title: 'GitHub Açık Kaynak Projelerim',
+    url: 'https://github.com/tubaaa7/linkspace-',
+    isActive: true,
+    icon: 'github',
+    customColor: 'emerald',
+    clicks: 38,
+    orderIndex: 1,
+    category: '🚀 Projeler & Kod',
+    embedType: 'none',
+    showEmbed: false,
+    isLocked: false
+  },
+  {
+    id: 3,
+    title: 'Lo-Fi Chill Beats (Spotify)',
+    url: 'https://open.spotify.com/track/4cOdK2wGLETKBW3PvgPWqT',
+    isActive: true,
+    icon: 'music',
+    customColor: 'emerald',
+    clicks: 19,
+    orderIndex: 2,
+    category: '📚 Kaynaklar & Yayınlar',
+    embedType: 'spotify',
+    showEmbed: true,
+    isLocked: false
+  },
+  {
+    id: 4,
+    title: 'VIP Kodlama & Discord Topluluğu',
+    url: 'https://discord.com',
+    isActive: true,
+    icon: 'lock',
+    customColor: 'purple',
+    clicks: 44,
+    orderIndex: 3,
+    category: '💼 Sosyal Medya & İletişim',
+    embedType: 'none',
+    showEmbed: false,
+    isLocked: true,
+    lockType: 'pin',
+    passcode: '1234',
+    lockWarning: 'Bu bağlantıya sadece davetli üyeler erişebilir. Şifre: 1234'
+  }
+]
+
 // GET /api/links (Tüm linkleri sıralı getir)
 router.get('/', async (req, res) => {
   try {
-    const result = await query(`
-      SELECT 
-        id, 
-        title, 
-        url, 
-        is_active AS "isActive", 
-        icon, 
-        custom_color AS "customColor",
-        clicks, 
-        order_index AS "orderIndex",
-        COALESCE(is_scheduled, false) AS "isScheduled",
-        schedule_start AS "scheduleStart",
-        schedule_end AS "scheduleEnd",
-        COALESCE(show_countdown, true) AS "showCountdown",
-        COALESCE(category, '') AS "category",
-        COALESCE(embed_type, 'none') AS "embedType",
-        COALESCE(show_embed, false) AS "showEmbed",
-        COALESCE(is_locked, false) AS "isLocked",
-        COALESCE(lock_type, 'pin') AS "lockType",
-        COALESCE(passcode, '') AS "passcode",
-        COALESCE(lock_warning, '') AS "lockWarning"
-      FROM links 
-      ORDER BY order_index ASC, id DESC
-    `)
-    res.json(result.rows)
+    try {
+      const result = await query(`
+        SELECT 
+          id, 
+          title, 
+          url, 
+          is_active AS "isActive", 
+          icon, 
+          custom_color AS "customColor",
+          clicks, 
+          order_index AS "orderIndex",
+          COALESCE(is_scheduled, false) AS "isScheduled",
+          schedule_start AS "scheduleStart",
+          schedule_end AS "scheduleEnd",
+          COALESCE(show_countdown, true) AS "showCountdown",
+          COALESCE(category, '') AS "category",
+          COALESCE(embed_type, 'none') AS "embedType",
+          COALESCE(show_embed, false) AS "showEmbed",
+          COALESCE(is_locked, false) AS "isLocked",
+          COALESCE(lock_type, 'pin') AS "lockType",
+          COALESCE(passcode, '') AS "passcode",
+          COALESCE(lock_warning, '') AS "lockWarning"
+        FROM links 
+        ORDER BY order_index ASC, id DESC
+      `)
+      return res.json(result.rows)
+    } catch (dbErr) {
+      console.warn('⚠️ [DB Çevrimdışı] Linkler bellekten dönülüyor:', dbErr.message)
+      return res.json(mockLinks)
+    }
   } catch (error) {
     console.error('Linkleri getirme hatası:', error)
-    res.status(500).json({ error: 'Bağlantılar alınamadı' })
+    res.json(mockLinks)
   }
 })
 

@@ -10,6 +10,10 @@ Tüm önemli mimari değişiklikler, özellik eklemeleri ve düzeltmeler bu dosy
 - **`backend/src/db.js`**:
   - Render ortamında (`RENDER=true` veya `NODE_ENV=production`) harici `DATABASE_URL` henüz tanımlanmadığında `127.0.0.1:5432` yerel portuna bağlanma denemesi ve bu nedenle oluşan kırmızı `ECONNREFUSED` log çıktısı engellendi.
   - Veritabanı tanımlanana kadar sistem kesintisiz bellek ve yerel depolama dayanıklılığı ile çalışacak şekilde yapılandırıldı.
+- **`backend/src/routes/authRoutes.js`**:
+  - Veritabanı henüz bağlı değilken demo girişine (`admin` / `admin123`) izin veren JWT oturum fallback desteği eklendi. Böylece veritabanı kurulmadan önce bile yönetim paneline erişim sağlandı.
+- **`backend/src/routes/profileRoutes.js` & `backend/src/routes/linksRoutes.js`**:
+  - Veritabanı çevrimdışı durumundayken 500 hatası vermek yerine güvenli varsayılan verilerle yanıt veren kesintisiz fallback mekanizması devreye alındı.
 
 ---
 
