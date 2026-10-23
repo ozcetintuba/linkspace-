@@ -1,62 +1,78 @@
-# 🚀 Linkspace - Bulut Dağıtım Kılavuzu (Production Deployment Guide)
+# 🚀 Linkspace - GitHub & Render Canlıya Alma Kılavuzu (Full-Stack Deployment)
 
-Bu dokümanda projenin **GitHub**, **Vercel** (Frontend) ve **Render / Supabase** (Backend & PostgreSQL) üzerine kalıcı olarak canlıya alınması adım adım açıklanmıştır.
+Bu kılavuz, projenizi **GitHub** reposuna yükleyip **Render** üzerinde **tek bir URL** altında (hem Vue 3 frontend hem de Express REST API + PostgreSQL veritabanı) tamamen ücretsiz ve kalıcı olarak canlıya alma adımlarını içerir.
 
 ---
 
 ## 1. Adım: Projeyi GitHub'a Yükleme
 
-1. [GitHub](https://github.com/new) üzerinde yeni bir repository (depo) oluşturun (Örn: `linktree-projem`).
-2. Terminalinizde aşağıdaki komutları çalıştırarak yerel projenizi GitHub'a gönderin:
+1. [GitHub'da Yeni Repo Açın](https://github.com/new):
+   - **Repository name**: `linktree-projem` (veya istediğiniz bir isim)
+   - **Public** veya **Private** seçin.
+   - *"Initialize this repository with..."* seçeneklerini **boş bırakın**.
+   - **"Create repository"** butonuna basın.
+
+2. Bilgisayarınızdaki terminalde şu komutları çalıştırarak projenizi GitHub'a gönderin:
 
 ```bash
 git add .
-git commit -m "feat: v0.31.0 - Full-stack linkspace with rich embeds and lock support"
+git commit -m "feat: unified full-stack linkspace ready for Render deployment"
 git branch -M main
-git remote add origin https://github.com/KULLANICI_ADINIZ/linktree-projem.git
+git remote add origin https://github.com/tubaaa7/linktree-projem.git
 git push -u origin main
 ```
+*(GitHub kullanıcı adınız farklıysa `tubaaa7` yerine kendi kullanıcı adınızı yazın)*
 
 ---
 
-## 2. Adım: Backend & PostgreSQL Dağıtımı (Render veya Supabase)
+## 2. Adım: Render ile Tek Tıkla Canlıya Alma (Önerilen - Blueprint)
 
-### Yöntem A: Render ile Tek Tıkla Dağıtım (Önerilen)
-Projenin kök dizininde hazır bir `render.yaml` (Blueprint) dosyası bulunmaktadır:
-1. [Render Dashboard](https://dashboard.render.com/)'a giriş yapın.
-2. **"New" -> "Blueprint"** seçeneğini tıklayın.
-3. GitHub reponuzu seçin (`linktree-projem`).
-4. Render, `render.yaml` dosyasını otomatik okuyarak **hem PostgreSQL veritabanını hem de Node.js Express API servisini** kuracaktır.
-5. Kurulum tamamlandığında size bir backend URL'i verilir (Örn: `https://linkspace-backend.onrender.com`).
+Proje kök dizininde hazır [`render.yaml`](file:///c:/Users/ozcet/linktree-projem/render.yaml) bulunmaktadır. Bu dosya Render'a hem PostgreSQL veritabanını hem de Full-Stack Node.js uygulamasını otomatik kurdurur:
 
-### Yöntem B: Manuel Render Kurulumu
-1. **Veritabanı**: **New -> PostgreSQL** -> İsim: `linkspace-db`, Database: `linktree_db`. Oluşan `Internal Database URL` veya `External Database URL`'i kopyalayın.
-2. **Web Servisi**: **New -> Web Service** -> GitHub reponuzu bağlayın:
-   - **Root Directory**: `backend`
-   - **Build Command**: `npm install`
+1. [Render Dashboard](https://dashboard.render.com/)'a giriş yapın (GitHub hesabınızla tek tıkla oturum açabilirsiniz).
+2. Sağ üstteki **"New +" -> "Blueprint"** seçeneğine tıklayın.
+3. GitHub reponuzu (`linktree-projem`) seçin ve **"Connect"** deyin.
+4. Render, `render.yaml` dosyasını algılayacak ve size iki servis gösterecektir:
+   - 🗄️ **`linkspace-db`** (PostgreSQL Veritabanı - Ücretsiz)
+   - 🌐 **`linkspace-app`** (Full-Stack Web Servisi - Ücretsiz)
+5. **"Apply"** butonuna tıklayın!
+6. Render otomatik olarak:
+   - PostgreSQL veritabanını oluşturur ve güvenli `DATABASE_URL` atar.
+   - Vue 3 arayüzünü ve Express arka ucunu derler (`npm run build`).
+   - Servisi başlatır (`npm start`).
+7. Kurulum 2-3 dakika içinde tamamlanır ve size canlı bir HTTPS adresi verilir:  
+   👉 **`https://linkspace-app.onrender.com`**
+
+---
+
+## 3. Adım: Alternatif Manuel Kurulum (Blueprint Kullanmak İstemezseniz)
+
+Eğer Blueprint yerine Render üzerinde tek tek servis oluşturmak isterseniz:
+
+### A. PostgreSQL Veritabanı Oluşturma:
+1. **New + -> PostgreSQL**:
+   - **Name**: `linkspace-db`
+   - **Database**: `linktree_db`
+   - **Plan**: Free
+2. Oluşturulduktan sonra sayfadaki **"Internal Database URL"** veya **"External Database URL"** değerini kopyalayın.
+
+### B. Web Servisi Oluşturma:
+1. **New + -> Web Service**:
+   - GitHub reponuzu bağlayın.
+   - **Name**: `linkspace-app`
+   - **Root Directory**: *(Boş bırakın)*
+   - **Build Command**: `npm run build`
    - **Start Command**: `npm start`
    - **Environment Variables**:
-     - `DATABASE_URL`: *(Yukarıda oluşturduğunuz PostgreSQL bağlantı adresi)*
      - `NODE_ENV`: `production`
-     - `JWT_SECRET`: *(Güvenli rastgele bir anahtar)*
+     - `PORT`: `10000`
+     - `DATABASE_URL`: *(1. adımda kopyaladığınız PostgreSQL bağlantı URL'i)*
+     - `JWT_SECRET`: *(Güvenli rastgele bir şifre)*
+2. **"Create Web Service"** butonuna basın.
 
 ---
 
-## 3. Adım: Frontend Dağıtımı (Vercel)
-
-1. [Vercel Dashboard](https://vercel.com/dashboard)'a gidin ve **"Add New..." -> "Project"** butonuna tıklayın.
-2. GitHub'daki `linktree-projem` reposunu içeri aktarın (Import).
-3. Proje ayarlarında:
-   - **Framework Preset**: `Vite`
-   - **Root Directory**: `frontend` seçeneğini işaretleyin (veya kök bırakın, `vercel.json` otomatik algılar).
-4. **Environment Variables (Ortam Değişkenleri)** alanına şunu ekleyin:
-   - **Key**: `VITE_API_BASE_URL`
-   - **Value**: `https://linkspace-backend.onrender.com/api` *(2. adımda aldığınız Render backend adresi)*
-5. **"Deploy"** butonuna tıklayın!
-6. Birkaç saniye içinde projeniz `https://linktree-projem.vercel.app` şeklinde kalıcı ve ücretsiz canlı yayında olacaktır! 🎉
-
----
-
-## 4. Adım: Alan Adı (Custom Domain - Opsiyonel)
-* Dilediğiniz özel alan adını (örn: `tubagul.me` veya `links.sirketiniz.com`) Vercel arayüzünden tek tıkla projenize bağlayabilirsiniz.
-* Linkspace yönetim panelindeki **SEO & Özel Domain** sekmesinden DNS doğrulamasını test edebilirsiniz.
+## 4. Adım: Canlı Sistem Özellikleri & Avantajları
+* **Tek Domain**: Frontend ve Backend aynı origin'de çalıştığı için sıfır CORS hatası ve hızlı sayfa yüklemesi.
+* **SPA Routing**: `/admin`, `/login`, `/@tubagul` gibi tüm dinamik rotalar doğrudan Express üzerinden `dist/index.html` olarak sunulur.
+* **Akıllı Fallback**: PostgreSQL henüz bağlanmamış veya uykudayken dahi sistem LocalStorage ve bellek içi tohum verilerle kesintisiz çalışmaya devam eder.

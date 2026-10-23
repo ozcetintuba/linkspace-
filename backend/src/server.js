@@ -128,7 +128,25 @@ app.get('/api/docs', (req, res) => {
   `)
 })
 
-// Bilinmeyen Rota Yakalayıcı (404)
+// Statik Frontend Dağıtımı (Üretim / Render SPA Desteği)
+const distDir = path.resolve(__dirname, '../../frontend/dist')
+if (fs.existsSync(distDir)) {
+  console.log(`📦 Statik frontend üretim paketi devrede: ${distDir}`)
+  app.use(express.static(distDir))
+  app.get('*', (req, res, next) => {
+    if (req.path.startsWith('/api')) {
+      return next()
+    }
+    res.sendFile(path.join(distDir, 'index.html'))
+  })
+}
+
+// Bilinmeyen API Rota Yakalayıcı (404)
+app.use('/api', (req, res) => {
+  res.status(404).json({ error: 'İstenen API uç noktası bulunamadı' })
+})
+
+// Bilinmeyen Rota Yakalayıcı (404 - Dist paketi yoksa)
 app.use((req, res) => {
   res.status(404).json({ error: 'İstenen uç nokta bulunamadı' })
 })

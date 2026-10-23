@@ -1,9 +1,9 @@
 services:
   - type: web
-    name: linkspace-backend
+    name: linkspace-app
     env: node
-    rootDir: backend
-    buildCommand: npm install
+    plan: free
+    buildCommand: npm run build
     startCommand: npm start
     envVars:
       - key: NODE_ENV
@@ -14,6 +14,8 @@ services:
         fromDatabase:
           name: linkspace-db
           property: connectionString
+      - key: JWT_SECRET
+        generateValue: true
 
 databases:
   - name: linkspace-db
