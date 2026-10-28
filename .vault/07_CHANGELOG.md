@@ -4,6 +4,44 @@ Tüm önemli mimari değişiklikler, özellik eklemeleri ve düzeltmeler bu dosy
 
 ---
 
+## [v0.36.0] - 2026-10-28 (AI Copilot, Web Share Target, Biyometrik WebAuthn & Offline-First Sync)
+
+### 🤖 1. Akıllı Bio Asistanı (AI Copilot) & Link Tıklama Tahmini (Smart Insights)
+- **Hedefe Özel Otomatik Bio & Buton Başlığı Üretimi (`POST /api/ai/copilot`)**:
+  - Kullanıcı hedefini yazdığında (örn. *"Yazılımcıyım, projelerimi öne çıkar"* veya *"Butiğim var, indirimleri duyur"*), içeriği analiz ederek sektöre özel 3 adet optimize edilmiş biyografi ve 4-5 adet yüksek tıklanma oranlı (CTR) buton başlığı önerir.
+  - Yönetici panelinde tek tıkla *"Profilime Uygula"* ve *"+ Link Ağacıma Ekle"* butonları ile anında entegre edilir.
+- **Link Tıklama Tahmini ve Tavsiyesi (Smart Insights Kural Motoru - `POST /api/ai/insights`)**:
+  - Ziyaretçi verilerini, tıklama sayılarını, mobil/masaüstü oranlarını ve A/B testlerini analiz eder.
+  - *Gizli Şampiyon Kuralı*: En popüler link alt sıralardaysa `"⚡ İlk Sıraya Taşı"` aksiyonu sunar.
+  - *Düşük Etkileşim Kuralı*: 0 tık alan linkler için başlığı CTA ile güçlendirme önerisi verir.
+  - *A/B Testi Kazananı*: Kazanan varyantı tek tıkla kalıcı hale getirme tavsiyesi sunar.
+
+### 📱 2. Web Share Target API ile Doğrudan Telefonda Paylaşım
+- **`manifest.json` ve `manifest.webmanifest` Yapılandırması**:
+  - `share_target` API'si entegre edildi (`action: "/admin", params: { title, text, url }`).
+  - Mobil cihazda (Chrome/Safari) veya YouTube, Medium, Twitter vb. uygulamalarda gezinirken tarayıcının yerel *"Paylaş"* menüsünde Linkspace bir hedef olarak görünür.
+- **Admin Panel Otomatik Bağlantı Yakalama**:
+  - Kullanıcı *"Paylaş -> Linkspace"* dediğinde yönetim paneli açılır, paylaşılan URL ve başlık otomatik ayrıştırılarak *"Yeni Bağlantı Ekle"* formuna doldurulur ve bildirim sunulur.
+
+### 🔑 3. Biyometrik Kimlik Doğrulama (WebAuthn / Passkeys - FIDO2 Standart)
+- **WebAuthn REST API (`backend/src/routes/webauthnRoutes.js`)**:
+  - `/register-options`, `/register-verify`, `/login-options`, `/login-verify`, `/credentials` uç noktaları eklendi.
+  - Standart FIDO2 challenge/attestation ve assertion doğrulama mekanizması kuruldu.
+- **Login ve Admin Paneli Biyometrik Arayüzü**:
+  - Giriş ekranında (`LoginView.vue`) tek tıkla *"Touch ID / Face ID (Passkey) ile Giriş"* butonu.
+  - Yönetici Ayarlar sekmesinde *"Biyometrik Kimlik (Passkeys) Yönetimi"* kartı ile cihaz kaydetme ve yönetme desteği.
+
+### 📶 4. Ziyaretçi Çevrimdışı Modu (Offline-First Fallback & Background Sync)
+- **Service Worker Önbellekleme (`sw.js`)**:
+  - Profil, linkler ve tema API yanıtları için `linkspace-api-cache-v1` önbelleği (Network-First with Cache Fallback).
+  - Metroda, tünelde veya uçakta internet koptuğunda sayfa *"Bağlantı Yok"* hatası vermez; önbellekten anında yüklenir.
+- **Çevrimdışı Durum Göstergesi & Tıklama Kuyruğu (Offline Queue)**:
+  - Profil sayfasında internet koptuğunda zarif amber/sarı *"⚡ Çevrimdışı Mod"* rozeti görüntülenir.
+  - Ziyaretçi bağlantılara tıkladığında tıklamalar yerel kuyruğa (`linkspace_offline_clicks_queue`) alınır.
+  - Cihaz internete tekrar bağlandığı anda veya `sync` etkinliğinde tüm tıklamalar arka planda analitik sunucusuna aktarılır.
+
+---
+
 ## [v0.35.0] - 2026-10-28 (Etkileşimli 3D / WebGL Profil Deneyimi - Three.js)
 
 ### 🔮 1. Etkileşimli 3D Siber Maskot (Interactive Low-Poly 3D Avatar)

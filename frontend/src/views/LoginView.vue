@@ -14,12 +14,35 @@ import {
   AlertCircle, 
   Sparkles,
   CheckCircle2,
-  KeyRound
+  KeyRound,
+  Fingerprint
 } from 'lucide-vue-next'
+import { useLinkStore } from '../stores/linkStore'
 
 const router = useRouter()
 const route = useRoute()
 const authStore = useAuthStore()
+const linkStore = useLinkStore()
+const isPasskeyLoading = ref(false)
+
+const handlePasskeyLogin = async () => {
+  isPasskeyLoading.value = true
+  authStore.authError = ''
+  successMessage.value = ''
+
+  const result = await linkStore.loginWithPasskey()
+  isPasskeyLoading.value = false
+
+  if (result.success) {
+    successMessage.value = 'Biyometrik doğrulama başarılı! Giriş yapılıyor...'
+    setTimeout(() => {
+      const redirectPath = route.query.redirect || '/admin'
+      router.push(redirectPath)
+    }, 600)
+  } else {
+    authStore.authError = result.error || 'Biyometrik doğrulama tamamlanamadı.'
+  }
+}
 
 const isRegisterMode = ref(false)
 const name = ref('')
@@ -281,6 +304,26 @@ const handleSubmit = async () => {
             <component :is="isRegisterMode ? UserPlus : ShieldCheck" v-else class="w-4 h-4 group-hover:scale-110 transition-transform text-black" />
             <span>{{ authStore.isLoading ? 'İşleniyor...' : (isRegisterMode ? 'Hesap Oluştur ve Başla' : 'Giriş Yap') }}</span>
           </button>
+
+          <!-- Biyometrik Kimlik Doğrulama (Passkey / Touch ID / Face ID) -->
+          <div v-if="!isRegisterMode" class="pt-1.5">
+            <div class="relative flex items-center justify-center my-2.5">
+              <div class="border-t border-[#282828] w-full"></div>
+              <span class="bg-[#161616] px-3 text-[10px] uppercase font-mono tracking-wider text-slate-500">veya biyometrik</span>
+              <div class="border-t border-[#282828] w-full"></div>
+            </div>
+
+            <button 
+              type="button"
+              @click="handlePasskeyLogin"
+              :disabled="isPasskeyLoading"
+              class="w-full py-2.5 px-4 rounded-xl text-xs font-bold text-white bg-white/5 hover:bg-white/10 active:scale-[0.99] border border-white/15 hover:border-[#FFFF00]/50 transition-all flex items-center justify-center gap-2 group cursor-pointer shadow-md"
+            >
+              <span v-if="isPasskeyLoading" class="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin"></span>
+              <Fingerprint v-else class="w-4 h-4 text-[#FFFF00] group-hover:scale-110 transition-transform" />
+              <span>{{ isPasskeyLoading ? 'Biyometrik Taranıyor...' : 'Touch ID / Face ID (Passkey) ile Giriş' }}</span>
+            </button>
+          </div>
         </form>
 
         <!-- Alt Bilgi Notu -->

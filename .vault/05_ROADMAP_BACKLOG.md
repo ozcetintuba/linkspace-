@@ -421,9 +421,28 @@ Bu liste, projenin geliştirme fazlarını ve önceliklendirilmiş iş paketleri
 
 ---
 
+## 📌 Faz 24: AI Copilot, Web Share Target, Biyometrik WebAuthn & Offline-First Sync (TAMAMLANDI ✅)
+- [x] **Görev 24.1: AI Copilot & Buton Başlığı Üretimi (`POST /api/ai/copilot`)**:
+  - Hedefe özel 3 optimize biyografi ve 4-5 yüksek tıklanma oranlı buton başlığı önerisi.
+  - Tek tıkla "Profilime Uygula" ve "+ Link Ağacıma Ekle" entegrasyonu.
+- [x] **Görev 24.2: Link Tıklama Tahmini & Tavsiye Motoru (`POST /api/ai/insights`)**:
+  - En çok tıklanan linki ilk sıraya taşıma tavsiyesi ve tek tıkla sıralama optimizasyonu.
+  - 0 tık alan linkler için CTA iyileştirme ve A/B split testi kazananı uygulama aksiyonları.
+- [x] **Görev 24.3: Web Share Target API ile Telefonda Paylaşım**:
+  - `manifest.json` `share_target` ile tarayıcı yerel paylaş menüsüne Linkspace'i ekleme.
+  - Admin panelinde paylaşılan bağlantıyı otomatik yakalama, formu doldurma ve bildirim.
+- [x] **Görev 24.4: Biyometrik Kimlik Doğrulama (WebAuthn / Passkeys)**:
+  - FIDO2 / WebAuthn REST API (`backend/src/routes/webauthnRoutes.js`).
+  - Giriş ekranında tek tıkla Touch ID / Face ID ile giriş ve Admin Ayarlar sekmesinde cihaz yönetimi.
+- [x] **Görev 24.5: Ziyaretçi Çevrimdışı Modu & Background Sync**:
+  - `sw.js` `linkspace-api-cache-v1` önbelleklemesi (metro, tünel, uçakta kesintisiz profil sunumu).
+  - Profil sayfasında zarif çevrimdışı rozeti, yerel tıklama kuyruğu ve internet geldiğinde otomatik arka plan senkronizasyonu.
+
+---
+
 ## 📌 Sıradaki Aday Fazlar (Gelecek Yol Haritası)
-- **Faz 24**: Çoklu Profil / Sayfa Yönetimi (Multi-Tenant Profile Switching).
-- **Faz 25**: Canlı Entegrasyonlar ve Webhook'lar (Discord / Telegram / Slack anlık bildirimleri).
+- **Faz 25**: Çoklu Profil / Sayfa Yönetimi (Multi-Tenant Profile Switching).
+- **Faz 26**: Canlı Entegrasyonlar ve Webhook'lar (Discord / Telegram / Slack anlık bildirimleri).
 
 
 

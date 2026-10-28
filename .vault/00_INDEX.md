@@ -30,4 +30,4 @@ Bu sistem, projenin mimari yapısını, mevcut durumunu, veri modellerini, kodla
 - **Ana Rotalar**:
   - `/` -> `ProfileView.vue` (Kullanıcı profili ve bağlantı listesi - Ziyaretçi görünümü)
   - `/admin` -> `AdminView.vue` (Bağlantı ekleme, silme, görünürlük kontrolü - Yönetici paneli)
-- **Güncel Durum**: Full-Stack mimari aktif (Express.js REST API + PostgreSQL 16 + Pinia hibrit store + JWT Auth + Three.js WebGL + Dribbble Sales CRM Dark/Pure-Light arayüzü). Faz 1-23 tamamlandı (v0.35.0 - Etkileşimli 3D / WebGL Profil Deneyimi, Three.js Siber Maskot, Takımyıldızı Parçacıkları & Yaylanma Fiziği devrede).
+- **Güncel Durum**: Full-Stack mimari aktif (Express.js REST API + PostgreSQL 16 + Pinia hibrit store + JWT Auth + Three.js WebGL + FIDO2 WebAuthn + PWA Background Sync + Dribbble Sales CRM Dark/Pure-Light arayüzü). Faz 1-24 tamamlandı (v0.36.0 - AI Copilot, Web Share Target, Biyometrik WebAuthn Passkeys & Offline-First Sync devrede).

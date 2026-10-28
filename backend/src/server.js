@@ -10,6 +10,7 @@ import profileRoutes from './routes/profileRoutes.js'
 import linksRoutes from './routes/linksRoutes.js'
 import settingsRoutes from './routes/settingsRoutes.js'
 import authRoutes from './routes/authRoutes.js'
+import webauthnRoutes from './routes/webauthnRoutes.js'
 import analyticsRoutes from './routes/analyticsRoutes.js'
 import messagesRoutes from './routes/messagesRoutes.js'
 import aiRoutes from './routes/aiRoutes.js'
@@ -66,6 +67,7 @@ app.get('/api/health', (req, res) => {
 })
 
 // API Rotaları
+app.use('/api/auth/webauthn', webauthnRoutes)
 app.use('/api/auth', authRoutes)
 app.use('/api/profile', profileRoutes)
 app.use('/api/links', linksRoutes)

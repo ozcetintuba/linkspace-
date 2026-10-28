@@ -109,7 +109,12 @@ import {
   Radio,
   Split,
   GitFork,
-  Laptop
+  Laptop,
+  Fingerprint,
+  Lightbulb,
+  Bot,
+  Trophy,
+  Compass
 } from 'lucide-vue-next'
 
 
@@ -1611,6 +1616,200 @@ const handleChangePassword = async () => {
           <!-- SEKME 1: BAĞLANTILAR (LINKS) -->
           <!-- ========================================== -->
           <div v-if="activeTab === 'links'" class="space-y-6">
+
+            <!-- 1.0 TELEFONDAN PAYLAŞILAN BAĞLANTI BANNERI (Web Share Target API) -->
+            <div 
+              v-if="sharedTargetBanner" 
+              class="p-4 rounded-2xl bg-[#FFFF00]/10 border-2 border-[#FFFF00] flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 shadow-xl shadow-yellow-500/10 animate-in fade-in slide-in-from-top-2 duration-300"
+            >
+              <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-xl bg-[#FFFF00] flex items-center justify-center text-black shrink-0">
+                  <Share2 class="w-5 h-5 stroke-[2.5]" />
+                </div>
+                <div>
+                  <div class="flex items-center gap-2">
+                    <h4 class="text-xs font-bold text-white">Telefondan Paylaşılan Bağlantı Yakalandı!</h4>
+                    <span class="px-2 py-0.2 rounded-full text-[9px] font-mono font-bold bg-[#FFFF00] text-black uppercase">Web Share Target</span>
+                  </div>
+                  <p class="text-[11px] text-slate-300 font-mono truncate max-w-md mt-0.5">
+                    {{ sharedTargetBanner.title }} • {{ sharedTargetBanner.url }}
+                  </p>
+                </div>
+              </div>
+              <button 
+                type="button" 
+                @click="sharedTargetBanner = null" 
+                class="px-3.5 py-1.5 rounded-xl bg-[#FFFF00] hover:bg-[#EEFF00] text-black font-bold text-xs transition-transform active:scale-95 cursor-pointer shrink-0"
+              >
+                Anladım
+              </button>
+            </div>
+
+            <!-- 1.05 AKILLI TAVSİYELER & İÇGÖRÜLER (Smart Insights Rule Engine) -->
+            <div 
+              v-if="smartInsights.length > 0"
+              :class="['border rounded-2xl p-4 transition-colors relative overflow-hidden', themeClasses.cardBg]"
+            >
+              <div class="flex items-center justify-between pb-2.5 mb-3 border-b" :class="themeClasses.headerBorder">
+                <div class="flex items-center gap-2">
+                  <Lightbulb class="w-4 h-4 text-[#FFFF00]" />
+                  <h3 :class="['text-xs font-bold tracking-tight', themeClasses.titleText]">
+                    Akıllı Tıklama Tavsiyeleri & İçgörüler
+                  </h3>
+                  <span class="px-2 py-0.2 rounded-full text-[9px] font-mono font-bold bg-[#FFFF00]/15 text-[#FFFF00] border border-[#FFFF00]/30 uppercase">
+                    Kural Motoru
+                  </span>
+                </div>
+                <button 
+                  type="button" 
+                  @click="loadSmartInsights" 
+                  class="text-[11px] text-slate-400 hover:text-white transition-colors flex items-center gap-1"
+                >
+                  <RefreshCw class="w-3 h-3" :class="{ 'animate-spin': isLoadingInsights }" />
+                  <span>Yenile</span>
+                </button>
+              </div>
+
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-2.5">
+                <div 
+                  v-for="insight in smartInsights" 
+                  :key="insight.id"
+                  class="p-3 rounded-xl border flex flex-col justify-between transition-all"
+                  :class="adminTheme === 'light' ? 'bg-white border-slate-200 shadow-xs' : 'bg-[#181818] border-[#282828]'"
+                >
+                  <div class="space-y-1 mb-2.5">
+                    <div class="flex items-center justify-between">
+                      <span class="text-xs font-bold text-white flex items-center gap-1.5">
+                        <Zap v-if="insight.icon === 'Zap'" class="w-3.5 h-3.5 text-[#FFFF00]" />
+                        <Trophy v-else-if="insight.icon === 'Trophy'" class="w-3.5 h-3.5 text-amber-400" />
+                        <Sparkles v-else class="w-3.5 h-3.5 text-cyan-400" />
+                        <span>{{ insight.title }}</span>
+                      </span>
+                      <span 
+                        class="text-[9px] font-mono px-1.5 py-0.2 rounded-md uppercase font-bold"
+                        :class="insight.priority === 'high' ? 'bg-rose-500/20 text-rose-300' : 'bg-yellow-500/20 text-yellow-300'"
+                      >
+                        {{ insight.priority === 'high' ? 'Önemli' : 'Tavsiye' }}
+                      </span>
+                    </div>
+                    <p :class="['text-[11px] leading-relaxed', themeClasses.subText]">
+                      {{ insight.message }}
+                    </p>
+                  </div>
+                  <button 
+                    type="button"
+                    @click="applyInsightAction(insight)"
+                    class="w-full py-1.5 px-3 rounded-lg text-xs font-bold bg-[#FFFF00] hover:bg-[#EEFF00] text-black transition-all active:scale-95 cursor-pointer flex items-center justify-center gap-1.5 shadow-sm"
+                  >
+                    <span>{{ insight.actionLabel }}</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <!-- 1.08 AI COPILOT: OTOMATİK BİO & BUTON BAŞLIĞI ASİSTANI -->
+            <div :class="['border rounded-2xl p-5 transition-colors space-y-4', themeClasses.cardBg]">
+              <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 pb-3 border-b" :class="themeClasses.headerBorder">
+                <div>
+                  <h3 :class="['text-xs font-bold flex items-center gap-2', themeClasses.titleText]">
+                    <Bot class="w-4 h-4 text-emerald-400" />
+                    <span>AI Copilot: Hedefe Özel Bio & Buton Başlığı Üretimi</span>
+                    <span class="px-2 py-0.2 rounded-full text-[9px] font-mono font-bold bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 uppercase">
+                      Local AI
+                    </span>
+                  </h3>
+                  <p :class="['text-[11px] mt-0.5', themeClasses.subText]">
+                    Amacınızı yazın; yapay zeka hedefinize göre optimize edilmiş biyografi ve dikkat çekici buton başlıkları üretsin.
+                  </p>
+                </div>
+              </div>
+
+              <!-- Hedef Giriş Alanı -->
+              <div class="flex flex-col sm:flex-row items-center gap-2.5">
+                <div class="relative w-full">
+                  <input 
+                    id="ai-copilot-input"
+                    v-model="copilotGoal"
+                    type="text" 
+                    placeholder="Örn: Yazılımcıyım, projelerimi ve GitHub çalışmalarımı öne çıkar..."
+                    @keyup.enter="handleGenerateCopilot"
+                    :class="['w-full px-3.5 py-2.5 rounded-xl border focus:outline-none text-xs transition-colors', themeClasses.inputBg]"
+                  />
+                </div>
+                <button 
+                  type="button"
+                  @click="handleGenerateCopilot"
+                  :disabled="isGeneratingCopilot || !copilotGoal.trim()"
+                  class="w-full sm:w-auto px-4 py-2.5 rounded-xl text-xs font-bold bg-emerald-400 hover:bg-emerald-300 text-black transition-all active:scale-95 disabled:opacity-50 cursor-pointer flex items-center justify-center gap-1.5 shrink-0 shadow-md"
+                >
+                  <Sparkles class="w-3.5 h-3.5" :class="{ 'animate-spin': isGeneratingCopilot }" />
+                  <span>{{ isGeneratingCopilot ? 'Üretiliyor...' : 'Yapay Zeka ile Üret' }}</span>
+                </button>
+              </div>
+
+              <!-- AI Copilot Çıktıları -->
+              <div v-if="copilotData" class="space-y-4 pt-1 animate-in fade-in duration-300">
+                <!-- Önerilen Biyografiler -->
+                <div>
+                  <div class="text-[11px] font-bold text-white mb-2 flex items-center gap-1.5">
+                    <span>✨ Hedefinize Göre Optimize Biyografiler (3 Alternatif):</span>
+                    <span class="text-[9px] font-mono text-emerald-400">({{ copilotData.inferredTopic }})</span>
+                  </div>
+                  <div class="grid grid-cols-1 md:grid-cols-3 gap-2.5">
+                    <div 
+                      v-for="(b, i) in copilotData.bios" 
+                      :key="i"
+                      class="p-3 rounded-xl border flex flex-col justify-between"
+                      :class="adminTheme === 'light' ? 'bg-white border-slate-200' : 'bg-[#181818] border-[#282828]'"
+                    >
+                      <div>
+                        <div class="flex items-center justify-between mb-1.5">
+                          <span class="text-[10px] font-bold text-slate-300">{{ b.headline }}</span>
+                          <span class="text-[9px] font-mono px-1.5 py-0.2 rounded bg-black/30 text-emerald-400 border border-emerald-500/20">{{ b.badge }}</span>
+                        </div>
+                        <p class="text-xs text-white leading-relaxed mb-3">
+                          {{ b.text }}
+                        </p>
+                      </div>
+                      <button 
+                        type="button"
+                        @click="applyCopilotBio(b.text)"
+                        class="w-full py-1 rounded-lg text-[11px] font-bold bg-white/10 hover:bg-white/20 text-white transition-all active:scale-95 cursor-pointer flex items-center justify-center gap-1"
+                      >
+                        <span>Profilime Uygula</span>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Önerilen Buton Başlıkları -->
+                <div>
+                  <div class="text-[11px] font-bold text-white mb-2">
+                    🎯 Yüksek Tıklama Oranlı (CTR) Buton Başlıkları:
+                  </div>
+                  <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    <div 
+                      v-for="(btn, i) in copilotData.buttonTitles" 
+                      :key="i"
+                      class="p-2.5 rounded-xl border flex items-center justify-between gap-3"
+                      :class="adminTheme === 'light' ? 'bg-white border-slate-200' : 'bg-[#181818] border-[#282828]'"
+                    >
+                      <div class="min-w-0 flex-1">
+                        <div class="text-xs font-bold text-white truncate">{{ btn.title }}</div>
+                        <div class="text-[10px] text-slate-400 truncate">{{ btn.description }}</div>
+                      </div>
+                      <button 
+                        type="button"
+                        @click="addCopilotLink(btn)"
+                        class="px-2.5 py-1 rounded-lg text-[10px] font-bold bg-[#FFFF00] hover:bg-[#EEFF00] text-black transition-all active:scale-95 cursor-pointer shrink-0"
+                      >
+                        + Ekle
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
             
             <!-- Yeni Link Ekle Butonu / Formu -->
             <div>
@@ -4516,6 +4715,96 @@ const handleChangePassword = async () => {
           <!-- SEKME 5: AYARLAR & HESAP (SETTINGS) -->
           <!-- ========================================== -->
           <div v-else-if="activeTab === 'settings'" class="space-y-6">
+
+            <!-- ======================================================== -->
+            <!-- 0. BİYOMETRİK KİMLİK DOĞRULAMA (WebAuthn / Passkeys) -->
+            <!-- ======================================================== -->
+            <div :class="['border rounded-3xl p-6 transition-colors space-y-6', themeClasses.cardBg]">
+              <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pb-4 border-b" :class="themeClasses.headerBorder">
+                <div>
+                  <h3 :class="['text-base font-bold flex items-center gap-2.5', themeClasses.titleText]">
+                    <Fingerprint class="w-5 h-5 text-[#FFFF00]" />
+                    <span>Biyometrik Kimlik Doğrulama (Passkeys / WebAuthn)</span>
+                    <span class="px-2.5 py-0.5 text-[10px] font-black uppercase tracking-wider rounded-full shadow-sm bg-[#FFFF00]/15 text-[#FFFF00] border border-[#FFFF00]/30">
+                      FIDO2 Standart
+                    </span>
+                  </h3>
+                  <p :class="['text-xs mt-1', themeClasses.subText]">
+                    Şifre girmeyi tamamen ortadan kaldırın; telefonunuzdaki Parmak İzi (Touch ID) veya Yüz Tanıma (Face ID) ile doğrudan giriş yapın.
+                  </p>
+                </div>
+              </div>
+
+              <!-- Passkey Ekleme Alanı -->
+              <div class="p-4 rounded-2xl border" :class="themeClasses.boxInner">
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                  <div class="flex-1">
+                    <label class="block text-xs font-bold text-white mb-1">
+                      Bu Cihazı / Passkey'i Kaydet
+                    </label>
+                    <input 
+                      v-model="passkeyDeviceInput"
+                      type="text" 
+                      placeholder="Örn: iPhone 16 Pro (Face ID) veya MacBook (Touch ID)"
+                      :class="['w-full px-3.5 py-2 rounded-xl border focus:outline-none text-xs transition-colors', themeClasses.inputBg]"
+                    />
+                  </div>
+                  <button 
+                    type="button"
+                    @click="handleRegisterPasskey"
+                    :disabled="isRegisteringPasskey"
+                    class="px-4 py-2.5 rounded-xl text-xs font-bold bg-[#FFFF00] hover:bg-[#EEFF00] text-black transition-all active:scale-95 disabled:opacity-50 cursor-pointer flex items-center justify-center gap-2 shrink-0 shadow-md self-end sm:self-auto"
+                  >
+                    <Fingerprint class="w-4 h-4 text-black" :class="{ 'animate-pulse': isRegisteringPasskey }" />
+                    <span>{{ isRegisteringPasskey ? 'Biyometrik Taranıyor...' : 'Yeni Passkey Ekle' }}</span>
+                  </button>
+                </div>
+              </div>
+
+              <!-- Kayıtlı Passkey Cihazları Listesi -->
+              <div>
+                <div class="text-xs font-bold text-white mb-2 flex items-center justify-between">
+                  <span>Kayıtlı Biyometrik Cihazlarınız ({{ linkStore.passkeysList.length }}):</span>
+                  <button type="button" @click="linkStore.fetchPasskeys" class="text-[11px] text-slate-400 hover:text-white flex items-center gap-1">
+                    <RefreshCw class="w-3 h-3" />
+                    <span>Listeyi Tazele</span>
+                  </button>
+                </div>
+
+                <div v-if="linkStore.passkeysList.length === 0" class="p-4 rounded-xl border border-dashed border-[#282828] text-center text-xs text-slate-500 font-mono">
+                  Henüz kayıtlı bir Passkey bulunmuyor. Yukarıdan mevcut cihazınızı tek tıkla ekleyebilirsiniz.
+                </div>
+
+                <div v-else class="space-y-2">
+                  <div 
+                    v-for="pk in linkStore.passkeysList" 
+                    :key="pk.id"
+                    class="p-3 rounded-xl border flex items-center justify-between gap-3 transition-colors"
+                    :class="adminTheme === 'light' ? 'bg-white border-slate-200' : 'bg-[#181818] border-[#282828]'"
+                  >
+                    <div class="flex items-center gap-3">
+                      <div class="w-9 h-9 rounded-lg bg-[#FFFF00]/15 border border-[#FFFF00]/30 flex items-center justify-center text-[#FFFF00] shrink-0">
+                        <Fingerprint class="w-5 h-5" />
+                      </div>
+                      <div>
+                        <div class="text-xs font-bold text-white">{{ pk.deviceName || 'Biyometrik Cihaz' }}</div>
+                        <div class="text-[10px] text-slate-400 font-mono">
+                          ID: {{ pk.id.slice(0, 14) }}... • Kayıt: {{ new Date(pk.createdAt).toLocaleDateString('tr-TR') }}
+                        </div>
+                      </div>
+                    </div>
+                    <button 
+                      type="button" 
+                      @click="handleDeletePasskey(pk.id)"
+                      class="p-2 rounded-lg text-rose-400 hover:bg-rose-500/10 border border-rose-500/20 text-xs transition-colors cursor-pointer"
+                      title="Passkey'i Kaldır"
+                    >
+                      <Trash2 class="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
             
             <!-- ======================================================== -->
             <!-- VERİ TAŞINABİLİRLİĞİ: YEDEK ALMA & GERİ YÜKLEME (DATA PORTABILITY) -->

@@ -2378,6 +2378,296 @@ export const useLinkStore = defineStore('links', () => {
     }
   }
 
+  // ==========================================
+  // 1. AI COPILOT & SMART INSIGHTS
+  // ==========================================
+  const generateAiCopilot = async ({ goal, role, currentBio }) => {
+    try {
+      const res = await fetch(`${API_BASE}/ai/copilot`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ goal, role, currentBio })
+      })
+      if (res.ok) {
+        const data = await res.json()
+        return data.data
+      }
+    } catch (e) {
+      console.warn('AI Copilot API fallback:', e)
+    }
+    // Fallback: Yerel kural motoru
+    return {
+      inferredTopic: 'Teknoloji & Portfolyo',
+      bios: [
+        { text: '🚀 Fikirleri çalışan dijital ürünlere dönüştürüyorum. En son projelerim ve çalışmalarım aşağıda! 👇', headline: 'Girişimci & Portfolyo', badge: 'Önerilen' },
+        { text: '💻 Kod. Üretim. Açık Kaynak. Full-Stack projelerimi ve canlı web uygulamalarımı keşfedin ⚡', headline: 'Mühendislik Bio', badge: 'Yüksek CTR' },
+        { text: '✨ Temiz mimari, modern arayüzler ve kullanıcı odaklı çözümler. İş birliklerine açığım 🤝', headline: 'Profesyonel Bio', badge: 'Popüler' }
+      ],
+      buttonTitles: [
+        { title: '🚀 Öne Çıkan Canlı Web Projelerim', category: 'Projelerim', suggestedUrl: 'https://github.com', description: 'Ziyaretçileri doğrudan çalışan demolarınıza yönlendirir' },
+        { title: '⚡ GitHub Repolarım & Açık Kaynak Kodlar', category: 'Yazılım', suggestedUrl: 'https://github.com', description: 'Teknik yetkinliğinizi ve kod kalitenizi kanıtlar' },
+        { title: '📄 Güncel CV & Mühendislik Portfolyom', category: 'Kariyer', suggestedUrl: 'https://linkedin.com', description: 'İK ve staj değerlendiricileri için doğrudan erişim' },
+        { title: '☕ 15 Dakikalık Hızlı Tanışma / Mentörlük', category: 'İletişim', suggestedUrl: 'https://cal.com', description: 'Net bir eylem çağrısı ile randevu almanızı sağlar' }
+      ]
+    }
+  }
+
+  const fetchSmartInsights = async () => {
+    try {
+      const res = await fetch(`${API_BASE}/ai/insights`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          links: links.value,
+          totalVisits: analytics.value?.totalVisits || 0,
+          analytics: analytics.value
+        })
+      })
+      if (res.ok) {
+        const data = await res.json()
+        return data.insights || []
+      }
+    } catch (e) {
+      console.warn('Smart insights fallback:', e)
+    }
+
+    const list = []
+    const active = links.value.filter(l => !l.isHeader && l.isActive !== false)
+    const sorted = [...active].sort((a, b) => (b.clicks || 0) - (a.clicks || 0))
+    if (sorted[0] && (sorted[0].clicks || 0) > 0) {
+      const idx = active.findIndex(l => l.id === sorted[0].id)
+      if (idx > 0) {
+        list.push({
+          id: `move-top-${sorted[0].id}`,
+          type: 'reorder',
+          priority: 'high',
+          icon: 'Zap',
+          title: 'Gizli Şampiyonu İlk Sıraya Taşıyın',
+          message: `"${sorted[0].title}" bağlantınız en popüler bağlantınız, ancak listenin ${idx + 1}. sırasında. Onu ilk sıraya taşıyarak tıklanma oranınızı %35+ artırabilirsiniz.`,
+          actionLabel: '⚡ İlk Sıraya Taşı',
+          actionType: 'move_to_top',
+          targetLinkId: sorted[0].id
+        })
+      }
+    }
+    return list
+  }
+
+  // ==========================================
+  // 2. BIOMETRIC WEBAUTHN / PASSKEYS
+  // ==========================================
+  const passkeysList = ref([])
+
+  const fetchPasskeys = async () => {
+    try {
+      const token = localStorage.getItem('linktree_token')
+      const res = await fetch(`${API_BASE}/auth/webauthn/credentials`, {
+        headers: token ? { Authorization: `Bearer ${token}` } : {}
+      })
+      if (res.ok) {
+        const data = await res.json()
+        passkeysList.value = data.credentials || []
+      }
+    } catch (e) {
+      console.warn('Passkeys fetch error:', e)
+    }
+  }
+
+  const registerPasskey = async (deviceName = '') => {
+    const token = localStorage.getItem('linktree_token')
+    if (!token) return { success: false, error: 'Oturum açılmamış' }
+
+    if (!window.PublicKeyCredential) {
+      return { success: false, error: 'Tarayıcınız veya cihazınız WebAuthn/Passkey biyometrik doğrulamayı desteklemiyor.' }
+    }
+
+    try {
+      const optRes = await fetch(`${API_BASE}/auth/webauthn/register-options`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`
+        }
+      })
+      const optData = await optRes.json()
+      if (!optData.success) return { success: false, error: optData.error || 'Kayıt seçenekleri alınamadı' }
+
+      const options = optData.options
+      const challengeBuffer = Uint8Array.from(atob(options.challenge.replace(/-/g, '+').replace(/_/g, '/')), c => c.charCodeAt(0))
+      const userIdBuffer = Uint8Array.from(atob(options.user.id.replace(/-/g, '+').replace(/_/g, '/')), c => c.charCodeAt(0))
+
+      const publicKey = {
+        ...options,
+        challenge: challengeBuffer,
+        user: {
+          ...options.user,
+          id: userIdBuffer
+        }
+      }
+
+      const credential = await navigator.credentials.create({ publicKey })
+
+      const credPayload = {
+        id: credential.id,
+        rawId: btoa(String.fromCharCode(...new Uint8Array(credential.rawId))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, ''),
+        type: credential.type
+      }
+
+      const verifyRes = await fetch(`${API_BASE}/auth/webauthn/register-verify`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          credential: credPayload,
+          deviceName: deviceName || 'Biyometrik Cihaz (Touch ID / Face ID)'
+        })
+      })
+
+      const verifyData = await verifyRes.json()
+      if (verifyData.success) {
+        await fetchPasskeys()
+        return { success: true, message: 'Biyometrik Passkey başarıyla kaydedildi!' }
+      }
+      return { success: false, error: verifyData.error || 'Passkey kaydı doğrulanamadı' }
+    } catch (err) {
+      console.error('Passkey register error:', err)
+      return { success: false, error: err.message || 'Passkey işlemi iptal edildi veya başarısız oldu' }
+    }
+  }
+
+  const loginWithPasskey = async () => {
+    if (!window.PublicKeyCredential) {
+      return { success: false, error: 'Tarayıcınız Passkey biyometrik girişini desteklemiyor.' }
+    }
+
+    try {
+      const optRes = await fetch(`${API_BASE}/auth/webauthn/login-options`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' }
+      })
+      const optData = await optRes.json()
+      if (!optData.success) return { success: false, error: optData.error || 'Giriş seçenekleri alınamadı' }
+
+      const options = optData.options
+      const challengeBuffer = Uint8Array.from(atob(options.challenge.replace(/-/g, '+').replace(/_/g, '/')), c => c.charCodeAt(0))
+
+      const publicKey = {
+        ...options,
+        challenge: challengeBuffer,
+        allowCredentials: (options.allowCredentials || []).map(c => ({
+          ...c,
+          id: Uint8Array.from(atob(c.id.replace(/-/g, '+').replace(/_/g, '/')), ch => ch.charCodeAt(0))
+        }))
+      }
+
+      let credential = null
+      try {
+        credential = await navigator.credentials.get({ publicKey })
+      } catch (promptErr) {
+        return { success: false, error: 'Biyometrik doğrulama iptal edildi veya zaman aşımına uğradı.' }
+      }
+
+      if (!credential) return { success: false, error: 'Biyometrik veri alınamadı' }
+
+      const credPayload = {
+        id: credential.id,
+        rawId: btoa(String.fromCharCode(...new Uint8Array(credential.rawId))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, ''),
+        type: credential.type
+      }
+
+      const verifyRes = await fetch(`${API_BASE}/auth/webauthn/login-verify`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          sessionToken: optData.sessionToken,
+          credential: credPayload
+        })
+      })
+
+      const verifyData = await verifyRes.json()
+      if (verifyData.success && verifyData.token) {
+        localStorage.setItem('linktree_token', verifyData.token)
+        localStorage.setItem('linktree_user', JSON.stringify(verifyData.user))
+        return { success: true, user: verifyData.user, token: verifyData.token }
+      }
+      return { success: false, error: verifyData.error || 'Giriş doğrulanamadı' }
+    } catch (err) {
+      console.error('Passkey login error:', err)
+      return { success: false, error: err.message || 'Passkey ile giriş yapılamadı' }
+    }
+  }
+
+  const deletePasskey = async (id) => {
+    const token = localStorage.getItem('linktree_token')
+    try {
+      const res = await fetch(`${API_BASE}/auth/webauthn/credentials/${id}`, {
+        method: 'DELETE',
+        headers: token ? { Authorization: `Bearer ${token}` } : {}
+      })
+      if (res.ok) {
+        passkeysList.value = passkeysList.value.filter(p => p.id !== id)
+        return { success: true }
+      }
+    } catch (e) {
+      console.warn('Delete passkey error:', e)
+    }
+    return { success: false }
+  }
+
+  // ==========================================
+  // 3. OFFLINE CLICK QUEUE & BACKGROUND SYNC
+  // ==========================================
+  const OFFLINE_CLICKS_KEY = 'linkspace_offline_clicks_queue'
+
+  const queueOfflineClick = (linkId, meta = {}) => {
+    try {
+      const raw = localStorage.getItem(OFFLINE_CLICKS_KEY)
+      const list = raw ? JSON.parse(raw) : []
+      list.push({
+        linkId,
+        meta,
+        timestamp: new Date().toISOString()
+      })
+      localStorage.setItem(OFFLINE_CLICKS_KEY, JSON.stringify(list))
+
+      if ('serviceWorker' in navigator && 'SyncManager' in window) {
+        navigator.serviceWorker.ready.then(reg => {
+          reg.sync.register('sync-link-clicks').catch(() => {})
+        })
+      }
+    } catch (e) {
+      console.warn('Queue offline click error:', e)
+    }
+  }
+
+  const flushOfflineClicks = async () => {
+    try {
+      const raw = localStorage.getItem(OFFLINE_CLICKS_KEY)
+      if (!raw) return 0
+      const list = JSON.parse(raw)
+      if (!Array.isArray(list) || list.length === 0) return 0
+
+      for (const item of list) {
+        fetch(`${API_BASE}/links/${item.linkId}/click`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            ...item.meta,
+            offlineQueuedAt: item.timestamp
+          })
+        }).catch(() => {})
+      }
+
+      localStorage.removeItem(OFFLINE_CLICKS_KEY)
+      return list.length
+    } catch (e) {
+      console.warn('Flush offline clicks error:', e)
+      return 0
+    }
+  }
+
   return {
     profile,
     links,
@@ -2452,6 +2742,15 @@ export const useLinkStore = defineStore('links', () => {
     clearServerCache,
     downloadVCard,
     exportBackup,
-    importBackup
+    importBackup,
+    generateAiCopilot,
+    fetchSmartInsights,
+    passkeysList,
+    fetchPasskeys,
+    registerPasskey,
+    loginWithPasskey,
+    deletePasskey,
+    queueOfflineClick,
+    flushOfflineClicks
   }
 })

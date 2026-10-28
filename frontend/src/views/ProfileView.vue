@@ -55,7 +55,8 @@ import {
   MapPin, 
   UserX, 
   Smartphone, 
-  Wifi, 
+  Wifi,
+  WifiOff, 
   Edit2,
   Briefcase,
   Heart,
@@ -89,6 +90,35 @@ const toggleAvatarMode = () => {
 }
 
 const linkStore = useLinkStore()
+// Çevrimdışı (Offline-First) Durum Yönetimi & Background Sync
+const isOffline = ref(typeof navigator !== 'undefined' ? !navigator.onLine : false)
+
+const handleOnlineStatus = async () => {
+  isOffline.value = false
+  const flushed = await linkStore.flushOfflineClicks()
+  if (flushed > 0) {
+    showToast(`📶 İnternet bağlantısı yeniden kuruldu! ${flushed} adet çevrimdışı tıklama sunucuya aktarıldı.`)
+  }
+}
+
+const handleOfflineStatus = () => {
+  isOffline.value = true
+  showToast('⚡ İnternet bağlantısı kesildi. Çevrimdışı moddasınız (veriler önbellekten sunuluyor).')
+}
+
+if (typeof window !== 'undefined') {
+  window.addEventListener('online', handleOnlineStatus)
+  window.addEventListener('offline', handleOfflineStatus)
+
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.addEventListener('message', (event) => {
+      if (event.data && event.data.type === 'FLUSH_OFFLINE_CLICKS') {
+        handleOnlineStatus()
+      }
+    })
+  }
+}
+
 const { profile, links, activeTheme, currentTheme, seoSettings } = storeToRefs(linkStore)
 
 // Ziyaretçi Profil Teması Seçici Modalı
@@ -625,7 +655,12 @@ const openLink = (link) => {
   // 1. Asenkron olarak /click uç noktasına istek at ve sayacı artır (Detaylı Analitik & A/B Varyantı)
   const referrer = route.query.src === 'qr' ? 'qr' : (typeof document !== 'undefined' && document.referrer ? document.referrer : 'direct')
   const device = isMobileDevice() ? 'mobile' : 'desktop'
-  linkStore.trackClick(link.id, { referrer, device, variant: info.variant })
+  if (isOffline.value || (typeof navigator !== 'undefined' && !navigator.onLine)) {
+    linkStore.queueOfflineClick(link.id, { referrer, device, variant: info.variant })
+    showToast('⚡ Çevrimdışı Mod: Tıklamanız cihaz hafızasına kaydedildi, internete bağlandığınızda sunucuya aktarılacaktır.')
+  } else {
+    linkStore.trackClick(link.id, { referrer, device, variant: info.variant })
+  }
 
   // 2. Güvenli hedef URL hazırla ve yeni sekmede aç
   const rawUrl = info.url.trim()
@@ -1037,6 +1072,20 @@ const handleDownloadVCard = async () => {
           : 'bg-[#121212]/85 border-[#262626] shadow-2xl shadow-black ring-1 ring-white/5'
       ]"
     >
+
+      <!-- Çevrimdışı Mod Bildirimi (Offline-First Fallback) -->
+      <div 
+        v-if="isOffline"
+        class="w-full max-w-lg mx-auto mb-4 px-4 py-2.5 rounded-2xl bg-amber-500/15 border border-amber-500/30 text-amber-300 text-xs flex items-center justify-between gap-3 shadow-lg backdrop-blur-md animate-pulse select-none z-20"
+      >
+        <div class="flex items-center gap-2.5">
+          <WifiOff class="w-4 h-4 text-amber-400 shrink-0" />
+          <span><strong>Çevrimdışı Mod:</strong> Profil ve linkler cihazınızın önbelleğinden kesintisiz sunuluyor.</span>
+        </div>
+        <span class="px-2 py-0.5 rounded-full text-[9px] font-mono font-bold bg-amber-500/20 text-amber-300 uppercase shrink-0">
+          Offline Cache
+        </span>
+      </div>
 
       <!-- Profil Kapağı (Banner) -->
       <div 

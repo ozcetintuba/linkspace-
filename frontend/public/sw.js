@@ -1,5 +1,7 @@
-// Linkspace Progressive Web App (PWA) Service Worker
-const CACHE_NAME = 'linkspace-v1.0.0'
+// Linkspace Progressive Web App (PWA) Service Worker - Offline-First & Background Sync
+const CACHE_NAME = 'linkspace-static-v1.1.0'
+const API_CACHE_NAME = 'linkspace-api-cache-v1'
+
 const STATIC_ASSETS = [
   '/',
   '/index.html',
@@ -10,7 +12,7 @@ const STATIC_ASSETS = [
   '/apple-touch-icon.png'
 ]
 
-// Kurulum (Install) Aşaması - Çekirdek Varlıkları Önbelleğe Al
+// Kurulum (Install) - Statik Varlıkları Önbelleğe Al
 self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => {
@@ -21,13 +23,13 @@ self.addEventListener('install', (event) => {
   )
 })
 
-// Etkinleştirme (Activate) Aşaması - Eski Sürümleri Temizle
+// Etkinleştirme (Activate) - Eski Sürümleri Temizle
 self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches.keys().then((cacheNames) => {
       return Promise.all(
         cacheNames.map((name) => {
-          if (name !== CACHE_NAME) {
+          if (name !== CACHE_NAME && name !== API_CACHE_NAME) {
             return caches.delete(name)
           }
         })
@@ -43,15 +45,59 @@ self.addEventListener('fetch', (event) => {
   const request = event.request
   const url = new URL(request.url)
 
-  // Sadece HTTP/HTTPS GET isteklerini işle
   if (request.method !== 'GET') return
   if (!url.protocol.startsWith('http')) return
 
-  // 1. API İstekleri: Network-First (Canlı veri öncelikli, bağlantı yoksa hata toleransı)
+  // 1. API İstekleri: Network-First with Cache Fallback (Profil, Linkler, Ayarlar)
+  if (url.pathname.startsWith('/api/profile') || url.pathname.startsWith('/api/settings')) {
+    event.respondWith(
+      fetch(request)
+        .then((networkResponse) => {
+          if (networkResponse && networkResponse.status === 200) {
+            const responseToCache = networkResponse.clone()
+            caches.open(API_CACHE_NAME).then((cache) => {
+              cache.put(request, responseToCache)
+            })
+          }
+          return networkResponse
+        })
+        .catch(() => {
+          // Ağ koptuğunda (metro, tünel, uçak) önbellekteki son veriyi sun
+          return caches.match(request).then((cachedResponse) => {
+            if (cachedResponse) {
+              const headers = new Headers(cachedResponse.headers)
+              headers.set('X-Linkspace-Offline', 'true')
+              return cachedResponse.blob().then((blob) => {
+                return new Response(blob, {
+                  status: 200,
+                  statusText: 'OK (Offline Cache)',
+                  headers
+                })
+              })
+            }
+            // Hiç önbellek yoksa nazik hata JSON'ı
+            return new Response(
+              JSON.stringify({ 
+                error: 'Çevrimdışısınız (Offline)',
+                offline: true,
+                message: 'İnternet bağlantısı algılanamadı. Bağlantınız kurulduğunda profil otomatik tazelenecektir.' 
+              }),
+              {
+                status: 200,
+                headers: { 'Content-Type': 'application/json', 'X-Linkspace-Offline': 'true' }
+              }
+            )
+          })
+        })
+    )
+    return
+  }
+
+  // Diğer Genel API'lar
   if (url.pathname.startsWith('/api/')) {
     event.respondWith(
       fetch(request).catch(() => {
-        return new Response(JSON.stringify({ error: 'Çevrimdışısınız (Offline)' }), {
+        return new Response(JSON.stringify({ error: 'Çevrimdışısınız (Offline)', offline: true }), {
           status: 503,
           headers: { 'Content-Type': 'application/json' }
         })
@@ -82,7 +128,6 @@ self.addEventListener('fetch', (event) => {
         }
         return networkResponse
       }).catch(() => {
-        // Çevrimdışı fallback
         return cachedResponse
       })
 
@@ -91,3 +136,17 @@ self.addEventListener('fetch', (event) => {
   )
 })
 
+// 4. Background Sync: Çevrimdışı Tıklama Kuyruğunu Senkronize Etme
+self.addEventListener('sync', (event) => {
+  if (event.tag === 'sync-link-clicks') {
+    event.waitUntil(notifyClientsToFlushClicks())
+  }
+})
+
+// İstemcilere (sayfaya) çevrimdışı tıklamaları fırlatmasını bildir
+const notifyClientsToFlushClicks = async () => {
+  const clients = await self.clients.matchAll({ type: 'window' })
+  for (const client of clients) {
+    client.postMessage({ type: 'FLUSH_OFFLINE_CLICKS' })
+  }
+}
