@@ -112,6 +112,66 @@ import {
   Laptop
 } from 'lucide-vue-next'
 
+
+// Veri Taşınabilirliği (Data Portability: Export & Import) ve vCard
+const isExporting = ref(false)
+const isImporting = ref(false)
+const importFileInput = ref(null)
+const portabilityFeedback = ref('')
+const portabilityError = ref('')
+
+const handleExportBackup = async (format = 'json') => {
+  isExporting.value = true
+  portabilityFeedback.value = ''
+  portabilityError.value = ''
+  try {
+    await linkStore.exportBackup(format)
+    portabilityFeedback.value = `Yedekleme dosyası (${format.toUpperCase()}) başarıyla indirildi!`
+    showToast('Yedek başarıyla dışa aktarıldı!')
+  } catch (err) {
+    portabilityError.value = 'Dışa aktarma sırasında bir hata oluştu.'
+  } finally {
+    isExporting.value = false
+  }
+}
+
+const triggerImportFile = () => {
+  if (importFileInput.value) {
+    importFileInput.value.click()
+  }
+}
+
+const handleFileImport = async (event) => {
+  const file = event.target.files?.[0]
+  if (!file) return
+
+  isImporting.value = true
+  portabilityFeedback.value = ''
+  portabilityError.value = ''
+
+  try {
+    const text = await file.text()
+    const parsed = JSON.parse(text)
+    const res = await linkStore.importBackup(parsed)
+    if (res.success) {
+      portabilityFeedback.value = res.message || 'Yedekleme başarıyla geri yüklendi!'
+      showToast('Veriler başarıyla geri yüklendi!')
+    } else {
+      portabilityError.value = res.error || 'Geri yükleme başarısız oldu.'
+    }
+  } catch (err) {
+    portabilityError.value = 'Hatalı JSON dosyası! Lütfen geçerli bir Linkspace yedek dosyası seçin.'
+  } finally {
+    isImporting.value = false
+    if (event.target) event.target.value = ''
+  }
+}
+
+const handleAdminDownloadVCard = async () => {
+  await linkStore.downloadVCard()
+  showToast('vCard (.vcf) dijital kartvizit indirildi!')
+}
+
 const router = useRouter()
 const authStore = useAuthStore()
 const linkStore = useLinkStore()
@@ -4321,6 +4381,128 @@ const handleChangePassword = async () => {
           <!-- ========================================== -->
           <div v-else-if="activeTab === 'settings'" class="space-y-6">
             
+            <!-- ======================================================== -->
+            <!-- VERİ TAŞINABİLİRLİĞİ: YEDEK ALMA & GERİ YÜKLEME (DATA PORTABILITY) -->
+            <!-- ======================================================== -->
+            <div :class="['border rounded-3xl p-6 transition-colors space-y-6', themeClasses.cardBg]">
+              <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pb-4 border-b" :class="themeClasses.headerBorder">
+                <div>
+                  <h3 :class="['text-base font-bold flex items-center gap-2.5', themeClasses.titleText]">
+                    <FileDown class="w-5 h-5 text-amber-400" />
+                    <span>Profil Dışa/İçe Aktarma (Data Portability)</span>
+                    <span class="px-2.5 py-0.5 text-[10px] font-black uppercase tracking-wider rounded-full shadow-sm bg-amber-500/15 text-amber-400 border border-amber-500/30">
+                      Yedek & Senkronizasyon
+                    </span>
+                  </h3>
+                  <p :class="['text-xs mt-1', themeClasses.subText]">
+                    Kullanıcı verilerinizin kontrolü sizde. Tüm profil ayarlarınızı, link ağacınızı ve ayarlarınızı .json veya .csv formatında indirin ya da yedek dosyanızı yükleyerek geri yükleyin.
+                  </p>
+                </div>
+
+                <!-- Hızlı vCard Testi -->
+                <button 
+                  type="button"
+                  @click="handleAdminDownloadVCard"
+                  class="px-3 py-1.5 rounded-xl text-xs font-bold transition-all border flex items-center gap-1.5 cursor-pointer shadow-sm active:scale-95"
+                  :class="adminTheme === 'light' ? 'bg-slate-100 hover:bg-slate-200 text-slate-800 border-slate-300' : 'bg-white/10 hover:bg-[#FFFF00] hover:text-black text-white border-white/10'"
+                  title="Telefon rehberine eklenecek dijital kartviziti test et"
+                >
+                  <UserPlus class="w-3.5 h-3.5" />
+                  <span>vCard (.vcf) Test İndir</span>
+                </button>
+              </div>
+
+              <!-- Geri Bildirim Mesajları -->
+              <div v-if="portabilityFeedback" class="p-3 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs font-semibold flex items-center gap-2 animate-fadeIn">
+                <CheckCircle2 class="w-4 h-4 flex-shrink-0" />
+                <span>{{ portabilityFeedback }}</span>
+              </div>
+              <div v-if="portabilityError" class="p-3 rounded-2xl bg-rose-500/10 border border-rose-500/30 text-rose-400 text-xs font-semibold flex items-center gap-2 animate-fadeIn">
+                <AlertCircle class="w-4 h-4 flex-shrink-0" />
+                <span>{{ portabilityError }}</span>
+              </div>
+
+              <!-- 2 Sütunlu Kart: Dışa Aktar vs Geri Yükle -->
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
+                
+                <!-- Sol Kutu: Yedek Alma (Export) -->
+                <div :class="['p-4 rounded-2xl border flex flex-col justify-between space-y-4 transition-all', themeClasses.boxInner]">
+                  <div>
+                    <div class="flex items-center gap-2 font-bold mb-1.5" :class="themeClasses.titleText">
+                      <FileDown class="w-4 h-4 text-[#FFFF00]" />
+                      <span>Yedek Alma (Export)</span>
+                    </div>
+                    <p :class="['text-[11px] leading-relaxed', themeClasses.subText]">
+                      Tüm profil bilgilerinizi, sosyal medya bağlantılarınızı, tüm linklerinizi ve ayarlarınızı bilgisayarınıza güvenle indirin.
+                    </p>
+                  </div>
+
+                  <div class="flex items-center gap-2 pt-2 border-t" :class="themeClasses.headerBorder">
+                    <button 
+                      type="button"
+                      @click="handleExportBackup('json')"
+                      :disabled="isExporting"
+                      class="flex-1 py-2 px-3 rounded-xl font-bold text-xs flex items-center justify-center gap-1.5 transition-all shadow-sm active:scale-95 disabled:opacity-50 cursor-pointer"
+                      :class="adminTheme === 'light' ? 'bg-slate-900 text-white hover:bg-slate-800' : 'bg-[#FFFF00] text-black hover:bg-yellow-300'"
+                    >
+                      <FileJson class="w-3.5 h-3.5" />
+                      <span>{{ isExporting ? 'Hazırlanıyor...' : '.JSON İndir (Tam Yedek)' }}</span>
+                    </button>
+
+                    <button 
+                      type="button"
+                      @click="handleExportBackup('csv')"
+                      :disabled="isExporting"
+                      class="py-2 px-3 rounded-xl font-semibold text-xs flex items-center justify-center gap-1.5 border transition-all active:scale-95 disabled:opacity-50 cursor-pointer"
+                      :class="adminTheme === 'light' ? 'bg-white border-slate-300 text-slate-700 hover:bg-slate-50' : 'bg-white/5 border-white/10 text-neutral-300 hover:text-white'"
+                      title="Link listesini Excel / E-Tablo uyumlu CSV formatında indir"
+                    >
+                      <FileSpreadsheet class="w-3.5 h-3.5 text-emerald-400" />
+                      <span>.CSV İndir</span>
+                    </button>
+                  </div>
+                </div>
+
+                <!-- Sağ Kutu: Geri Yükleme (Import) -->
+                <div :class="['p-4 rounded-2xl border flex flex-col justify-between space-y-4 transition-all', themeClasses.boxInner]">
+                  <div>
+                    <div class="flex items-center gap-2 font-bold mb-1.5" :class="themeClasses.titleText">
+                      <FileUp class="w-4 h-4 text-emerald-400" />
+                      <span>Yedekten Geri Yükleme (Import)</span>
+                    </div>
+                    <p :class="['text-[11px] leading-relaxed', themeClasses.subText]">
+                      Daha önce indirdiğiniz <code class="font-mono text-[10px] text-amber-400">.json</code> formatındaki yedek dosyasını yükleyerek tüm profilinizi ve linklerinizi saniyeler içinde eski haline getirin.
+                    </p>
+                  </div>
+
+                  <div class="pt-2 border-t flex items-center gap-2" :class="themeClasses.headerBorder">
+                    <!-- Gizli Dosya Seçici Girişi -->
+                    <input 
+                      ref="importFileInput" 
+                      type="file" 
+                      accept=".json,application/json" 
+                      class="hidden" 
+                      @change="handleFileImport" 
+                    />
+
+                    <button 
+                      type="button"
+                      @click="triggerImportFile"
+                      :disabled="isImporting"
+                      class="w-full py-2 px-3 rounded-xl font-bold text-xs flex items-center justify-center gap-2 border transition-all active:scale-95 disabled:opacity-50 cursor-pointer"
+                      :class="adminTheme === 'light' 
+                        ? 'bg-emerald-600 text-white hover:bg-emerald-700 border-emerald-600' 
+                        : 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30 hover:bg-emerald-500/30'"
+                    >
+                      <FileUp class="w-3.5 h-3.5" :class="{ 'animate-bounce': isImporting }" />
+                      <span>{{ isImporting ? 'Yedek Geri Yükleniyor...' : 'Yedek Dosyası Seç (.JSON)' }}</span>
+                    </button>
+                  </div>
+                </div>
+
+              </div>
+            </div>
+
             <!-- Hesap & Oturum Bilgileri -->
             <div :class="['border rounded-2xl p-6 transition-colors', themeClasses.cardBg]">
               <h3 :class="['text-sm font-bold pb-3 mb-4 border-b flex items-center gap-2', themeClasses.titleText, themeClasses.headerBorder]">

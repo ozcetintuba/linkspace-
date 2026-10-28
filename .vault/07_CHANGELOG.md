@@ -4,6 +4,26 @@ Tüm önemli mimari değişiklikler, özellik eklemeleri ve düzeltmeler bu dosy
 
 ---
 
+## [v0.34.1] - 2026-10-28 (Profil Dışa/İçe Aktarma & vCard "Rehbere Ekle" Entegrasyonu)
+
+### 📦 6. Profil Dışa/İçe Aktarma (Data Portability)
+- **Yedek Alma (Export)**:
+  - Kullanıcının tüm profil ayarları, bağlantıları ve analitik geçmişi tek tıkla `.json` (tam yedekleme) veya `.csv` (Excel/tablo uyumlu link listesi) olarak indirilebilir.
+  - `GET /api/profile/export?format=json|csv` uç noktası eklendi.
+- **Yedekten Geri Yükleme (Import)**:
+  - Yönetici panelinde `.json` formatındaki yedek dosyası yüklenerek tüm profil ve link ağacı saniyeler içinde eski haline getirilebilir.
+  - `POST /api/profile/import` uç noktası eklendi; veritabanı transaction güvencesiyle verileri geri yükler.
+
+### 📇 7. VCard (.vcf) Entegrasyonu: "Kişilerime Kaydet" Butonu
+- **Standart vCard 3.0 Motoru (`buildVCardString`)**:
+  - `GET /api/profile/vcard` ve `GET /api/profile/:username/vcard` uç noktaları eklendi.
+  - Ad, Soyad, Biyografi/Unvan, E-posta, Telefon, Profil Web URL'si ve Sosyal Profilleri RFC 6350 standartlarında `.vcf` dosyası olarak üretir.
+- **Profil Sayfası "Kişilerime Kaydet" Butonu**:
+  - Profil sayfasının üst kısmında, biyografi ve sosyal barın hemen altına göz alıcı neon sarı *"Kişilerime Kaydet"* butonu yerleştirildi.
+  - Mobil ziyaretçi dokunduğunda iOS veya Android cihazın doğrudan rehber ekleme arayüzü tetiklenir.
+
+---
+
 ## [v0.34.0] - 2026-10-28 (PWA, Akıllı Link Ağacı Ayraçları, A/B Split Testing & Çoklu Oturum)
 
 ### 📲 1. PWA (Progressive Web App) Desteği

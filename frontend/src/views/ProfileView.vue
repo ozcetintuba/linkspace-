@@ -68,7 +68,8 @@ import {
   FolderOpen,
   ChevronDown,
   Maximize2,
-  Minimize2
+  Minimize2,
+  UserPlus
 } from 'lucide-vue-next'
 
 const linkStore = useLinkStore()
@@ -841,6 +842,16 @@ const getLinkSubtitle = (link) => {
     return 'Resmi Web Bağlantısı'
   }
 }
+
+// Kişilerime Kaydet (vCard .vcf İndir)
+const vcardSuccess = ref(false)
+const handleDownloadVCard = async () => {
+  await linkStore.downloadVCard()
+  vcardSuccess.value = true
+  setTimeout(() => {
+    vcardSuccess.value = false
+  }, 3500)
+}
 </script>
 
 <template>
@@ -1118,6 +1129,35 @@ const getLinkSubtitle = (link) => {
           <span class="sr-only">{{ social.name }}</span>
         </a>
       </nav>
+
+      <!-- Hızlı Profil Aksiyonları (Rehbere Ekle & Mesaj Bırak) -->
+      <div class="flex items-center justify-center gap-2.5 mb-5 flex-wrap z-10 select-none">
+        <button
+          type="button"
+          @click="handleDownloadVCard"
+          class="px-4 py-2 rounded-full text-xs font-bold transition-all duration-300 flex items-center gap-2 shadow-md active:scale-95 cursor-pointer"
+          :class="vcardSuccess 
+            ? 'bg-emerald-500 text-black shadow-emerald-500/20' 
+            : (activeTheme.id === 'pure-light' ? 'bg-slate-900 text-white hover:bg-slate-800' : 'bg-[#FFFF00] text-black hover:bg-yellow-300 shadow-yellow-500/20')"
+          title="Kişiyi doğrudan telefon rehberinize kaydedin (.vcf)"
+        >
+          <Check v-if="vcardSuccess" class="w-4 h-4 stroke-[3]" />
+          <UserPlus v-else class="w-4 h-4 stroke-[2.5]" />
+          <span>{{ vcardSuccess ? 'Kişi İndirildi!' : 'Kişilerime Kaydet' }}</span>
+        </button>
+
+        <button
+          type="button"
+          @click="showContactModal = true"
+          class="px-4 py-2 rounded-full text-xs font-semibold transition-all duration-300 flex items-center gap-2 border backdrop-blur-md active:scale-95 cursor-pointer"
+          :class="activeTheme.id === 'pure-light'
+            ? 'bg-white/90 border-slate-300 text-slate-800 hover:bg-slate-100'
+            : 'bg-white/10 border-white/15 text-white hover:bg-white/20'"
+        >
+          <MessageSquare class="w-4 h-4" />
+          <span>Mesaj Bırak</span>
+        </button>
+      </div>
 
       <!-- Arama / Filtreleme Çubuğu (Varsa 3'ten fazla linkte göster) -->
       <div v-if="activeLinks.length > 2" class="relative w-full max-w-lg mx-auto mb-4">

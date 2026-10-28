@@ -2210,6 +2210,168 @@ export const useLinkStore = defineStore('links', () => {
     return { success: true, message: 'Önbellek sıfırlandı.', count: 0 }
   }
 
+  // vCard (.vcf) İndirme Aksiyonu (Rehbere Ekle)
+  const downloadVCard = async () => {
+    try {
+      const res = await fetch(`${API_BASE}/profile/vcard`)
+      if (res.ok) {
+        const blob = await res.blob()
+        const url = window.URL.createObjectURL(blob)
+        const a = document.createElement('a')
+        a.href = url
+        a.download = `${(profile.value.username || 'contact').replace('@', '').trim()}.vcf`
+        document.body.appendChild(a)
+        a.click()
+        document.body.removeChild(a)
+        window.URL.revokeObjectURL(url)
+        return { success: true }
+      }
+    } catch (e) {
+      console.warn('API vCard hatası, yerel oluşturuluyor:', e)
+    }
+
+    // İstemci tarafı fallback vCard
+    const cleanUser = (profile.value.username || 'user').replace('@', '').trim()
+    const nameParts = (profile.value.name || 'Tuba Gül').trim().split(' ')
+    const firstName = nameParts[0] || ''
+    const lastName = nameParts.slice(1).join(' ') || ''
+    const social = profile.value.socialLinks || {}
+
+    const vcf = [
+      'BEGIN:VCARD',
+      'VERSION:3.0',
+      `FN;CHARSET=UTF-8:${profile.value.name || 'Linkspace Kullanıcısı'}`,
+      `N;CHARSET=UTF-8:${lastName};${firstName};;;`,
+      `TITLE;CHARSET=UTF-8:${(profile.value.bio || '').replace(/\r?\n/g, ' ')}`,
+      `EMAIL;TYPE=INTERNET,HOME:${social.email || `${cleanUser}@gmail.com`}`,
+      social.phone ? `TEL;TYPE=CELL,VOICE:${social.phone}` : '',
+      `URL:${window.location.origin}/`,
+      'NOTE;CHARSET=UTF-8:Linkspace Akıllı Bağlantı & Portfolyo Platformu',
+      `REV:${new Date().toISOString()}`,
+      'END:VCARD'
+    ].filter(Boolean).join('\r\n')
+
+    const blob = new Blob([vcf], { type: 'text/vcard;charset=utf-8' })
+    const url = window.URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `${cleanUser}.vcf`
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+    window.URL.revokeObjectURL(url)
+    return { success: true }
+  }
+
+  // Veri Taşınabilirliği: Dışa Aktarma (Export Data)
+  const exportBackup = async (format = 'json') => {
+    try {
+      const res = await fetch(`${API_BASE}/profile/export?format=${format}`, {
+        headers: getAuthHeaders()
+      })
+      if (res.ok) {
+        const blob = await res.blob()
+        const url = window.URL.createObjectURL(blob)
+        const a = document.createElement('a')
+        a.href = url
+        a.download = `linkspace-${format === 'csv' ? 'links' : 'backup'}-${new Date().toISOString().slice(0, 10)}.${format}`
+        document.body.appendChild(a)
+        a.click()
+        document.body.removeChild(a)
+        window.URL.revokeObjectURL(url)
+        return { success: true }
+      }
+    } catch (e) {
+      console.warn('API dışa aktarma hatası, yerel oluşturuluyor:', e)
+    }
+
+    // İstemci tarafı fallback export
+    let blob
+    let filename
+    if (format === 'csv') {
+      const headers = ['id', 'title', 'url', 'category', 'clicks', 'isActive']
+      const rows = links.value.map(l => [
+        l.id,
+        `"${(l.title || '').replace(/"/g, '""')}"`,
+        `"${(l.url || '').replace(/"/g, '""')}"`,
+        `"${(l.category || '').replace(/"/g, '""')}"`,
+        l.clicks || 0,
+        l.isActive ? '1' : '0'
+      ].join(','))
+      blob = new Blob(['\uFEFF' + [headers.join(','), ...rows].join('\r\n')], { type: 'text/csv;charset=utf-8' })
+      filename = `linkspace-links-${new Date().toISOString().slice(0, 10)}.csv`
+    } else {
+      const fullBackup = {
+        version: 'linkspace-backup-v1.0',
+        exportedAt: new Date().toISOString(),
+        profile: profile.value,
+        links: links.value,
+        theme: currentTheme.value,
+        analytics: analytics.value
+      }
+      blob = new Blob([JSON.stringify(fullBackup, null, 2)], { type: 'application/json;charset=utf-8' })
+      filename = `linkspace-backup-${new Date().toISOString().slice(0, 10)}.json`
+    }
+
+    const url = window.URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = filename
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+    window.URL.revokeObjectURL(url)
+    return { success: true }
+  }
+
+  // Veri Taşınabilirliği: İçe Aktarma (Import Data)
+  const importBackup = async (backupData) => {
+    try {
+      if (!backupData || typeof backupData !== 'object') {
+        throw new Error('Geçersiz dosya formatı. Lütfen geçerli bir JSON yedekleme dosyası yükleyin.')
+      }
+
+      const importedProfile = backupData.profile || null
+      const importedLinks = backupData.links || []
+
+      if (!importedProfile && (!Array.isArray(importedLinks) || importedLinks.length === 0)) {
+        throw new Error('Yedek dosyasında geçerli profil veya bağlantı verisi bulunamadı.')
+      }
+
+      // Backend varsa sunucuya gönder
+      if (isBackendConnected.value) {
+        const res = await fetch(`${API_BASE}/profile/import`, {
+          method: 'POST',
+          headers: getAuthHeaders(),
+          body: JSON.stringify({ profile: importedProfile, links: importedLinks })
+        })
+        if (res.ok) {
+          const result = await res.json()
+          await fetchFromApi()
+          return { success: true, message: result.message || 'Yedek başarıyla geri yüklendi!' }
+        }
+      }
+
+      // Yerel güncelleme
+      if (importedProfile) {
+        profile.value = { ...profile.value, ...importedProfile }
+      }
+      if (Array.isArray(importedLinks) && importedLinks.length > 0) {
+        links.value = importedLinks.map((l, i) => ({
+          ...l,
+          id: l.id || (Date.now() + i),
+          clicks: typeof l.clicks === 'number' ? l.clicks : 0,
+          isActive: l.isActive !== undefined ? l.isActive : true
+        }))
+      }
+
+      return { success: true, message: `Yedekleme başarıyla geri yüklendi! (${links.value.length} bağlantı)` }
+    } catch (err) {
+      console.error('İçe aktarma hatası:', err)
+      return { success: false, error: err.message || 'İçe aktarma başarısız oldu' }
+    }
+  }
+
   return {
     profile,
     links,
@@ -2281,6 +2443,9 @@ export const useLinkStore = defineStore('links', () => {
     getEmbedUrl,
     cacheStats,
     fetchCacheStats,
-    clearServerCache
+    clearServerCache,
+    downloadVCard,
+    exportBackup,
+    importBackup
   }
 })
