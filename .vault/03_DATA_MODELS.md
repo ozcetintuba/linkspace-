@@ -24,7 +24,7 @@ interface Profile {
   avatarShape?: string;   // Avatar şekli ('circle' | 'squircle' | 'rounded')
   avatarGlow?: string;    // Avatar parıltı rengi ('yellow' | 'emerald' | 'cyan' | 'purple' | 'rose' | 'none')
   statusText?: string;    // Durum/çalışma rozeti metni (örn: "Yeni Projelere & Fırsatlara Açık")
-  statusColor?: string;   // Durum rozeti rengi ('emerald' | 'amber' | 'blue' | 'purple' | 'none')
+  statusColor?: string;   // Durum rozeti rengi ('emerald' | 'amber' | 'blue' | 'purple' | 'none' - varsayılan: 'none')
   isVerified?: boolean;   // Doğrulanmış profil onay rozeti (varsayılan: true)
   banner?: string;        // Profil kapağı görsel URL'i veya Base64 veri
   bannerPattern?: string; // Hazır kapak deseni ('none' | 'mesh' | 'cyberpunk' | 'aurora' | 'sunset' | 'grid' | 'dots' | 'waves' | 'carbon' | 'matrix' | 'luxury' | 'lines')

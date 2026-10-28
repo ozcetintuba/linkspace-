@@ -7,6 +7,9 @@ Tüm önemli mimari değişiklikler, özellik eklemeleri ve düzeltmeler bu dosy
 ## [v0.32.1] - 2026-10-28 (Profilde İsteğe Bağlı Kategori Gruplama & Rozet Kontrol Paneli)
 
 ### 🗂️ İsteğe Bağlı Klasörlü Gruplama & Rozet Kontrolleri
+- **Canlı Müsaitlik & Fırsat Rozeti İsteğe Bağlı Yapıldı (`statusColor: 'none'`)**:
+  - Profil başlığındaki "🟢 Yeni Projelere & Fırsatlara Açık" durumu varsayılan olarak gizlendi (`statusColor: 'none'`).
+  - Yönetici Paneli -> Görünüm & Tema sekmesindeki Canlı Durum kartına anlık aç/kapat iOS toggle anahtarı (`handleToggleStatusBadge`) eklendi.
 - **Yetenek Rozetleri İsteğe Bağlı Yapıldı (`showBadges: false`)**:
   - Profil sayfasından yetenek rozetleri varsayılan olarak tamamen gizlendi; minimalist ve temiz bir görünüm sağlandı.
   - Yönetici Paneli -> Görünüm & Tema sekmesine "Profilde Açık / Profilde Gizli (Sade)" toggle anahtarı eklendi.

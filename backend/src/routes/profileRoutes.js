@@ -14,7 +14,7 @@ const mockProfile = {
   avatarShape: 'circle',
   avatarGlow: 'yellow',
   statusText: 'Yeni Projelere & Fırsatlara Açık',
-  statusColor: 'emerald',
+  statusColor: 'none',
   isVerified: true,
   banner: '',
   bannerPattern: 'mesh',
@@ -43,7 +43,7 @@ router.get('/', cacheMiddleware(60), async (req, res) => {
           COALESCE(avatar_shape, 'circle') AS "avatarShape",
           COALESCE(avatar_glow, 'yellow') AS "avatarGlow",
           COALESCE(status_text, 'Yeni Projelere & Fırsatlara Açık') AS "statusText",
-          COALESCE(status_color, 'emerald') AS "statusColor",
+          COALESCE(status_color, 'none') AS "statusColor",
           COALESCE(is_verified, true) AS "isVerified",
           COALESCE(banner, '') AS "banner",
           COALESCE(banner_pattern, 'mesh') AS "bannerPattern",
@@ -91,7 +91,7 @@ router.get('/:username', cacheMiddleware(60), async (req, res) => {
         COALESCE(avatar_shape, 'circle') AS "avatarShape",
         COALESCE(avatar_glow, 'yellow') AS "avatarGlow",
         COALESCE(status_text, 'Yeni Projelere & Fırsatlara Açık') AS "statusText",
-        COALESCE(status_color, 'emerald') AS "statusColor",
+        COALESCE(status_color, 'none') AS "statusColor",
         COALESCE(is_verified, true) AS "isVerified",
         COALESCE(banner, '') AS "banner",
         COALESCE(banner_pattern, 'mesh') AS "bannerPattern",
@@ -148,7 +148,7 @@ router.get('/:username', cacheMiddleware(60), async (req, res) => {
         avatarShape: profile.avatarShape || 'circle',
         avatarGlow: profile.avatarGlow || 'yellow',
         statusText: profile.statusText || 'Yeni Projelere & Fırsatlara Açık',
-        statusColor: profile.statusColor || 'emerald',
+        statusColor: profile.statusColor || 'none',
         isVerified: profile.isVerified !== undefined ? profile.isVerified : true,
         banner: profile.banner || '',
         bannerPattern: profile.bannerPattern || 'mesh',
@@ -175,20 +175,19 @@ router.get('/:username', cacheMiddleware(60), async (req, res) => {
           avatarShape: 'circle',
           avatarGlow: 'yellow',
           statusText: 'Yeni Projelere & Fırsatlara Açık',
-          statusColor: 'emerald',
+          statusColor: 'none',
           isVerified: true,
           banner: '',
           bannerPattern: 'mesh',
-          badges: [
-            { id: 'badge-1', text: 'Full-Stack Developer', icon: 'Code', color: 'default' },
-            { id: 'badge-2', text: 'Vue 3 & Express', icon: 'Sparkles', color: 'yellow' },
-            { id: 'badge-3', text: 'İstanbul, TR', icon: 'MapPin', color: 'default' }
-          ],
+          badges: [],
           socialLinks: {
             github: 'https://github.com',
             linkedin: 'https://linkedin.com',
             instagram: 'https://instagram.com'
-          }
+          },
+          groupByCategory: false,
+          foldersDefaultExpanded: true,
+          showBadges: false
         },
         links: [
           { id: 1, title: 'Kişisel Web Sitem & Portfolyom', url: 'https://github.com', isActive: true, icon: 'globe', customColor: 'default', clicks: 12, orderIndex: 0 },
@@ -236,7 +235,7 @@ router.put('/', requireAuth, async (req, res) => {
     const safeAvatarShape = avatarShape || 'circle'
     const safeAvatarGlow = avatarGlow || 'yellow'
     const safeStatusText = statusText !== undefined ? statusText : 'Yeni Projelere & Fırsatlara Açık'
-    const safeStatusColor = statusColor || 'emerald'
+    const safeStatusColor = statusColor || 'none'
     const safeIsVerified = isVerified !== undefined ? Boolean(isVerified) : true
     const safeGroupByCategory = groupByCategory !== undefined ? Boolean(groupByCategory) : false
     const safeFoldersDefaultExpanded = foldersDefaultExpanded !== undefined ? Boolean(foldersDefaultExpanded) : true
@@ -271,7 +270,7 @@ router.put('/', requireAuth, async (req, res) => {
         COALESCE(avatar_shape, 'circle') AS "avatarShape",
         COALESCE(avatar_glow, 'yellow') AS "avatarGlow",
         COALESCE(status_text, 'Yeni Projelere & Fırsatlara Açık') AS "statusText",
-        COALESCE(status_color, 'emerald') AS "statusColor",
+        COALESCE(status_color, 'none') AS "statusColor",
         COALESCE(is_verified, true) AS "isVerified",
         COALESCE(banner, '') AS "banner", 
         COALESCE(banner_pattern, 'mesh') AS "bannerPattern", 
@@ -314,7 +313,7 @@ router.put('/', requireAuth, async (req, res) => {
           COALESCE(avatar_shape, 'circle') AS "avatarShape",
           COALESCE(avatar_glow, 'yellow') AS "avatarGlow",
           COALESCE(status_text, 'Yeni Projelere & Fırsatlara Açık') AS "statusText",
-          COALESCE(status_color, 'emerald') AS "statusColor",
+          COALESCE(status_color, 'none') AS "statusColor",
           COALESCE(is_verified, true) AS "isVerified",
           COALESCE(banner, '') AS "banner", 
           COALESCE(banner_pattern, 'mesh') AS "bannerPattern", 

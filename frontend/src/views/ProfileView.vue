@@ -300,7 +300,7 @@ const avatarGlowConfig = computed(() => {
 })
 
 const statusConfig = computed(() => {
-  const color = profile.value?.statusColor || 'emerald'
+  const color = profile.value?.statusColor || 'none'
   if (color === 'none') return null
   return STATUS_PRESETS.find(s => s.id === color) || STATUS_PRESETS[0]
 })

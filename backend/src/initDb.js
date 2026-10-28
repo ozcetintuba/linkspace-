@@ -16,7 +16,7 @@ export const initializeDatabase = async () => {
         avatar_shape VARCHAR(50) DEFAULT 'circle',
         avatar_glow VARCHAR(50) DEFAULT 'yellow',
         status_text VARCHAR(100) DEFAULT 'Yeni Projelere & Fırsatlara Açık',
-        status_color VARCHAR(50) DEFAULT 'emerald',
+        status_color VARCHAR(50) DEFAULT 'none',
         is_verified BOOLEAN DEFAULT TRUE,
         banner TEXT DEFAULT '',
         banner_pattern VARCHAR(50) DEFAULT 'mesh',
@@ -32,11 +32,15 @@ export const initializeDatabase = async () => {
       ALTER TABLE profiles ADD COLUMN IF NOT EXISTS avatar_shape VARCHAR(50) DEFAULT 'circle';
       ALTER TABLE profiles ADD COLUMN IF NOT EXISTS avatar_glow VARCHAR(50) DEFAULT 'yellow';
       ALTER TABLE profiles ADD COLUMN IF NOT EXISTS status_text VARCHAR(100) DEFAULT 'Yeni Projelere & Fırsatlara Açık';
-      ALTER TABLE profiles ADD COLUMN IF NOT EXISTS status_color VARCHAR(50) DEFAULT 'emerald';
+      ALTER TABLE profiles ADD COLUMN IF NOT EXISTS status_color VARCHAR(50) DEFAULT 'none';
+      ALTER TABLE profiles ALTER COLUMN status_color SET DEFAULT 'none';
       ALTER TABLE profiles ADD COLUMN IF NOT EXISTS is_verified BOOLEAN DEFAULT TRUE;
       ALTER TABLE profiles ADD COLUMN IF NOT EXISTS group_by_category BOOLEAN DEFAULT false;
       ALTER TABLE profiles ADD COLUMN IF NOT EXISTS folders_default_expanded BOOLEAN DEFAULT true;
       ALTER TABLE profiles ADD COLUMN IF NOT EXISTS show_badges BOOLEAN DEFAULT false;
+      UPDATE profiles SET status_color = 'none' WHERE status_color = 'emerald';
+      UPDATE profiles SET show_badges = false WHERE show_badges IS NULL;
+      UPDATE profiles SET group_by_category = false WHERE group_by_category IS NULL;
     `)
 
     // 2. Bağlantılar Tablosu

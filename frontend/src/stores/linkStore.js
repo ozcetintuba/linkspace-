@@ -685,7 +685,7 @@ const DEFAULT_PROFILE = {
   avatarShape: 'circle',
   avatarGlow: 'yellow',
   statusText: 'Yeni Projelere & Fırsatlara Açık',
-  statusColor: 'emerald',
+  statusColor: 'none',
   isVerified: true,
   banner: '',
   bannerPattern: 'mesh',

@@ -899,6 +899,20 @@ const handleToggleShowBadges = async () => {
   )
 }
 
+// Profilde Canlı Müsaitlik & Fırsat Rozeti Kontrolü (Aç / Kapat)
+const handleToggleStatusBadge = async () => {
+  const isCurrentlyActive = profileForm.value.statusColor !== 'none'
+  const nextColor = isCurrentlyActive ? 'none' : 'emerald'
+  profileForm.value.statusColor = nextColor
+  await linkStore.updateProfile({ statusColor: nextColor })
+  showToast(
+    !isCurrentlyActive
+      ? 'Müsaitlik rozeti profilde görünür yapıldı.' 
+      : 'Müsaitlik rozeti profilde gizlendi (Minimalist sade görünüm).',
+    'success'
+  )
+}
+
 // Oturumu Kapatma (Logout)
 const handleLogout = () => {
   if (confirm('Yönetim panelinden çıkış yapmak istediğinizden emin misiniz?')) {
@@ -2663,8 +2677,9 @@ const handleChangePassword = async () => {
                 </div>
 
                 <!-- 1.4 CANLI DURUM & MÜSAİTLİK BİLDİRİMİ (STATUS BADGE) -->
+                <!-- 1.4 CANLI DURUM & MÜSAİTLİK ROZETİ (STATUS PILL) -->
                 <div class="space-y-3 pt-5 border-t" :class="themeClasses.headerBorder">
-                  <div class="flex items-center justify-between">
+                  <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                     <div>
                       <label :class="['block text-xs font-bold flex items-center gap-1.5', themeClasses.titleText]">
                         <span class="relative flex h-2.5 w-2.5">
@@ -2677,16 +2692,26 @@ const handleChangePassword = async () => {
                         Ziyaretçilerinize anlık çalışma modunuzu, müsaitliğinizi veya özel duyurunuzu bildirin.
                       </span>
                     </div>
-                    <span 
-                      v-if="profileForm.statusColor !== 'none'"
-                      class="text-[10px] font-bold px-2 py-0.5 rounded-full"
-                      :class="profileForm.statusColor === 'emerald' ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30' : (profileForm.statusColor === 'amber' ? 'bg-amber-500/15 text-amber-400 border border-amber-500/30' : (profileForm.statusColor === 'blue' ? 'bg-sky-500/15 text-sky-400 border border-sky-500/30' : 'bg-purple-500/15 text-purple-300 border border-purple-500/30'))"
-                    >
-                      Aktif Durum
-                    </span>
-                    <span v-else class="text-[10px] text-neutral-500 font-medium">
-                      Gizlendi
-                    </span>
+
+                    <div class="flex items-center gap-2.5">
+                      <!-- Aç/Kapat Toggle Switch -->
+                      <label class="inline-flex items-center gap-2 cursor-pointer px-3 py-1.5 rounded-xl border transition-colors shrink-0"
+                        :class="profileForm.statusColor !== 'none' 
+                          ? (adminTheme === 'light' ? 'bg-emerald-50 border-emerald-300 text-emerald-900' : 'bg-emerald-500/15 border-emerald-500/30 text-emerald-300')
+                          : (adminTheme === 'light' ? 'bg-slate-100 border-slate-200 text-slate-500' : 'bg-[#141414] border-[#282828] text-neutral-400')"
+                      >
+                        <input 
+                          type="checkbox" 
+                          :checked="profileForm.statusColor !== 'none'" 
+                          @change="handleToggleStatusBadge"
+                          class="sr-only peer"
+                        />
+                        <div class="w-9 h-5 bg-neutral-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-emerald-500 relative"></div>
+                        <span class="text-xs font-semibold select-none">
+                          {{ profileForm.statusColor !== 'none' ? 'Profilde Açık' : 'Profilde Gizli (Sade)' }}
+                        </span>
+                      </label>
+                    </div>
                   </div>
 
                   <!-- Durum Metni Girişi -->
