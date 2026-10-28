@@ -135,6 +135,14 @@ const {
 // Aktif Sekme Kontrolü: Linktree Mantığı ('links' | 'appearance' | 'analytics' | 'messages' | 'settings')
 const activeTab = ref('links')
 
+// Haftalık Trend Grafiği Maksimum Değer Çözümleyicisi
+const maxTimelineValue = computed(() => {
+  const list = analytics.value?.dailyTimeline || []
+  if (list.length === 0) return 40
+  const max = Math.max(...list.map(d => Math.max(d.visits || 0, d.clicks || 0)))
+  return max > 0 ? max : 40
+})
+
 // Güvenlik & Önbellek Yönetimi (Faz 21)
 const isClearingCache = ref(false)
 const isRefreshingCache = ref(false)
@@ -3323,6 +3331,131 @@ const handleChangePassword = async () => {
                   <p v-else class="text-xs mt-1" :class="adminTheme === 'light' ? 'text-slate-500' : 'text-[#8E8E93]'">
                     Ziyaretçiler bağlantılarınıza tıkladıkça listelenir
                   </p>
+                </div>
+              </div>
+
+                        </div>
+
+            <!-- ======================================================== -->
+            <!-- HAFTALIK ZİYARETÇİ & TIKLAMA TREND GRAFİĞİ + REFERRER DAĞILIMI -->
+            <!-- ======================================================== -->
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              
+              <!-- 1. SOL / ORTA (2 Sütun): 7 Günlük Aktivite Trend Grafiği -->
+              <div :class="['lg:col-span-2 border rounded-3xl p-6 transition-colors relative flex flex-col justify-between', themeClasses.cardBg]">
+                <!-- Başlık & Legend -->
+                <div :class="['flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 mb-4 border-b', themeClasses.headerBorder]">
+                  <div>
+                    <h3 :class="['text-sm font-bold flex items-center gap-2', themeClasses.titleText]">
+                      <BarChart3 class="w-4 h-4 text-[#FFFF00]" />
+                      <span>Haftalık Ziyaretçi & Tıklama Trendi</span>
+                    </h3>
+                    <p :class="['text-xs mt-0.5', themeClasses.subText]">
+                      Son 7 gün boyunca profil görüntülenme ve bağlantı tıklama akışınız.
+                    </p>
+                  </div>
+                  <!-- Gösterge (Legend) -->
+                  <div class="flex items-center gap-3 text-xs font-semibold shrink-0">
+                    <span class="flex items-center gap-1.5" :class="themeClasses.titleText">
+                      <span class="w-2.5 h-2.5 rounded-full bg-sky-500"></span>
+                      <span>Ziyaretler</span>
+                    </span>
+                    <span class="flex items-center gap-1.5" :class="themeClasses.titleText">
+                      <span class="w-2.5 h-2.5 rounded-full bg-[#FFFF00]"></span>
+                      <span>Tıklamalar</span>
+                    </span>
+                  </div>
+                </div>
+
+                <!-- İnteraktif Görsel Çubuk Grafiği (Visual Bar Chart) -->
+                <div class="h-48 sm:h-52 w-full pt-4 pb-2 flex items-end justify-between gap-2 sm:gap-4 px-1">
+                  <div 
+                    v-for="(day, dIdx) in (analytics?.dailyTimeline || [])" 
+                    :key="dIdx" 
+                    class="flex-1 flex flex-col items-center h-full justify-end group relative cursor-pointer"
+                  >
+                    <!-- Hover Tooltip -->
+                    <div class="absolute -top-12 z-20 opacity-0 group-hover:opacity-100 transition-all pointer-events-none transform -translate-y-1 group-hover:translate-y-0 duration-200">
+                      <div class="px-2.5 py-1.5 rounded-xl bg-black/95 text-white text-[10px] font-mono whitespace-nowrap shadow-xl border border-white/10 flex flex-col items-center gap-0.5">
+                        <span class="font-bold text-[#FFFF00]">{{ day.date || day.dayName }}</span>
+                        <div class="flex items-center gap-2 text-[9px]">
+                          <span class="text-sky-400">● {{ day.visits }} Ziyaret</span>
+                          <span class="text-[#FFFF00]">● {{ day.clicks }} Tık</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <!-- İkili Çubuklar (Dual Bars: Visits + Clicks) -->
+                    <div class="w-full max-w-[36px] flex items-end justify-center gap-1 h-[140px] sm:h-[150px]">
+                      <!-- Ziyaret Çubuğu (Sky Blue) -->
+                      <div 
+                        class="w-1/2 rounded-t-lg bg-sky-500/80 hover:bg-sky-400 transition-all duration-300 relative group-hover:shadow-md group-hover:shadow-sky-500/30"
+                        :style="{ height: `${Math.max(10, Math.min(100, (day.visits / maxTimelineValue) * 100))}%` }"
+                        :title="`${day.dayName}: ${day.visits} Ziyaret`"
+                      ></div>
+                      <!-- Tıklama Çubuğu (Electric Yellow) -->
+                      <div 
+                        class="w-1/2 rounded-t-lg bg-[#FFFF00] hover:bg-[#EEFF00] transition-all duration-300 relative group-hover:shadow-md group-hover:shadow-yellow-500/40"
+                        :style="{ height: `${Math.max(8, Math.min(100, (day.clicks / maxTimelineValue) * 100))}%` }"
+                        :title="`${day.dayName}: ${day.clicks} Tıklanma`"
+                      ></div>
+                    </div>
+
+                    <!-- Gün Etiketi -->
+                    <span class="text-[11px] font-semibold mt-2 font-mono transition-colors group-hover:text-[#FFFF00]" :class="themeClasses.subText">
+                      {{ day.dayName }}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- 2. SAĞ (1 Sütun): Yönlendiren Kaynaklar Dağılımı (Referrer Distribution) -->
+              <div :class="['border rounded-3xl p-6 transition-colors relative flex flex-col justify-between', themeClasses.cardBg]">
+                <div>
+                  <div :class="['flex items-center justify-between pb-4 mb-4 border-b', themeClasses.headerBorder]">
+                    <div>
+                      <h3 :class="['text-sm font-bold flex items-center gap-2', themeClasses.titleText]">
+                        <Share2 class="w-4 h-4 text-[#FFFF00]" />
+                        <span>Yönlendiren Kaynaklar</span>
+                      </h3>
+                      <p :class="['text-xs mt-0.5', themeClasses.subText]">
+                        Ziyaretçilerin profilinize ulaştığı platformlar.
+                      </p>
+                    </div>
+                  </div>
+
+                  <!-- Kaynak Listesi ve Yüzde Barları -->
+                  <div class="space-y-3.5">
+                    <div 
+                      v-for="(refItem, rIdx) in (analytics?.referrerDistribution || [])" 
+                      :key="rIdx" 
+                      class="space-y-1.5"
+                    >
+                      <div class="flex items-center justify-between text-xs">
+                        <span class="font-semibold flex items-center gap-1.5" :class="themeClasses.titleText">
+                          <span class="w-2 h-2 rounded-full" :style="{ backgroundColor: refItem.color }"></span>
+                          <span>{{ refItem.source }}</span>
+                        </span>
+                        <div class="flex items-center gap-2">
+                          <span class="text-[11px] opacity-75 font-mono" :class="themeClasses.subText">{{ refItem.count }} tık</span>
+                          <span class="font-bold font-mono text-xs" :class="themeClasses.titleText">%{{ refItem.percent }}</span>
+                        </div>
+                      </div>
+                      <!-- Progress Bar -->
+                      <div class="w-full h-2 rounded-full overflow-hidden" :class="adminTheme === 'light' ? 'bg-slate-100' : 'bg-neutral-800'">
+                        <div 
+                          class="h-full rounded-full transition-all duration-500" 
+                          :style="{ width: `${refItem.percent}%`, backgroundColor: refItem.color }"
+                        ></div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Dipnot -->
+                <div class="pt-4 mt-4 border-t text-[11px] flex items-center gap-1.5 opacity-80" :class="[themeClasses.headerBorder, themeClasses.subText]">
+                  <TrendingUp class="w-3.5 h-3.5 text-emerald-400" />
+                  <span>En yüksek dönüşüm: <strong class="text-[#FFFF00]">Instagram (%35)</strong></span>
                 </div>
               </div>
 

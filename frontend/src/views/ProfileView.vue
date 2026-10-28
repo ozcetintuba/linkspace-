@@ -519,8 +519,10 @@ const copyProfileLink = async () => {
 const openLink = (link) => {
   if (!link || !link.url) return
 
-  // 1. Asenkron olarak /click uç noktasına istek at ve sayacı artır
-  linkStore.trackClick(link.id)
+  // 1. Asenkron olarak /click uç noktasına istek at ve sayacı artır (Detaylı Analitik)
+  const referrer = route.query.src === 'qr' ? 'qr' : (typeof document !== 'undefined' && document.referrer ? document.referrer : 'direct')
+  const device = isMobileDevice() ? 'mobile' : 'desktop'
+  linkStore.trackClick(link.id, { referrer, device })
 
   // 2. Güvenli hedef URL hazırla ve yeni sekmede aç
   const rawUrl = link.url.trim()

@@ -49,7 +49,22 @@ export const DEFAULT_ANALYTICS = {
   totalMobile: 105,
   totalDesktop: 37,
   qrMobilePercent: 90,
-  qrDesktopPercent: 10
+  qrDesktopPercent: 10,
+  referrerDistribution: [
+    { source: 'Instagram', rawSource: 'instagram', count: 35, percent: 35, color: '#E1306C' },
+    { source: 'Twitter / X', rawSource: 'twitter', count: 28, percent: 28, color: '#1DA1F2' },
+    { source: 'LinkedIn', rawSource: 'linkedin', count: 22, percent: 22, color: '#0A66C2' },
+    { source: 'Doğrudan Web', rawSource: 'direct', count: 15, percent: 15, color: '#FFFF00' }
+  ],
+  dailyTimeline: [
+    { date: 'Pzt', dayName: 'Pzt', visits: 18, clicks: 12 },
+    { date: 'Sal', dayName: 'Sal', visits: 24, clicks: 16 },
+    { date: 'Çar', dayName: 'Çar', visits: 19, clicks: 14 },
+    { date: 'Per', dayName: 'Per', visits: 31, clicks: 22 },
+    { date: 'Cum', dayName: 'Cum', visits: 28, clicks: 19 },
+    { date: 'Cmt', dayName: 'Cmt', visits: 35, clicks: 27 },
+    { date: 'Paz', dayName: 'Paz', visits: 42, clicks: 31 }
+  ]
 }
 
 export const THEMES = [
@@ -1418,14 +1433,18 @@ export const useLinkStore = defineStore('links', () => {
     return [...links.value].sort((a, b) => (b.clicks || 0) - (a.clicks || 0))[0]
   })
 
-  // Tıklama Takibi (Analytics Action)
-  const trackClick = async (id) => {
+  // Tıklama Takibi (Analytics Action - Detaylı Referrer & Device Analitiği)
+  const trackClick = async (id, meta = {}) => {
     const link = links.value.find(l => l.id === id)
     if (link) {
       link.clicks = (link.clicks || 0) + 1
       if (isBackendConnected.value) {
         try {
-          await fetch(`${API_BASE}/links/${id}/click`, { method: 'POST' })
+          await fetch(`${API_BASE}/links/${id}/click`, { 
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(meta)
+          })
         } catch (e) {
           console.warn('Backend tıklama takip hatası:', e)
         }

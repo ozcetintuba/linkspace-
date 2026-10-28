@@ -226,6 +226,32 @@ interface VisitAnalytics {
   totalDesktop: number;     // Genel tüm masaüstü/tarayıcı ziyaretleri
   qrMobilePercent: number;  // QR ile gelenlerin mobil oranı (%0-100)
   qrDesktopPercent: number; // QR ile gelenlerin masaüstü oranı (%0-100)
+  referrerDistribution?: Array<{
+    source: string;
+    rawSource: string;
+    count: number;
+    percent: number;
+    color: string;
+  }>;
+  dailyTimeline?: Array<{
+    date: string;
+    dayName: string;
+    visits: number;
+    clicks: number;
+  }>;
+}
+
+// 6.1 Tekil Tıklama Olay Modeli (ClickEvent)
+interface ClickEvent {
+  id?: number;
+  linkId: number | string;
+  referrer: 'instagram' | 'twitter' | 'linkedin' | 'github' | 'direct' | 'qr';
+  device: 'mobile' | 'desktop';
+  ipAddress?: string;
+  country?: string;
+  city?: string;
+  userAgent?: string;
+  createdAt?: string;
 }
 ```
 

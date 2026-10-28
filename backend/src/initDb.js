@@ -117,6 +117,23 @@ export const initializeDatabase = async () => {
       );
     `)
 
+    // 7. Ayrıntılı Tıklama Olayları & Kaynak Analitiği Tablosu (Click Events)
+    await query(`
+      CREATE TABLE IF NOT EXISTS click_events (
+        id SERIAL PRIMARY KEY,
+        link_id BIGINT,
+        referrer VARCHAR(100) DEFAULT 'direct',
+        device VARCHAR(50) DEFAULT 'desktop',
+        ip_address VARCHAR(100) DEFAULT '127.0.0.1',
+        country VARCHAR(100) DEFAULT 'TR',
+        city VARCHAR(100) DEFAULT 'İstanbul',
+        user_agent TEXT DEFAULT '',
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+      );
+      CREATE INDEX IF NOT EXISTS idx_click_events_link_id ON click_events(link_id);
+      CREATE INDEX IF NOT EXISTS idx_click_events_created_at ON click_events(created_at);
+    `)
+
     // Varsayılan Örnek Mesajlar (Eğer tablo boşsa ekle)
     const messageCount = await query('SELECT COUNT(*) FROM messages')
     if (parseInt(messageCount.rows[0].count, 10) === 0) {
@@ -127,6 +144,22 @@ export const initializeDatabase = async () => {
           ('Zeynep Kaya', 'zeynep@startupstudio.io', 'Selamlar! GitHub üzerindeki Linktree projenizin arayüzü ve mimarisi harika görünüyor. Yeni SaaS projemizde freelance destek vermeyi düşünür müsün?', true, CURRENT_TIMESTAMP - INTERVAL '1 day');
       `)
       console.log('🌱 Varsayılan iletişim mesajları tohum verileri eklendi.')
+    }
+
+    // Varsayılan Tıklama Olayları Verileri (Eğer tablo boşsa tohum verileri ekle)
+    const clickEventsCount = await query('SELECT COUNT(*) FROM click_events')
+    if (parseInt(clickEventsCount.rows[0].count, 10) === 0) {
+      await query(`
+        INSERT INTO click_events (link_id, referrer, device, created_at)
+        SELECT 1, 'instagram', 'mobile', CURRENT_TIMESTAMP - (INTERVAL '1 day' * (g % 7)) FROM generate_series(1, 35) AS g
+        UNION ALL
+        SELECT 2, 'twitter', 'desktop', CURRENT_TIMESTAMP - (INTERVAL '1 day' * (g % 7)) FROM generate_series(1, 28) AS g
+        UNION ALL
+        SELECT 3, 'linkedin', 'mobile', CURRENT_TIMESTAMP - (INTERVAL '1 day' * (g % 7)) FROM generate_series(1, 22) AS g
+        UNION ALL
+        SELECT 4, 'direct', 'desktop', CURRENT_TIMESTAMP - (INTERVAL '1 day' * (g % 7)) FROM generate_series(1, 15) AS g;
+      `)
+      console.log('🌱 Varsayılan tıklama analitik tohum verileri eklendi.')
     }
 
     // Varsayılan Ziyaretçi Analitik Verileri (Eğer tablo boşsa gerçekçi başlangıç tohum verileri ekle)

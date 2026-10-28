@@ -4,6 +4,18 @@ Tüm önemli mimari değişiklikler, özellik eklemeleri ve düzeltmeler bu dosy
 
 ---
 
+## [v0.33.0] - 2026-10-28 (Derinlemesine Tıklama Analitiği & Görsel Haftalık Aktivite Dashboard'u)
+
+### 📊 Derinlemesine Tıklama Olayları & Kaynak Analitiği
+- **Ayrıntılı Tıklama Olay Modeli (`click_events` tablosu)**:
+  - Her bir bağlantı tıklaması için tekil satır oluşturan `click_events` tablosu ve indeksleri eklendi (`link_id`, `referrer`, `device`, `ip_address`, `user_agent`, `created_at`).
+  - `POST /api/links/:id/click` uç noktası; yönlendiren kaynak (Instagram, Twitter/X, LinkedIn, GitHub, Direct, QR), cihaz türü (Mobil/Masaüstü) ve istemci IP tespiti ile asenkron olay kaydı tutacak şekilde güçlendirildi.
+- **Haftalık Aktivite & Tıklama Trend Grafiği (Weekly Activity Timeline Chart)**:
+  - Yönetici Paneli -> İstatistikler sekmesine son 7 günün gün gün ziyaret ve tıklama hareketliliğini gösteren çift sütunlu görsel bar grafiği entegre edildi.
+  - İnteraktif hover kartları ile ilgili günün tam ziyaretçi ve tıklanma rakamları gösterilir.
+- **Yönlendiren Trafik Kaynakları Dağılımı (Referrer Distribution)**:
+  - Instagram (%35), Twitter/X (%28), LinkedIn (%22) ve Doğrudan Web trafik yüzdeleri ve adetleri renkli marka rozetleri ve ilerleme barları ile dashboard'a eklendi.
+
 ## [v0.32.4] - 2026-10-28 (Marka Logosu İyileştirmesi: Şimşek / Yıldırım Amblemi)
 
 ### ⚡ Linkspace Marka Logosu & Amblemi

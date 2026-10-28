@@ -13,7 +13,22 @@ const FALLBACK_ANALYTICS = {
   totalMobile: 105,
   totalDesktop: 37,
   qrMobilePercent: 90,
-  qrDesktopPercent: 10
+  qrDesktopPercent: 10,
+  referrerDistribution: [
+    { source: 'Instagram', rawSource: 'instagram', count: 35, percent: 35, color: '#E1306C' },
+    { source: 'Twitter / X', rawSource: 'twitter', count: 28, percent: 28, color: '#1DA1F2' },
+    { source: 'LinkedIn', rawSource: 'linkedin', count: 22, percent: 22, color: '#0A66C2' },
+    { source: 'Doğrudan Web', rawSource: 'direct', count: 15, percent: 15, color: '#FFFF00' }
+  ],
+  dailyTimeline: [
+    { date: 'Pzt', dayName: 'Pzt', visits: 18, clicks: 12 },
+    { date: 'Sal', dayName: 'Sal', visits: 24, clicks: 16 },
+    { date: 'Çar', dayName: 'Çar', visits: 19, clicks: 14 },
+    { date: 'Per', dayName: 'Per', visits: 31, clicks: 22 },
+    { date: 'Cum', dayName: 'Cum', visits: 28, clicks: 19 },
+    { date: 'Cmt', dayName: 'Cmt', visits: 35, clicks: 27 },
+    { date: 'Paz', dayName: 'Paz', visits: 42, clicks: 31 }
+  ]
 }
 
 // 1. Ziyaretçi & QR Kod İstatistiklerini Getir
@@ -37,6 +52,62 @@ router.get('/', async (req, res) => {
     const qrMobilePercent = qrVisits > 0 ? Math.round((qrMobile / qrVisits) * 100) : 0
     const qrDesktopPercent = qrVisits > 0 ? Math.round((qrDesktop / qrVisits) * 100) : 0
 
+    // Yönlendiren Kaynaklar Dağılımı (Referrer Distribution)
+    let referrerDistribution = FALLBACK_ANALYTICS.referrerDistribution
+    try {
+      const refRes = await query(`
+        SELECT referrer, COUNT(*) as count 
+        FROM click_events 
+        GROUP BY referrer 
+        ORDER BY count DESC
+      `)
+      if (refRes.rows.length > 0) {
+        const totalRefClicks = refRes.rows.reduce((sum, r) => sum + parseInt(r.count, 10), 0)
+        referrerDistribution = refRes.rows.map(r => {
+          const c = parseInt(r.count, 10)
+          const p = totalRefClicks > 0 ? Math.round((c / totalRefClicks) * 100) : 0
+          let name = 'Doğrudan Web'
+          let color = '#FFFF00'
+          if (r.referrer === 'instagram') { name = 'Instagram'; color = '#E1306C' }
+          else if (r.referrer === 'twitter') { name = 'Twitter / X'; color = '#1DA1F2' }
+          else if (r.referrer === 'linkedin') { name = 'LinkedIn'; color = '#0A66C2' }
+          else if (r.referrer === 'github') { name = 'GitHub'; color = '#A855F7' }
+          else if (r.referrer === 'qr') { name = 'QR Kod'; color = '#10B981' }
+          return { source: name, rawSource: r.referrer, count: c, percent: p, color }
+        })
+      }
+    } catch (e) {
+      console.warn('⚠️ Referrer dağılımı sorgulanamadı:', e.message)
+    }
+
+    // Son 7 Günlük Aktivite Zaman Çizelgesi (Daily Timeline)
+    let dailyTimeline = FALLBACK_ANALYTICS.dailyTimeline
+    try {
+      const dayLabels = ['Paz', 'Pzt', 'Sal', 'Çar', 'Per', 'Cum', 'Cmt']
+      const timelineRes = await query(`
+        SELECT 
+          TO_CHAR(d.day, 'YYYY-MM-DD') AS date,
+          EXTRACT(DOW FROM d.day) AS dow,
+          COALESCE(COUNT(DISTINCT v.id), 0) AS visits,
+          COALESCE(COUNT(DISTINCT c.id), 0) AS clicks
+        FROM generate_series(CURRENT_DATE - INTERVAL '6 days', CURRENT_DATE, '1 day'::interval) d(day)
+        LEFT JOIN visit_stats v ON DATE(v.created_at) = DATE(d.day)
+        LEFT JOIN click_events c ON DATE(c.created_at) = DATE(d.day)
+        GROUP BY d.day
+        ORDER BY d.day ASC
+      `)
+      if (timelineRes.rows.length > 0) {
+        dailyTimeline = timelineRes.rows.map(row => ({
+          date: row.date,
+          dayName: dayLabels[parseInt(row.dow, 10)] || 'Gün',
+          visits: parseInt(row.visits, 10),
+          clicks: parseInt(row.clicks, 10)
+        }))
+      }
+    } catch (e) {
+      console.warn('⚠️ Günlük analitik zaman çizelgesi sorgulanamadı:', e.message)
+    }
+
     return res.json({
       totalVisits,
       qrVisits,
@@ -46,7 +117,9 @@ router.get('/', async (req, res) => {
       totalMobile,
       totalDesktop,
       qrMobilePercent,
-      qrDesktopPercent
+      qrDesktopPercent,
+      referrerDistribution,
+      dailyTimeline
     })
   } catch (error) {
     console.warn('⚠️ Veritabanı sorgusu başarısız oldu, çevrimdışı analitik dönülüyor:', error.message)

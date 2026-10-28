@@ -322,10 +322,13 @@ router.delete('/:id', requireAuth, async (req, res) => {
   }
 })
 
-// POST /api/links/:id/click (Tıklanma sayısını 1 artır - Atomic)
+// POST /api/links/:id/click (Tıklanma sayısını 1 artır - Atomic + Ayrıntılı Analitik Olay Kaydı)
 router.post('/:id/click', async (req, res) => {
   try {
     const { id } = req.params
+    const { referrer = '', device = '' } = req.body || {}
+
+    // 1. Sayaç güncelle
     const result = await query(`
       UPDATE links
       SET clicks = clicks + 1
@@ -336,6 +339,28 @@ router.post('/:id/click', async (req, res) => {
     if (result.rows.length === 0) {
       return res.status(404).json({ error: 'Bağlantı bulunamadı' })
     }
+
+    // 2. Yönlendiren kaynağı akıllı tespit et (Instagram, Twitter/X, LinkedIn, GitHub, Direct, QR)
+    const rawReferrer = (referrer || req.headers['referer'] || '').toLowerCase()
+    let detectedSource = 'direct'
+    if (rawReferrer.includes('instagram')) detectedSource = 'instagram'
+    else if (rawReferrer.includes('twitter') || rawReferrer.includes('t.co') || rawReferrer.includes('x.com')) detectedSource = 'twitter'
+    else if (rawReferrer.includes('linkedin')) detectedSource = 'linkedin'
+    else if (rawReferrer.includes('github')) detectedSource = 'github'
+    else if (rawReferrer.includes('qr') || rawReferrer.includes('src=qr')) detectedSource = 'qr'
+
+    // 3. Cihaz tipi ve IP tespiti
+    const userAgent = req.headers['user-agent'] || ''
+    const detectedDevice = device || (/mobile|android|iphone|ipad|ipod/i.test(userAgent) ? 'mobile' : 'desktop')
+    const ipAddress = (req.headers['x-forwarded-for'] || req.socket?.remoteAddress || '127.0.0.1').split(',')[0].trim()
+
+    // 4. Ayrıntılı tıklama olayını click_events tablosuna asenkron kaydet
+    await query(`
+      INSERT INTO click_events (link_id, referrer, device, ip_address, user_agent)
+      VALUES ($1, $2, $3, $4, $5)
+    `, [id, detectedSource, detectedDevice, ipAddress, userAgent]).catch(e => {
+      console.warn('⚠️ click_events tablosuna log kaydedilemedi:', e.message)
+    })
 
     res.json(result.rows[0])
   } catch (error) {
