@@ -7,6 +7,9 @@ Tüm önemli mimari değişiklikler, özellik eklemeleri ve düzeltmeler bu dosy
 ## [v0.32.0] - 2026-10-28 (Kurumsal Güvenlik Kalkanı, Rate Limiting & ETag/TTL Önbellek Mimarisi)
 
 ### 🛡️ Güvenlik Sertleştirmeleri & Hız Sınırlama (Rate Limiting)
+- **`frontend/package.json` & `package.json`**:
+  - Render ortamında `NODE_ENV=production` nedeniyle `devDependencies` (Vite, Tailwind vb.) atlanarak `vite: not found` derleme hatası oluşması engellendi; derleyici paketler `dependencies` altına taşındı ve kök betiğe `--include=dev` eklendi.
+  - `backend/package.json` içerisindeki kullanılmayan ve Render üzerinde yükleme hatasına sebep olabilen `embedded-postgres` paketi kaldırıldı.
 - **`render.yaml`**:
   - Render PostgreSQL üzerinde `postgres` kullanıcı adı ayrılmış/yasaklı olduğundan `databases[0].user: linkspace_user` olarak düzeltildi.
 - **`backend/src/middleware/rateLimiter.js`**:
