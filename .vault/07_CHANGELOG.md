@@ -4,6 +4,18 @@ Tüm önemli mimari değişiklikler, özellik eklemeleri ve düzeltmeler bu dosy
 
 ---
 
+## [v0.36.5] - 2026-10-28 (Görsel İyileştirme: 3D Siber Karakter Maskot 'Linky')
+
+### 🤖 3D Karakter & Avatar Mimarisi (`ThreeAvatarMascot.vue`)
+- **Belirgin Karakter Silüeti**: Maskot soyut fasetli kristalden çıkarılıp sevimli, ikonik ve belirgin bir **Siber Android Karakteri (Linky)** olarak yeniden tasarlandı.
+- **Kask & Kavisli Vizör Ekranı**: Parlak siyah ayna kaplamalı kavisli OLED ekranı (`SphereGeometry`), pürüzsüz seramik titanyum kask başlığı.
+- **Canlı İfadeler & Gülümseme**: Çift parlak neon sarı kapsül LED gözler ve altta dijital neşeli gülümseme barı.
+- **Kulaklıklar & Sinyal Anteni**: İki yanda parlayan neon halkalı kulaklıklar (headsets) ve tepede ritmik nefes alan sinyal anteni.
+- **Gövde & Manyetik Eller**: Linkspace reaktör çekirdeğine sahip göğüs zırhı ve yanlarda fare hareketlerini takip eden, tıklandığında sevinçle havaya kalkan süzülen manyetik eller.
+- **Doğal Göz Kırpma**: Her 3-4 saniyede bir doğal göz kırpma döngüsü ve tıklandığında yaylanarak dönme animasyonu.
+
+---
+
 ## [v0.36.4] - 2026-10-28 (Kritik Düzeltme: QR Kod Mobil Erişim ve Dinamik Ağ IP Entegrasyonu)
 
 ### 📱 Mobil QR Kod ve Ağ Erişimi Onarımları
