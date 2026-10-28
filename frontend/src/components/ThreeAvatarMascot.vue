@@ -152,6 +152,9 @@ const initThree = () => {
     renderer.setSize(width, height)
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
     renderer.outputColorSpace = THREE.SRGBColorSpace
+    renderer.domElement.style.width = '100%'
+    renderer.domElement.style.height = '100%'
+    renderer.domElement.style.display = 'block'
     containerRef.value.appendChild(renderer.domElement)
 
     // 4. Stüdyo Işıkları (Pixar / Apple Tarzı Çoklu Aydınlatma)
@@ -355,6 +358,7 @@ const initThree = () => {
     // Olay Dinleyicileri
     window.addEventListener('mousemove', handlePointerMove, { passive: true })
     window.addEventListener('touchmove', handlePointerMove, { passive: true })
+    window.addEventListener('touchstart', handlePointerMove, { passive: true })
 
     // Animasyon Döngüsünü Başlat
     animate()
@@ -475,6 +479,7 @@ onUnmounted(() => {
   if (animationFrameId) cancelAnimationFrame(animationFrameId)
   window.removeEventListener('mousemove', handlePointerMove)
   window.removeEventListener('touchmove', handlePointerMove)
+  window.removeEventListener('touchstart', handlePointerMove)
   document.removeEventListener('visibilitychange', handleVisibilityChange)
 
   // Bellek Temizliği (Zero Memory Leaks)

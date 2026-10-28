@@ -4,6 +4,16 @@ Tüm önemli mimari değişiklikler, özellik eklemeleri ve düzeltmeler bu dosy
 
 ---
 
+## [v0.36.6] - 2026-10-28 (Mobil Deneyim: 3D Maskot Varsayılan Açılış ve Dokunmatik Kontroller)
+
+### 📱 Mobil Uyumluluk & 3D Avatar Başlatma
+- **Varsayılan 3D Görünüm**: `ProfileView.vue` ve `PhonePreview.vue` içerisinde avatar modu `photo` olarak açıkça seçilmediği sürece `currentAvatarView` varsayılan olarak doğrudan `3d` yapıldı. Mobil ziyaretçiler sayfayı açtıklarında doğrudan 3D Siber Karakter Linky ile karşılaşırlar.
+- **2D/3D Geçiş Düğmesi**: Ziyaretçiler dilediklerinde fotoğrafın sağ altındaki *"⚡ 2D Foto"* butonuna dokunarak klasik fotoğrafa geçebilirler.
+- **Mobil Dokunmatik Geliştirmeleri**: `ThreeAvatarMascot.vue` içine `touchstart` dinleyicisi eklendi; parmak ekrana değer değmez karakterin başı dokunulan yöne döner.
+- **Mobil Canvas Yerleşimi**: Three.js canvas öğesine `width: 100%`, `height: 100%`, `display: block` stilleri verilerek mobil Safari ve Chrome'da daralma/gizlenme riski giderildi.
+
+---
+
 ## [v0.36.5] - 2026-10-28 (Görsel İyileştirme: 3D Siber Karakter Maskot 'Linky')
 
 ### 🤖 3D Karakter & Avatar Mimarisi (`ThreeAvatarMascot.vue`)

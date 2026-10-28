@@ -61,10 +61,10 @@ import {
 const linkStore = useLinkStore()
 const { profile, links, activeTheme } = storeToRefs(linkStore)
 
-const phoneAvatarMode = ref(profile.value?.avatarMode === 'mascot' ? '3d' : '2d')
+const phoneAvatarMode = ref(profile.value?.avatarMode === 'photo' ? '2d' : '3d')
 watch(() => profile.value?.avatarMode, (newMode) => {
-  if (newMode === 'mascot') phoneAvatarMode.value = '3d'
-  else if (newMode === 'photo') phoneAvatarMode.value = '2d'
+  if (newMode === 'photo') phoneAvatarMode.value = '2d'
+  else phoneAvatarMode.value = '3d'
 })
 
 // Rozet İkonları Haritası

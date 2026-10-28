@@ -78,14 +78,14 @@ import {
 const linkStore = useLinkStore()
 const { profile, links, activeTheme, currentTheme, seoSettings } = storeToRefs(linkStore)
 
-// 3D WebGL Avatar ve Maskot Durumu
+// 3D WebGL Avatar ve Maskot Durumu (Varsayılan olarak 3D Siber Karakter gösterilir)
 const currentAvatarView = ref(
-  profile.value?.avatarMode === 'mascot' ? '3d' : '2d'
+  profile.value?.avatarMode === 'photo' ? '2d' : '3d'
 )
 
 watch(() => profile.value?.avatarMode, (newMode) => {
-  if (newMode === 'mascot') currentAvatarView.value = '3d'
-  else if (newMode === 'photo') currentAvatarView.value = '2d'
+  if (newMode === 'photo') currentAvatarView.value = '2d'
+  else currentAvatarView.value = '3d'
 })
 
 const toggleAvatarMode = () => {
