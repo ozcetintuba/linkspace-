@@ -710,7 +710,8 @@ const DEFAULT_PROFILE = {
     barVisible: true,
     shape: 'rounded-full',
     style: 'glass'
-  }
+  },
+  groupByCategory: false
 }
 
 export const formatForDatetimeInput = (val) => {
@@ -1180,7 +1181,8 @@ export const useLinkStore = defineStore('links', () => {
           socialLinks: {
             ...DEFAULT_PROFILE.socialLinks,
             ...(profileData.socialLinks || {})
-          }
+          },
+          groupByCategory: profileData.groupByCategory !== undefined ? Boolean(profileData.groupByCategory) : false
         }
       }
       if (linksRes.ok) {
@@ -1275,7 +1277,8 @@ export const useLinkStore = defineStore('links', () => {
             socialLinks: {
               ...DEFAULT_PROFILE.socialLinks,
               ...(data.profile.socialLinks || {})
-            }
+            },
+            groupByCategory: data.profile.groupByCategory !== undefined ? Boolean(data.profile.groupByCategory) : false
           }
         }
         if (Array.isArray(data.links)) {

@@ -34,6 +34,7 @@ export const initializeDatabase = async () => {
       ALTER TABLE profiles ADD COLUMN IF NOT EXISTS status_text VARCHAR(100) DEFAULT 'Yeni Projelere & Fırsatlara Açık';
       ALTER TABLE profiles ADD COLUMN IF NOT EXISTS status_color VARCHAR(50) DEFAULT 'emerald';
       ALTER TABLE profiles ADD COLUMN IF NOT EXISTS is_verified BOOLEAN DEFAULT TRUE;
+      ALTER TABLE profiles ADD COLUMN IF NOT EXISTS group_by_category BOOLEAN DEFAULT false;
     `)
 
     // 2. Bağlantılar Tablosu

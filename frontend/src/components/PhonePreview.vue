@@ -120,6 +120,11 @@ const isFolderOpen = (category) => {
 }
 
 const groupedActiveLinks = computed(() => {
+  // Profilde klasörlü gruplama kapalıysa doğrudan düz liste olarak sun
+  if (!profile.value?.groupByCategory) {
+    return activeLinks.value.map(link => ({ type: 'link', id: `link-${link.id}`, link }))
+  }
+
   const items = []
   const folderMap = new Map()
 

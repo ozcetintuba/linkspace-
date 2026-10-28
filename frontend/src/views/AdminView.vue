@@ -861,6 +861,19 @@ const handleResetAllClicks = () => {
   }
 }
 
+// Ziyaretçi Sayfasında Klasörlü Gruplama Kontrolü (Aç / Kapat)
+const handleToggleGroupByCategory = async () => {
+  const nextVal = !profile.value.groupByCategory
+  profileForm.value.groupByCategory = nextVal
+  await linkStore.updateProfile({ groupByCategory: nextVal })
+  showToast(
+    nextVal 
+      ? 'Klasörlü gruplama açıldı. Bağlantılar profilde kategorilerine göre gösterilecek.' 
+      : 'Klasörlü gruplama kapatıldı. Bağlantılar profilde klasik düz liste olarak gösterilecek.',
+    'success'
+  )
+}
+
 // Oturumu Kapatma (Logout)
 const handleLogout = () => {
   if (confirm('Yönetim panelinden çıkış yapmak istediğinizden emin misiniz?')) {
@@ -905,7 +918,8 @@ const profileForm = ref({
     youtubeActive: profile.value.socialLinks?.youtubeActive !== false,
     email: profile.value.socialLinks?.email || '',
     emailActive: profile.value.socialLinks?.emailActive !== false
-  }
+  },
+  groupByCategory: profile.value.groupByCategory !== undefined ? Boolean(profile.value.groupByCategory) : false
 })
 const isSavingProfile = ref(false)
 
@@ -1141,7 +1155,8 @@ const handleSaveProfile = async () => {
       youtubeActive: profileForm.value.socialLinks.youtubeActive !== false,
       email: (profileForm.value.socialLinks.email || '').trim(),
       emailActive: profileForm.value.socialLinks.emailActive !== false
-    }
+    },
+    groupByCategory: Boolean(profileForm.value.groupByCategory)
   })
   isSavingProfile.value = false
   showToast('Profil ve sosyal medya ayarları kaydedildi!')
@@ -1878,6 +1893,58 @@ const handleChangePassword = async () => {
                   <RotateCcw class="w-3 h-3" />
                   <span>Tıklamaları Sıfırla</span>
                 </button>
+              </div>
+
+              <!-- Ziyaretçi Sayfasında Klasörlü Gruplama Kontrolü -->
+              <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3.5 rounded-2xl border transition-all"
+                :class="profile.groupByCategory 
+                  ? (adminTheme === 'light' ? 'bg-amber-50/80 border-amber-200' : 'bg-amber-500/10 border-amber-500/25') 
+                  : (adminTheme === 'light' ? 'bg-slate-50 border-slate-200' : 'bg-[#141414] border-[#222]')">
+                <div class="flex items-center gap-3">
+                  <div class="w-8 h-8 rounded-xl flex items-center justify-center shrink-0 transition-colors"
+                    :class="profile.groupByCategory 
+                      ? (adminTheme === 'light' ? 'bg-amber-100 text-amber-700' : 'bg-amber-500/20 text-amber-400')
+                      : (adminTheme === 'light' ? 'bg-slate-200 text-slate-600' : 'bg-neutral-800 text-neutral-400')">
+                    <Folder class="w-4 h-4" />
+                  </div>
+                  <div>
+                    <div class="text-xs font-bold flex items-center gap-2" :class="themeClasses.titleText">
+                      <span>Profilde Kategorilere Göre Klasörle</span>
+                      <span class="text-[10px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider"
+                        :class="profile.groupByCategory 
+                          ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30' 
+                          : 'bg-neutral-800 text-neutral-400 border border-neutral-700'">
+                        {{ profile.groupByCategory ? 'Açık (Akordeon Klasörler)' : 'Kapalı (Klasik Düz Liste)' }}
+                      </span>
+                    </div>
+                    <p class="text-[11px] mt-0.5" :class="themeClasses.subText">
+                      {{ profile.groupByCategory 
+                        ? 'Bağlantılar ziyaretçilere kategorilerine göre açılır-kapanır akordeon klasörler altında toplanarak sunulur.' 
+                        : 'Bağlantılar ziyaretçilere klasik Linktree tarzında doğrudan bağımsız şık butonlar olarak listelenir.' }}
+                    </p>
+                  </div>
+                </div>
+
+                <div class="flex items-center gap-2.5 shrink-0 self-end sm:self-center">
+                  <span class="text-[11px] font-semibold hidden sm:inline" :class="themeClasses.subText">
+                    {{ profile.groupByCategory ? 'Klasörleri Kapat' : 'Klasörleri Aç' }}
+                  </span>
+                  <button
+                    type="button"
+                    @click="handleToggleGroupByCategory"
+                    class="relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none"
+                    :class="profile.groupByCategory ? 'bg-[#FFFF00]' : (adminTheme === 'light' ? 'bg-slate-300' : 'bg-neutral-800')"
+                    role="switch"
+                    :aria-checked="!!profile.groupByCategory"
+                  >
+                    <span
+                      class="pointer-events-none inline-block h-5 w-5 transform rounded-full shadow-lg ring-0 transition duration-200 ease-in-out"
+                      :class="[
+                        profile.groupByCategory ? 'translate-x-5 bg-black' : 'translate-x-0 bg-neutral-400'
+                      ]"
+                    />
+                  </button>
+                </div>
               </div>
 
               <!-- Kategori Filtre Çubuğu (Faz 19) -->

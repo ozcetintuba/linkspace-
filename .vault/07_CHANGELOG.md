@@ -4,6 +4,27 @@ Tüm önemli mimari değişiklikler, özellik eklemeleri ve düzeltmeler bu dosy
 
 ---
 
+## [v0.32.1] - 2026-10-28 (Profilde İsteğe Bağlı Kategori Gruplama & Admin Kontrol Paneli)
+
+### 🗂️ İsteğe Bağlı Klasörlü Gruplama Kontrolü (Optional Category Grouping Toggle)
+- **Kullanıcı Tercihi & Varsayılan Düz Liste**:
+  - Profilde bağlantıların varsayılan olarak doğrudan klasik Linktree tarzında düz liste şeklinde sunulması sağlandı (`groupByCategory: false`).
+- **Veritabanı Şeması & Migration (`backend/src/initDb.js`)**:
+  - `profiles` tablosuna `group_by_category BOOLEAN DEFAULT false` sütunu eklendi (`ALTER TABLE profiles ADD COLUMN IF NOT EXISTS group_by_category BOOLEAN DEFAULT false;`).
+- **REST API Katmanı (`backend/src/routes/profileRoutes.js`)**:
+  - `GET /api/profile`, `GET /api/profile/:username` ve `PUT /api/profile` rotaları `groupByCategory` desteğiyle güncellendi.
+- **Pinia Reaktif Store (`frontend/src/stores/linkStore.js`)**:
+  - `DEFAULT_PROFILE` ve `profile` reaktif durumuna `groupByCategory: false` eklendi; API senkronizasyonu ve LocalStorage kalıcılığı sağlandı.
+- **Yönetim Paneli (`frontend/src/views/AdminView.vue`)**:
+  - Bağlantılar sekmesi üst kısmına şık ve interaktif bir kontrol kartı eklendi: "Profilde Kategorilere Göre Klasörle (Açık / Kapalı)".
+  - Tek tıkla açılıp kapanabilen iOS stil switch ve anlık bildirim toast mesajı.
+- **Ziyaretçi Ekranı & Telefon Önizlemesi (`ProfileView.vue` & `PhonePreview.vue`)**:
+  - `groupedFilteredItems` ve `groupedActiveLinks` hesaplayıcıları `profile.groupByCategory` durumunu denetleyecek şekilde güncellendi.
+  - Özellik kapalıyken tüm linkler akordeon kutuları ve "Kategorilere göre gruplandı" başlığı olmadan doğrudan bağımsız, şık butonlar halinde sergilenir.
+  - Özellik açıldığında akordeon klasörleme otomatik olarak devreye girer.
+
+---
+
 ## [v0.32.0] - 2026-10-28 (Kurumsal Güvenlik Kalkanı, Rate Limiting & ETag/TTL Önbellek Mimarisi)
 
 ### 🛡️ Güvenlik Sertleştirmeleri & Hız Sınırlama (Rate Limiting)

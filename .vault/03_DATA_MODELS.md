@@ -48,6 +48,7 @@ interface Profile {
     shape?: string;            // 'rounded-full' | 'rounded-xl' | 'rounded-lg'
     style?: string;            // 'glass' | 'neon' | 'solid'
   };
+  groupByCategory?: boolean;  // Profilde bağlantıları kategorilere göre klasörleme açma/kapama (varsayılan: false)
 }
 ```
 

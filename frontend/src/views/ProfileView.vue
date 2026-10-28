@@ -673,8 +673,13 @@ const toggleAllFolders = (forceState) => {
   })
 }
 
-// Bağlantıları Klasör ve Bağımsız olarak grupla
+// Bağlantıları Klasör ve Bağımsız olarak grupla (Profil Ayarına Bağlı)
 const groupedFilteredItems = computed(() => {
+  // Eğer kullanıcı profilinde kategorilere göre gruplama özelliğini kapattıysa doğrudan düz liste olarak sun
+  if (!profile.value?.groupByCategory) {
+    return filteredLinks.value.map(link => ({ type: 'link', id: `link-${link.id}`, link }))
+  }
+
   const items = []
   const folderMap = new Map()
 
@@ -695,7 +700,7 @@ const groupedFilteredItems = computed(() => {
 })
 
 const hasFolders = computed(() => {
-  return groupedFilteredItems.value.some(item => item.type === 'folder')
+  return !!profile.value?.groupByCategory && groupedFilteredItems.value.some(item => item.type === 'folder')
 })
 
 // Bağlantı Alt Başlığı & Kategori Çözümleyici

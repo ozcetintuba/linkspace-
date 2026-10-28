@@ -24,7 +24,8 @@ const mockProfile = {
     twitter: 'https://twitter.com',
     linkedin: 'https://linkedin.com',
     instagram: 'https://instagram.com'
-  }
+  },
+  groupByCategory: false
 }
 
 // GET /api/profile (Herkese açık, 60s TTL & ETag Önbellekli)
@@ -45,7 +46,8 @@ router.get('/', cacheMiddleware(60), async (req, res) => {
           COALESCE(banner, '') AS "banner",
           COALESCE(banner_pattern, 'mesh') AS "bannerPattern",
           COALESCE(badges, '[]'::jsonb) AS "badges",
-          COALESCE(social_links, '{}'::jsonb) AS "socialLinks" 
+          COALESCE(social_links, '{}'::jsonb) AS "socialLinks",
+          COALESCE(group_by_category, false) AS "groupByCategory"
         FROM profiles 
         ORDER BY id ASC 
         LIMIT 1
@@ -90,7 +92,8 @@ router.get('/:username', cacheMiddleware(60), async (req, res) => {
         COALESCE(banner, '') AS "banner",
         COALESCE(banner_pattern, 'mesh') AS "bannerPattern",
         COALESCE(badges, '[]'::jsonb) AS "badges",
-        COALESCE(social_links, '{}'::jsonb) AS "socialLinks" 
+        COALESCE(social_links, '{}'::jsonb) AS "socialLinks",
+        COALESCE(group_by_category, false) AS "groupByCategory"
       FROM profiles 
       WHERE LOWER(REPLACE(username, '@', '')) = $1
       LIMIT 1
@@ -144,7 +147,8 @@ router.get('/:username', cacheMiddleware(60), async (req, res) => {
         banner: profile.banner || '',
         bannerPattern: profile.bannerPattern || 'mesh',
         badges: profile.badges || [],
-        socialLinks: profile.socialLinks
+        socialLinks: profile.socialLinks,
+        groupByCategory: profile.groupByCategory !== undefined ? Boolean(profile.groupByCategory) : false
       },
       links: linksResult.rows
     })
@@ -207,7 +211,8 @@ router.put('/', requireAuth, async (req, res) => {
       banner, 
       bannerPattern, 
       badges, 
-      socialLinks 
+      socialLinks,
+      groupByCategory
     } = req.body
 
     if (!name || !username) {
@@ -223,6 +228,7 @@ router.put('/', requireAuth, async (req, res) => {
     const safeStatusText = statusText !== undefined ? statusText : 'Yeni Projelere & Fırsatlara Açık'
     const safeStatusColor = statusColor || 'emerald'
     const safeIsVerified = isVerified !== undefined ? Boolean(isVerified) : true
+    const safeGroupByCategory = groupByCategory !== undefined ? Boolean(groupByCategory) : false
 
     const result = await query(`
       UPDATE profiles 
@@ -240,6 +246,7 @@ router.put('/', requireAuth, async (req, res) => {
         status_text = $11,
         status_color = $12,
         is_verified = $13,
+        group_by_category = $14,
         updated_at = CURRENT_TIMESTAMP
       WHERE id = (SELECT id FROM profiles ORDER BY id ASC LIMIT 1)
       RETURNING 
@@ -255,7 +262,8 @@ router.put('/', requireAuth, async (req, res) => {
         COALESCE(banner, '') AS "banner", 
         COALESCE(banner_pattern, 'mesh') AS "bannerPattern", 
         COALESCE(badges, '[]'::jsonb) AS "badges", 
-        COALESCE(social_links, '{}'::jsonb) AS "socialLinks"
+        COALESCE(social_links, '{}'::jsonb) AS "socialLinks",
+        COALESCE(group_by_category, false) AS "groupByCategory"
     `, [
       name.trim(), 
       username.trim(), 
@@ -269,16 +277,17 @@ router.put('/', requireAuth, async (req, res) => {
       safeAvatarGlow,
       safeStatusText,
       safeStatusColor,
-      safeIsVerified
+      safeIsVerified,
+      safeGroupByCategory
     ])
 
     if (result.rows.length === 0) {
       // Eğer profil yoksa yeni oluştur
       const insertResult = await query(`
         INSERT INTO profiles (
-          name, username, bio, avatar, banner, banner_pattern, badges, social_links, avatar_shape, avatar_glow, status_text, status_color, is_verified
+          name, username, bio, avatar, banner, banner_pattern, badges, social_links, avatar_shape, avatar_glow, status_text, status_color, is_verified, group_by_category
         )
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
         RETURNING 
           name, 
           username, 
@@ -292,7 +301,8 @@ router.put('/', requireAuth, async (req, res) => {
           COALESCE(banner, '') AS "banner", 
           COALESCE(banner_pattern, 'mesh') AS "bannerPattern", 
           COALESCE(badges, '[]'::jsonb) AS "badges", 
-          COALESCE(social_links, '{}'::jsonb) AS "socialLinks"
+          COALESCE(social_links, '{}'::jsonb) AS "socialLinks",
+          COALESCE(group_by_category, false) AS "groupByCategory"
       `, [
         name.trim(), 
         username.trim(), 
@@ -306,7 +316,8 @@ router.put('/', requireAuth, async (req, res) => {
         safeAvatarGlow,
         safeStatusText,
         safeStatusColor,
-        safeIsVerified
+        safeIsVerified,
+        safeGroupByCategory
       ])
       invalidateCache('profile')
       return res.json(insertResult.rows[0])

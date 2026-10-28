@@ -1,6 +1,6 @@
 # 🔍 02 - MEVCUT DURUM VE TEKNİK BORÇ ANALİZİ (CURRENT STATE)
 
-> **Son Güncelleme**: 28 Ekim 2026 (Kurumsal Güvenlik Kalkanı, Rate Limiting & ETag/TTL Önbellek Mimarisi - v0.32.0)  
+> **Son Güncelleme**: 28 Ekim 2026 (İsteğe Bağlı Kategori Gruplama & Admin Kontrolü - v0.32.1)  
 > **Durum**: Full-Stack Mimari (Express + PostgreSQL + Vue 3) + Dribbble Sales CRM (#0C0C0B, #161616, #FFFF00) Tasarım Sistemi  
 > **Proje Türü**: Full-Stack Linktree & Link Hub (CRM Dark & Light Edition)
 
