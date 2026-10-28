@@ -1381,54 +1381,51 @@ const PRESET_BADGE_TEMPLATES = [
   { text: 'İstanbul, TR', icon: 'MapPin', color: 'emerald' }
 ]
 
-// Profil verisi API'den gelirse formu senkronize tut
-watch(profile, (newVal) => {
-  if (newVal) {
-    profileForm.value = {
-      name: newVal.name,
-      username: newVal.username,
-      bio: newVal.bio,
-      avatar: newVal.avatar,
-      avatarShape: newVal.avatarShape || 'circle',
-      avatarGlow: newVal.avatarGlow || 'yellow',
-      statusText: newVal.statusText !== undefined ? newVal.statusText : 'Yeni Projelere & Fırsatlara Açık',
-      statusColor: newVal.statusColor || 'emerald',
-      isVerified: newVal.isVerified !== undefined ? newVal.isVerified : true,
-      banner: newVal.banner || '',
-      bannerPattern: newVal.bannerPattern || 'mesh',
-      badges: Array.isArray(newVal.badges) ? [...newVal.badges] : [],
-      socialLinks: {
-        barVisible: newVal.socialLinks?.barVisible !== false,
-        shape: newVal.socialLinks?.shape || 'rounded-full',
-        style: newVal.socialLinks?.style || 'glass',
-        github: newVal.socialLinks?.github || '',
-        githubActive: newVal.socialLinks?.githubActive !== false,
-        linkedin: newVal.socialLinks?.linkedin || '',
-        linkedinActive: newVal.socialLinks?.linkedinActive !== false,
-        instagram: newVal.socialLinks?.instagram || '',
-        instagramActive: newVal.socialLinks?.instagramActive !== false,
-        twitter: newVal.socialLinks?.twitter || '',
-        twitterActive: newVal.socialLinks?.twitterActive !== false,
-        youtube: newVal.socialLinks?.youtube || '',
-        youtubeActive: newVal.socialLinks?.youtubeActive !== false,
-        email: newVal.socialLinks?.email || '',
-        emailActive: newVal.socialLinks?.emailActive !== false
-      },
-      enable3dBackground: newVal.enable3dBackground !== false,
-      avatarMode: newVal.avatarMode || 'switchable',
-      enableSpringPhysics: newVal.enableSpringPhysics !== false
+// Profil verisi API'den ilk geldiğinde formu senkronize et (Döngü ve sayfa kilitlenmesini önlemek için derin watch kaldırıldı)
+watch(() => profile.value?.id, () => {
+  if (profile.value) {
+    profileForm.value.name = profile.value.name
+    profileForm.value.username = profile.value.username
+    profileForm.value.bio = profile.value.bio
+    profileForm.value.avatar = profile.value.avatar
+    profileForm.value.avatarShape = profile.value.avatarShape || 'circle'
+    profileForm.value.avatarGlow = profile.value.avatarGlow || 'yellow'
+    profileForm.value.statusText = profile.value.statusText !== undefined ? profile.value.statusText : 'Yeni Projelere & Fırsatlara Açık'
+    profileForm.value.statusColor = profile.value.statusColor || 'emerald'
+    profileForm.value.isVerified = profile.value.isVerified !== undefined ? profile.value.isVerified : true
+    profileForm.value.banner = profile.value.banner || ''
+    profileForm.value.bannerPattern = profile.value.bannerPattern || 'mesh'
+    profileForm.value.badges = Array.isArray(profile.value.badges) ? [...profile.value.badges] : []
+    profileForm.value.socialLinks = {
+      barVisible: profile.value.socialLinks?.barVisible !== false,
+      shape: profile.value.socialLinks?.shape || 'rounded-full',
+      style: profile.value.socialLinks?.style || 'glass',
+      github: profile.value.socialLinks?.github || '',
+      githubActive: profile.value.socialLinks?.githubActive !== false,
+      linkedin: profile.value.socialLinks?.linkedin || '',
+      linkedinActive: profile.value.socialLinks?.linkedinActive !== false,
+      instagram: profile.value.socialLinks?.instagram || '',
+      instagramActive: profile.value.socialLinks?.instagramActive !== false,
+      twitter: profile.value.socialLinks?.twitter || '',
+      twitterActive: profile.value.socialLinks?.twitterActive !== false,
+      youtube: profile.value.socialLinks?.youtube || '',
+      youtubeActive: profile.value.socialLinks?.youtubeActive !== false,
+      email: profile.value.socialLinks?.email || '',
+      emailActive: profile.value.socialLinks?.emailActive !== false
     }
+    profileForm.value.enable3dBackground = profile.value.enable3dBackground !== false
+    profileForm.value.avatarMode = profile.value.avatarMode || 'switchable'
+    profileForm.value.enableSpringPhysics = profile.value.enableSpringPhysics !== false
   }
-}, { deep: true })
+})
 
-// Formdaki sosyal medya ve görünüm değişikliklerini canlı telefon önizlemesine anında yansıt
+// Formdaki sosyal medya ve görünüm değişikliklerini canlı telefon önizlemesine güvenle yansıt (Sonsuz döngü korumalı)
 watch(
   () => profileForm.value.socialLinks,
   (newSocial) => {
     if (profile.value && newSocial) {
-      profile.value.socialLinks = {
-        ...(profile.value.socialLinks || {}),
-        ...newSocial
+      if (JSON.stringify(profile.value.socialLinks) !== JSON.stringify(newSocial)) {
+        profile.value.socialLinks = JSON.parse(JSON.stringify(newSocial))
       }
     }
   },

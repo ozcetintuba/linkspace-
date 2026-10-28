@@ -4,6 +4,17 @@ Tüm önemli mimari değişiklikler, özellik eklemeleri ve düzeltmeler bu dosy
 
 ---
 
+## [v0.36.3] - 2026-10-28 (Kritik Düzeltme: Dairesel Watcher Sonsuz Döngüsü & Tarayıcı Kilitlenmesi Onarımı)
+
+### 🛠️ Performans ve Kararlılık Onarımları
+- **Dairesel Reaktivite Döngüsü Kökten Engellendi (`AdminView.vue`)**:
+  - `watch(profile, ...)` ve `watch(() => profileForm.value.socialLinks, ...)` birbirlerini `{ deep: true }` üzerinden tetikleyerek tarayıcı ana iş parçacığında (UI Thread) sonsuz bir senkron döngü oluşturuyordu ve `localStorage.setItem` çağrılarıyla Chrome'da *"Bu sayfa yanıt vermiyor"* uyarısına sebep oluyordu.
+  - `profile` izleyicisi `watch(() => profile.value?.id)` haline getirilerek gereksiz derin döngü engellendi.
+  - `profileForm.value.socialLinks` izleyicisine `JSON.stringify` fark kontrolü eklenerek yalnızca gerçek kullanıcı girişlerinde ve tek seferlik güvenli güncelleme sağlandı.
+- **Frontend Derleme & Dağıtım**: Üretim paketi yeniden derlendi (`index-COmgzWwi.js`), yerel ve canlı ortamlara aktarıldı.
+
+---
+
 ## [v0.36.2] - 2026-10-28 (Kritik Düzeltme: AdminView Reaktif Durum ve Eylemlerin Entegrasyonu)
 
 ### 🛠️ Yönetici Paneli Onarımları
