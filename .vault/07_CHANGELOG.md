@@ -4,6 +4,33 @@ Tüm önemli mimari değişiklikler, özellik eklemeleri ve düzeltmeler bu dosy
 
 ---
 
+## [v0.35.0] - 2026-10-28 (Etkileşimli 3D / WebGL Profil Deneyimi - Three.js)
+
+### 🔮 1. Etkileşimli 3D Siber Maskot (Interactive Low-Poly 3D Avatar)
+- **Three.js Prosedürel 3D Siber Karakter (`ThreeAvatarMascot.vue`)**:
+  - Dış ağ indirmesine (harici `.gltf` / `.glb` dosyalarına) ihtiyaç duymadan sıfır gecikme ile yüklenen prosedürel 3D siber maskot mimarisi.
+  - Fasetli koyu titanyum kristal gövde (`IcosahedronGeometry`), kavisli vizör (`BoxGeometry`), çift siber neon sarı dijital gözler (`CylinderGeometry`), jiroskopik dönen orbital halkalar (`TorusGeometry`) ve rezonans kulak modülleri.
+- **Dinamik İmleç & Dokunmatik Takibi (Smooth Pointer Tracking)**:
+  - Masaüstünde fare imlecini, mobilde ise dokunmatik parmak hareketlerini yumuşak yaylanma (`lerp`) ile 3D uzayda takip eden kafa yönelimi (`yaw` / `pitch`).
+  - Sinüzoidal havada süzülme (levitation floating) animasyonu.
+- **Tıklama / Dokunma Mikro-Etkileşimi (Cheer & Spin)**:
+  - Maskota tıklandığında 360° takla dönüşü, yaylanmalı zıplama (boing spring physics), dijital göz kırpma (wink) ve neşeli tepki rozeti balonu gösterimi.
+- **2D / 3D Dönüştürülebilir Görünüm Düğmesi**:
+  - Ziyaretçiler profil sayfasında tek tıkla klasik 2D fotoğraf ile etkileşimli 3D maskot arasında anında geçiş yapabilir.
+
+### 🌌 2. WebGL 3D Parçacık Arka Planı (Parallax & Constellation Depth)
+- **Three.js Parçacık & Takımyıldızı Alanı (`ThreeBackground.vue`)**:
+  - Arka planda 3D uzay derinliğinde süzülen 320 adet neon sarı / kehribar parçacık (`BufferGeometry` + `PointsMaterial`).
+  - Birbirine yakın parçacıklar arasında dinamik takımyıldızı bağlantı çizgileri (`LineSegments`).
+  - Sayfa kaydırma, fare hareketi ve dokunmatik paralaks derinliği.
+  - Pil ve GPU koruması: Sekme gizlendiğinde (`document.hidden`) render döngüsünü otomatik durdurma ve görünür olduğunda yeniden başlatma.
+
+### ⚡ 3. Fizik Tabanlı Sekme & Yaylanma Animasyonları (Spring Physics)
+- Profil bağlantı kartlarında ve butonlarında basıldığında dokunsal geri bildirim sunan yaylanma fiziği (`active:scale-[0.96] active:duration-100 ease-[cubic-bezier(0.34,1.56,0.64,1)]`).
+- Yönetici Paneli "Görünüm" sekmesinde 3D parçacık arka planı, 3D maskot modu ve yaylanma fiziği açma/kapatma kontrolleri.
+
+---
+
 ## [v0.34.1] - 2026-10-28 (Profil Dışa/İçe Aktarma & vCard "Rehbere Ekle" Entegrasyonu)
 
 ### 📦 6. Profil Dışa/İçe Aktarma (Data Portability)

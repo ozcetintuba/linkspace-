@@ -1059,7 +1059,10 @@ const profileForm = ref({
   },
   groupByCategory: profile.value.groupByCategory !== undefined ? Boolean(profile.value.groupByCategory) : false,
   foldersDefaultExpanded: profile.value.foldersDefaultExpanded !== false,
-  showBadges: profile.value.showBadges !== undefined ? Boolean(profile.value.showBadges) : false
+  showBadges: profile.value.showBadges !== undefined ? Boolean(profile.value.showBadges) : false,
+  enable3dBackground: profile.value.enable3dBackground !== false,
+  avatarMode: profile.value.avatarMode || 'switchable',
+  enableSpringPhysics: profile.value.enableSpringPhysics !== false
 })
 const isSavingProfile = ref(false)
 
@@ -1245,7 +1248,10 @@ watch(profile, (newVal) => {
         youtubeActive: newVal.socialLinks?.youtubeActive !== false,
         email: newVal.socialLinks?.email || '',
         emailActive: newVal.socialLinks?.emailActive !== false
-      }
+      },
+      enable3dBackground: newVal.enable3dBackground !== false,
+      avatarMode: newVal.avatarMode || 'switchable',
+      enableSpringPhysics: newVal.enableSpringPhysics !== false
     }
   }
 }, { deep: true })
@@ -1298,7 +1304,10 @@ const handleSaveProfile = async () => {
     },
     groupByCategory: Boolean(profileForm.value.groupByCategory),
     foldersDefaultExpanded: profileForm.value.foldersDefaultExpanded !== false,
-    showBadges: Boolean(profileForm.value.showBadges)
+    showBadges: Boolean(profileForm.value.showBadges),
+    enable3dBackground: profileForm.value.enable3dBackground !== false,
+    avatarMode: profileForm.value.avatarMode || 'switchable',
+    enableSpringPhysics: profileForm.value.enableSpringPhysics !== false
   })
   isSavingProfile.value = false
   showToast('Profil ve sosyal medya ayarları kaydedildi!')
@@ -2615,6 +2624,133 @@ const handleChangePassword = async () => {
                           </span>
                           <Check v-if="profileForm.bannerPattern === pattern.id" class="w-3 h-3 shrink-0" :class="adminTheme === 'light' ? 'text-black' : 'text-[#FFFF00]'" />
                         </div>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- 1.15 ETKİLEŞİMLİ 3D & WEBGL PROFİL DENEYİMİ (Three.js) -->
+                <div class="space-y-4 pb-5 border-b" :class="themeClasses.headerBorder">
+                  <div class="flex items-center justify-between">
+                    <div>
+                      <label :class="['block text-xs font-bold flex items-center gap-1.5', themeClasses.titleText]">
+                        <Box class="w-3.5 h-3.5 text-[#FFFF00]" />
+                        <span>Etkileşimli 3D & WebGL Deneyimi (Three.js)</span>
+                        <span class="px-2 py-0.5 rounded-full text-[10px] font-mono font-bold bg-[#FFFF00]/15 text-[#FFFF00] border border-[#FFFF00]/30 uppercase">WebGL 60FPS</span>
+                      </label>
+                      <span :class="['text-[11px] block mt-0.5', themeClasses.subText]">
+                        Ziyaretçilere imleç takip eden 3D maskot, uzay parçacıkları ve yaylanma fiziği sunun.
+                      </span>
+                    </div>
+                  </div>
+
+                  <div class="grid grid-cols-1 md:grid-cols-2 gap-3.5">
+                    <!-- 3D Arka Plan Parçacıkları Toggle -->
+                    <div 
+                      class="p-3.5 rounded-xl border flex items-center justify-between transition-all"
+                      :class="profileForm.enable3dBackground 
+                        ? (adminTheme === 'light' ? 'bg-yellow-50 border-yellow-300' : 'bg-[#FFFF00]/5 border-[#FFFF00]/40') 
+                        : (adminTheme === 'dark' ? 'bg-[#141414] border-[#282828]' : 'bg-slate-50 border-slate-200')"
+                    >
+                      <div class="space-y-1 pr-3">
+                        <div class="flex items-center gap-2">
+                          <Sparkles class="w-4 h-4 text-[#FFFF00]" />
+                          <span :class="['text-xs font-bold', themeClasses.titleText]">3D Parçacık Arka Planı</span>
+                        </div>
+                        <p :class="['text-[11px] leading-relaxed', themeClasses.subText]">
+                          320 süzülen neon parçacık, takımyıldızı çizgileri ve fare/dokunmatik paralaks derinliği.
+                        </p>
+                      </div>
+                      <button 
+                        type="button"
+                        @click="profileForm.enable3dBackground = !profileForm.enable3dBackground"
+                        class="w-12 h-6 rounded-full transition-colors relative flex items-center p-0.5 cursor-pointer shrink-0"
+                        :class="profileForm.enable3dBackground ? 'bg-[#FFFF00]' : (adminTheme === 'dark' ? 'bg-neutral-800' : 'bg-slate-300')"
+                      >
+                        <div 
+                          class="w-5 h-5 rounded-full bg-black shadow-md transition-transform"
+                          :class="profileForm.enable3dBackground ? 'translate-x-6' : 'translate-x-0'"
+                        ></div>
+                      </button>
+                    </div>
+
+                    <!-- Buton Sekme & Yaylanma Fiziği (Spring Physics) Toggle -->
+                    <div 
+                      class="p-3.5 rounded-xl border flex items-center justify-between transition-all"
+                      :class="profileForm.enableSpringPhysics 
+                        ? (adminTheme === 'light' ? 'bg-yellow-50 border-yellow-300' : 'bg-[#FFFF00]/5 border-[#FFFF00]/40') 
+                        : (adminTheme === 'dark' ? 'bg-[#141414] border-[#282828]' : 'bg-slate-50 border-slate-200')"
+                    >
+                      <div class="space-y-1 pr-3">
+                        <div class="flex items-center gap-2">
+                          <Flame class="w-4 h-4 text-amber-500" />
+                          <span :class="['text-xs font-bold', themeClasses.titleText]">Sekme & Yaylanma Fiziği</span>
+                        </div>
+                        <p :class="['text-[11px] leading-relaxed', themeClasses.subText]">
+                          Bağlantılara basıldığında fizik tabanlı yaylanma ve dokunsal geri bildirim mikro-etkileşimi.
+                        </p>
+                      </div>
+                      <button 
+                        type="button"
+                        @click="profileForm.enableSpringPhysics = !profileForm.enableSpringPhysics"
+                        class="w-12 h-6 rounded-full transition-colors relative flex items-center p-0.5 cursor-pointer shrink-0"
+                        :class="profileForm.enableSpringPhysics ? 'bg-[#FFFF00]' : (adminTheme === 'dark' ? 'bg-neutral-800' : 'bg-slate-300')"
+                      >
+                        <div 
+                          class="w-5 h-5 rounded-full bg-black shadow-md transition-transform"
+                          :class="profileForm.enableSpringPhysics ? 'translate-x-6' : 'translate-x-0'"
+                        ></div>
+                      </button>
+                    </div>
+                  </div>
+
+                  <!-- Avatar Görünüm Modu Seçimi -->
+                  <div :class="['p-3.5 rounded-xl border', themeClasses.boxInner]">
+                    <label :class="['block text-[11px] font-bold mb-2', themeClasses.titleText]">
+                      Avatar Sunum Modu:
+                    </label>
+                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                      <button 
+                        type="button"
+                        @click="profileForm.avatarMode = 'switchable'"
+                        class="p-2.5 rounded-xl border text-left transition-all cursor-pointer flex flex-col justify-between"
+                        :class="profileForm.avatarMode === 'switchable' 
+                          ? (adminTheme === 'light' ? 'border-yellow-400 bg-[#FFFF00] text-black font-extrabold shadow-sm' : 'border-[#FFFF00] bg-[#FFFF00]/15 text-[#FFFF00] font-bold') 
+                          : (adminTheme === 'dark' ? 'border-[#282828] bg-[#141414] text-neutral-300 hover:border-neutral-600' : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300')"
+                      >
+                        <div class="flex items-center justify-between mb-1">
+                          <span class="text-xs font-bold">⚡ Dönüştürülebilir</span>
+                          <span class="text-[9px] px-1.5 py-0.2 rounded bg-black/20 font-mono">Önerilen</span>
+                        </div>
+                        <p class="text-[10px] opacity-80 leading-snug">Ziyaretçi 2D fotoğraf ve 3D maskot arasında tek tıkla geçiş yapabilir.</p>
+                      </button>
+
+                      <button 
+                        type="button"
+                        @click="profileForm.avatarMode = 'mascot'"
+                        class="p-2.5 rounded-xl border text-left transition-all cursor-pointer flex flex-col justify-between"
+                        :class="profileForm.avatarMode === 'mascot' 
+                          ? (adminTheme === 'light' ? 'border-yellow-400 bg-[#FFFF00] text-black font-extrabold shadow-sm' : 'border-[#FFFF00] bg-[#FFFF00]/15 text-[#FFFF00] font-bold') 
+                          : (adminTheme === 'dark' ? 'border-[#282828] bg-[#141414] text-neutral-300 hover:border-neutral-600' : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300')"
+                      >
+                        <div class="flex items-center justify-between mb-1">
+                          <span class="text-xs font-bold">🤖 3D Siber Maskot</span>
+                        </div>
+                        <p class="text-[10px] opacity-80 leading-snug">Varsayılan olarak fare ve parmağı takip eden siber kristal maskot açılır.</p>
+                      </button>
+
+                      <button 
+                        type="button"
+                        @click="profileForm.avatarMode = 'photo'"
+                        class="p-2.5 rounded-xl border text-left transition-all cursor-pointer flex flex-col justify-between"
+                        :class="profileForm.avatarMode === 'photo' 
+                          ? (adminTheme === 'light' ? 'border-yellow-400 bg-[#FFFF00] text-black font-extrabold shadow-sm' : 'border-[#FFFF00] bg-[#FFFF00]/15 text-[#FFFF00] font-bold') 
+                          : (adminTheme === 'dark' ? 'border-[#282828] bg-[#141414] text-neutral-300 hover:border-neutral-600' : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300')"
+                      >
+                        <div class="flex items-center justify-between mb-1">
+                          <span class="text-xs font-bold">👤 Klasik 2D Fotoğraf</span>
+                        </div>
+                        <p class="text-[10px] opacity-80 leading-snug">Sadece yüklediğiniz profil fotoğrafı gösterilir, 3D buton gizlenir.</p>
                       </button>
                     </div>
                   </div>

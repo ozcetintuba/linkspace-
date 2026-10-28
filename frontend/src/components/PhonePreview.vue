@@ -1,5 +1,6 @@
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, watch } from 'vue'
+import ThreeAvatarMascot from './ThreeAvatarMascot.vue'
 import { storeToRefs } from 'pinia'
 import { 
   useLinkStore, 
@@ -57,6 +58,11 @@ import {
   Check
 } from 'lucide-vue-next'
 
+const phoneAvatarMode = ref(profile.value.avatarMode === 'mascot' ? '3d' : '2d')
+watch(() => profile.value.avatarMode, (newMode) => {
+  if (newMode === 'mascot') phoneAvatarMode.value = '3d'
+  else if (newMode === 'photo') phoneAvatarMode.value = '2d'
+})
 const linkStore = useLinkStore()
 const { profile, links, activeTheme } = storeToRefs(linkStore)
 
@@ -449,25 +455,42 @@ const statusConfig = computed(() => {
               <div class="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-black/20"></div>
             </div>
 
-            <!-- Avatar -->
-            <div class="relative group mb-2 z-10">
-              <div 
-                v-if="profile.avatarGlow !== 'none'"
-                :class="[
-                  'absolute -inset-1 bg-gradient-to-r blur-xs opacity-80',
-                  avatarShapeClass,
-                  avatarGlowConfig.glowGradient
-                ]"
-              ></div>
-              <img 
-                :src="profile.avatar" 
-                :alt="profile.name" 
-                class="relative w-16 h-16 object-cover border-2 shadow-lg ring-2 ring-black/40 transition-all"
-                :class="[
-                  avatarShapeClass,
-                  profile.avatarGlow !== 'none' ? avatarGlowConfig.borderClass : (activeTheme.id === 'pure-light' ? 'border-yellow-500/40' : 'border-[#FFFF00]/50')
-                ]"
-              />
+            <!-- Avatar veya 3D Siber Maskot -->
+            <div class="relative group mb-2 z-10 flex flex-col items-center">
+              <div v-if="phoneAvatarMode === '3d'" class="relative flex items-center justify-center">
+                <ThreeAvatarMascot :size="68" :theme="activeTheme.id" :interactive="true" />
+              </div>
+              <div v-else class="relative">
+                <div 
+                  v-if="profile.avatarGlow !== 'none'"
+                  :class="[
+                    'absolute -inset-1 bg-gradient-to-r blur-xs opacity-80',
+                    avatarShapeClass,
+                    avatarGlowConfig.glowGradient
+                  ]"
+                ></div>
+                <img 
+                  :src="profile.avatar" 
+                  :alt="profile.name" 
+                  class="relative w-16 h-16 object-cover border-2 shadow-lg ring-2 ring-black/40 transition-all"
+                  :class="[
+                    avatarShapeClass,
+                    profile.avatarGlow !== 'none' ? avatarGlowConfig.borderClass : (activeTheme.id === 'pure-light' ? 'border-yellow-500/40' : 'border-[#FFFF00]/50')
+                  ]"
+                />
+              </div>
+
+              <!-- Mini 3D / 2D Çevirici Buton -->
+              <button 
+                v-if="profile.avatarMode === 'switchable' || !profile.avatarMode"
+                type="button"
+                @click="phoneAvatarMode = phoneAvatarMode === '3d' ? '2d' : '3d'"
+                class="absolute -bottom-1 -right-1 z-20 px-1.5 py-0.2 rounded-full text-[7.5px] font-mono font-bold tracking-wider uppercase border shadow-sm flex items-center gap-0.5 cursor-pointer backdrop-blur-md"
+                :class="activeTheme.id === 'pure-light' ? 'bg-white text-slate-800 border-slate-300' : 'bg-black text-[#FFFF00] border-[#FFFF00]/50'"
+                :title="phoneAvatarMode === '3d' ? '2D Fotoğrafa Dön' : '3D Maskota Geç'"
+              >
+                <span>{{ phoneAvatarMode === '3d' ? '2D' : '3D' }}</span>
+              </button>
             </div>
 
             <!-- Canlı Müsaitlik / Durum Rozeti -->

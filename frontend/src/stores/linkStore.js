@@ -749,7 +749,10 @@ const DEFAULT_PROFILE = {
   foldersDefaultExpanded: true,
   showBadges: false,
   customDomain: '',
-  subdomain: ''
+  subdomain: '',
+  enable3dBackground: true,
+  avatarMode: 'switchable',
+  enableSpringPhysics: true
 }
 
 export const formatForDatetimeInput = (val) => {
@@ -1336,7 +1339,10 @@ export const useLinkStore = defineStore('links', () => {
             },
             groupByCategory: data.profile.groupByCategory !== undefined ? Boolean(data.profile.groupByCategory) : false,
             foldersDefaultExpanded: data.profile.foldersDefaultExpanded !== undefined ? Boolean(data.profile.foldersDefaultExpanded) : true,
-            showBadges: data.profile.showBadges !== undefined ? Boolean(data.profile.showBadges) : false
+            showBadges: data.profile.showBadges !== undefined ? Boolean(data.profile.showBadges) : false,
+            enable3dBackground: data.profile.enable3dBackground !== undefined ? Boolean(data.profile.enable3dBackground) : true,
+            avatarMode: data.profile.avatarMode || 'switchable',
+            enableSpringPhysics: data.profile.enableSpringPhysics !== undefined ? Boolean(data.profile.enableSpringPhysics) : true
           }
         }
         if (Array.isArray(data.links)) {

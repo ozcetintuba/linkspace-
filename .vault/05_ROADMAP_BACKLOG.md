@@ -396,10 +396,34 @@ Bu liste, projenin geliştirme fazlarını ve önceliklendirilmiş iş paketleri
 
 ---
 
+## 📌 Faz 22: PWA, Akıllı Link Ağacı, A/B Split Testing & Veri Taşınabilirliği (TAMAMLANDI ✅)
+- [x] **Görev 22.1: PWA Desteği**: `manifest.json`, `sw.js` ve `PwaInstallPrompt.vue` ile masaüstü ve mobil ana ekrana ekleme.
+- [x] **Görev 22.2: Akıllı Link Ağacı & Bölüm Ayraçları**: `isHeader` bölüm başlıkları ve akordeon/klasörleme modları.
+- [x] **Görev 22.3: A/B Testi Altyapısı**: Bağlantı başlık ve URL varyant split testi, %50/%50 gösterim ve kazanan varyant analizi.
+- [x] **Görev 22.4: Profil Dışa/İçe Aktarma**: JSON/CSV yedek dışa aktarma ve JSON yedekten geri yükleme.
+- [x] **Görev 22.5: vCard (.vcf) "Kişilerime Kaydet" Entegrasyonu**: Tek tıkla telefona rehber kişisi olarak kaydetme.
+
+---
+
+## 📌 Faz 23: Etkileşimli 3D / WebGL Profil Deneyimi & Yaylanma Fiziği (TAMAMLANDI ✅)
+- [x] **Görev 23.1: Prosedürel 3D Siber Maskot (`ThreeAvatarMascot.vue`)**:
+  - Three.js tabanlı, harici ağ indirmesi gerektirmeyen düşük poligonlu siber karakter.
+  - Yumuşak imleç ve dokunmatik takip lerp yönelimi (`yaw` / `pitch`), sinüzoidal havada süzülme animasyonu.
+  - Tıklama ile 360° spin, yaylanmalı zıplama ve neşeli tepki rozeti.
+  - Ziyaretçi için 2D/3D geçiş butonu (`⚡ 3D Maskot` / `👤 2D Foto`).
+- [x] **Görev 23.2: WebGL 3D Parçacık Arka Planı (`ThreeBackground.vue`)**:
+  - 320 süzülen neon parçacık, takımyıldızı bağlantı çizgileri ve fare/dokunmatik paralaks derinliği.
+  - `document.hidden` olayında otomatik duraklatma ile pil ve GPU koruması.
+- [x] **Görev 23.3: Sekme & Yaylanma Fiziği (Spring Physics Micro-Interactions)**:
+  - Buton ve link kartlarında dokunsal yaylanma ve sekme mikro-mekanikleri (`active:scale-[0.96] active:duration-100 ease-[cubic-bezier(0.34,1.56,0.64,1)]`).
+- [x] **Görev 23.4: Yönetici Paneli Görünüm Kontrolleri (`AdminView.vue`)**:
+  - 3D parçacık arka planı açma/kapama, avatar sunum modu seçimi (Dönüştürülebilir / Daima 3D / Daima 2D) ve sekme fiziği toggle switch'leri.
+
+---
+
 ## 📌 Sıradaki Aday Fazlar (Gelecek Yol Haritası)
-- **Faz 22 (Aşama 3)**: Derinlemesine Analitik ve Metrik Takibi (Referrer/Kaynak Takibi, Cihaz Dağılımı Grafikleri, Saatlik Tıklama Trendleri).
-- **Faz 23 (Aşama 4)**: Çoklu Profil / Sayfa Yönetimi (Multi-Tenant Profile Switching).
-- **Faz 24 (Aşama 5)**: Canlı Entegrasyonlar ve Webhook'lar (Discord / Telegram / Slack anlık bildirimleri).
+- **Faz 24**: Çoklu Profil / Sayfa Yönetimi (Multi-Tenant Profile Switching).
+- **Faz 25**: Canlı Entegrasyonlar ve Webhook'lar (Discord / Telegram / Slack anlık bildirimleri).
 
 
 

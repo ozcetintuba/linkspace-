@@ -1,6 +1,8 @@
 <script setup>
 import { ref, computed, watch, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
+import ThreeBackground from '../components/ThreeBackground.vue'
+import ThreeAvatarMascot from '../components/ThreeAvatarMascot.vue'
 import { storeToRefs } from 'pinia'
 import QRCode from 'qrcode'
 import { 
@@ -71,6 +73,20 @@ import {
   Minimize2,
   UserPlus
 } from 'lucide-vue-next'
+
+// 3D WebGL Avatar ve Maskot Durumu
+const currentAvatarView = ref(
+  profile.value?.avatarMode === 'mascot' ? '3d' : '2d'
+)
+
+watch(() => profile.value?.avatarMode, (newMode) => {
+  if (newMode === 'mascot') currentAvatarView.value = '3d'
+  else if (newMode === 'photo') currentAvatarView.value = '2d'
+})
+
+const toggleAvatarMode = () => {
+  currentAvatarView.value = currentAvatarView.value === '3d' ? '2d' : '3d'
+}
 
 const linkStore = useLinkStore()
 const { profile, links, activeTheme, currentTheme, seoSettings } = storeToRefs(linkStore)
@@ -862,6 +878,12 @@ const handleDownloadVCard = async () => {
       activeTheme.id === 'pure-light' ? 'bg-ambient-grid-light text-slate-800' : 'bg-ambient-grid text-white'
     ]"
   >
+    <!-- Three.js WebGL Arka Plan Parçacıkları (Parallax & Constellation) -->
+    <ThreeBackground 
+      :theme="activeTheme.id" 
+      :enabled="profile.enable3dBackground !== false" 
+    />
+
     <!-- Ambiyans Işık Efektleri (Arka Plan Derinliği) -->
     <div class="pointer-events-none absolute -top-40 left-1/2 -translate-x-1/2 w-[700px] h-[350px] bg-gradient-to-b from-[#FFFF00]/12 via-[#FFFF00]/4 to-transparent blur-[140px] rounded-full"></div>
     <div class="pointer-events-none absolute top-1/3 -left-48 w-[450px] h-[450px] bg-yellow-500/5 blur-[160px] rounded-full"></div>
@@ -1031,25 +1053,52 @@ const handleDownloadVCard = async () => {
         <div class="absolute inset-0 bg-gradient-to-t from-black/75 via-transparent to-black/25"></div>
       </div>
 
-      <!-- Avatar Görseli -->
-      <div class="relative group mb-3 z-10">
-        <div 
-          v-if="profile.avatarGlow !== 'none'"
-          :class="[
-            'absolute -inset-1.5 bg-gradient-to-r blur-md opacity-85 group-hover:opacity-100 transition duration-300',
-            avatarShapeClass,
-            avatarGlowConfig.glowGradient
-          ]"
-        ></div>
-        <img 
-          :src="profile.avatar" 
-          :alt="profile.name" 
-          class="relative w-28 h-28 sm:w-32 sm:h-32 object-cover border-4 shadow-2xl ring-4 ring-black/50 transition-all"
-          :class="[
-            avatarShapeClass,
-            profile.avatarGlow !== 'none' ? avatarGlowConfig.borderClass : (activeTheme.id === 'pure-light' ? 'border-white' : 'border-[#141414]')
-          ]"
-        />
+      <!-- Avatar Görseli veya 3D Siber Maskot -->
+      <div class="relative group mb-3 z-10 flex flex-col items-center">
+        <!-- 3D Siber Maskot Deneyimi (Three.js WebGL) -->
+        <div v-if="currentAvatarView === '3d'" class="relative flex items-center justify-center">
+          <ThreeAvatarMascot 
+            :size="132" 
+            :theme="activeTheme.id" 
+            :interactive="true"
+          />
+        </div>
+
+        <!-- Klasik 2D Profil Fotoğrafı -->
+        <div v-else class="relative">
+          <div 
+            v-if="profile.avatarGlow !== 'none'"
+            :class="[
+              'absolute -inset-1.5 bg-gradient-to-r blur-md opacity-85 group-hover:opacity-100 transition duration-300',
+              avatarShapeClass,
+              avatarGlowConfig.glowGradient
+            ]"
+          ></div>
+          <img 
+            :src="profile.avatar" 
+            :alt="profile.name" 
+            class="relative w-28 h-28 sm:w-32 sm:h-32 object-cover border-4 shadow-2xl ring-4 ring-black/50 transition-all"
+            :class="[
+              avatarShapeClass,
+              profile.avatarGlow !== 'none' ? avatarGlowConfig.borderClass : (activeTheme.id === 'pure-light' ? 'border-white' : 'border-[#141414]')
+            ]"
+          />
+        </div>
+
+        <!-- 2D / 3D Geçiş Rozeti / Düğmesi -->
+        <button 
+          v-if="profile.avatarMode === 'switchable' || !profile.avatarMode"
+          type="button"
+          @click="toggleAvatarMode"
+          class="absolute -bottom-2 right-0 z-20 px-2.5 py-0.5 rounded-full text-[10px] font-mono font-extrabold tracking-wider uppercase border shadow-lg flex items-center gap-1.5 transition-all hover:scale-105 active:scale-95 cursor-pointer backdrop-blur-md"
+          :class="activeTheme.id === 'pure-light'
+            ? 'bg-white/95 text-slate-900 border-slate-300 hover:border-yellow-500 shadow-slate-900/10'
+            : 'bg-black/90 text-[#FFFF00] border-[#FFFF00]/50 hover:bg-[#FFFF00]/10 shadow-yellow-500/20'"
+          :title="currentAvatarView === '3d' ? '2D Profil Fotoğrafına Dön' : '3D Siber Maskota Geç'"
+        >
+          <Zap class="w-2.5 h-2.5 text-[#FFFF00] fill-[#FFFF00]" />
+          <span>{{ currentAvatarView === '3d' ? '2D Foto' : '3D Maskot' }}</span>
+        </button>
       </div>
 
       <!-- Canlı Çalışma / Fırsat Durum Rozeti -->
@@ -1203,7 +1252,7 @@ const handleDownloadVCard = async () => {
               type="button"
               @click="handleLinkAction(item.link)"
               :class="[
-                'group relative flex items-center justify-between w-full transition-all duration-300 text-left cursor-pointer select-none',
+                'group relative flex items-center justify-between w-full transition-all duration-300 text-left cursor-pointer select-none active:scale-[0.96] active:duration-100 ease-[cubic-bezier(0.34,1.56,0.64,1)]',
                 activeTheme.id === 'pure-light'
                   ? 'p-3.5 sm:p-4 rounded-full bg-[#FFFF00] hover:bg-[#EEFF00] text-black shadow-md shadow-yellow-500/25 hover:shadow-xl hover:shadow-yellow-500/40 hover:scale-[1.01] active:scale-[0.99] border border-yellow-300/60'
                   : 'p-4 sm:p-4.5 rounded-2xl border backdrop-blur-md hover:-translate-y-1 hover:shadow-2xl hover:border-l-4 hover:border-l-[#FFFF00]',
