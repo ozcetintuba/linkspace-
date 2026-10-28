@@ -158,6 +158,11 @@ const getBadgeIcon = (iconName) => {
   return BADGE_ICON_MAP[iconName] || Sparkles
 }
 
+const getBadgeText = (badge) => {
+  if (typeof badge === 'string') return badge.trim()
+  return (badge?.text || '').trim()
+}
+
 const getBadgeClass = (badge) => {
   const isLight = activeTheme.value.id === 'pure-light'
   const found = BADGE_COLOR_STYLES.find(s => s.id === badge.color)
@@ -954,17 +959,18 @@ const getLinkSubtitle = (link) => {
         v-if="profile.badges && profile.badges.length > 0" 
         class="flex items-center justify-center flex-wrap gap-2 mb-6 select-none"
       >
-        <span 
-          v-for="badge in profile.badges" 
-          :key="badge.id"
-          :class="[
-            'inline-flex items-center gap-1.5 px-3 py-1 rounded-xl text-xs font-medium border shadow-xs transition-all duration-200 hover:scale-105 select-none',
-            getBadgeClass(badge)
-          ]"
-        >
-          <component :is="getBadgeIcon(badge.icon)" class="w-3.5 h-3.5" :class="getBadgeIconColor(badge)" />
-          <span>{{ badge.text }}</span>
-        </span>
+        <template v-for="(badge, bIdx) in profile.badges" :key="badge.id || bIdx">
+          <span 
+            v-if="getBadgeText(badge)"
+            :class="[
+              'inline-flex items-center gap-1.5 px-3 py-1 rounded-xl text-xs font-medium border shadow-xs transition-all duration-200 hover:scale-105 select-none',
+              getBadgeClass(badge)
+            ]"
+          >
+            <component :is="getBadgeIcon(badge.icon)" class="w-3.5 h-3.5" :class="getBadgeIconColor(badge)" />
+            <span>{{ getBadgeText(badge) }}</span>
+          </span>
+        </template>
       </div>
 
 

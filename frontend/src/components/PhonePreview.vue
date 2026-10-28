@@ -80,6 +80,11 @@ const getBadgeIcon = (iconName) => {
   return BADGE_ICON_MAP[iconName] || Sparkles
 }
 
+const getBadgeText = (badge) => {
+  if (typeof badge === 'string') return badge.trim()
+  return (badge?.text || '').trim()
+}
+
 const getBadgeClass = (badge) => {
   const isLight = activeTheme.value.id === 'pure-light'
   const found = BADGE_COLOR_STYLES.find(s => s.id === badge.color)
@@ -496,17 +501,18 @@ const statusConfig = computed(() => {
               v-if="profile.badges && profile.badges.length > 0"
               class="flex items-center justify-center flex-wrap gap-1 mt-2 max-w-[230px]"
             >
-              <span 
-                v-for="badge in profile.badges" 
-                :key="badge.id"
-                :class="[
-                  'inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[8.5px] font-medium border shadow-2xs',
-                  getBadgeClass(badge)
-                ]"
-              >
-                <component :is="getBadgeIcon(badge.icon)" class="w-2.5 h-2.5 shrink-0" :class="getBadgeIconColor(badge)" />
-                <span class="truncate max-w-[70px]">{{ badge.text }}</span>
-              </span>
+              <template v-for="(badge, bIdx) in profile.badges" :key="badge.id || bIdx">
+                <span 
+                  v-if="getBadgeText(badge)"
+                  :class="[
+                    'inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[8.5px] font-medium border shadow-2xs',
+                    getBadgeClass(badge)
+                  ]"
+                >
+                  <component :is="getBadgeIcon(badge.icon)" class="w-2.5 h-2.5 shrink-0" :class="getBadgeIconColor(badge)" />
+                  <span class="truncate max-w-[70px]">{{ getBadgeText(badge) }}</span>
+                </span>
+              </template>
             </div>
 
             <!-- Hızlı Sosyal Medya İkon Barı -->

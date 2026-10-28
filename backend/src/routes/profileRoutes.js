@@ -18,7 +18,11 @@ const mockProfile = {
   isVerified: true,
   banner: '',
   bannerPattern: 'mesh',
-  badges: ['Full-Stack', 'Vue.js', 'Open Source'],
+  badges: [
+    { id: 'badge-1', text: 'Full-Stack Developer', icon: 'Code', color: 'default' },
+    { id: 'badge-2', text: 'Vue 3 & Express', icon: 'Sparkles', color: 'yellow' },
+    { id: 'badge-3', text: 'İstanbul, TR', icon: 'MapPin', color: 'default' }
+  ],
   socialLinks: {
     github: 'https://github.com',
     twitter: 'https://twitter.com',
