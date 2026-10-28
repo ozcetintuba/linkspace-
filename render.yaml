@@ -20,5 +20,5 @@ services:
 databases:
   - name: linkspace-db
     databaseName: linktree_db
-    user: postgres
+    user: linkspace_user
     plan: free

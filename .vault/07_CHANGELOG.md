@@ -7,6 +7,8 @@ Tüm önemli mimari değişiklikler, özellik eklemeleri ve düzeltmeler bu dosy
 ## [v0.32.0] - 2026-10-28 (Kurumsal Güvenlik Kalkanı, Rate Limiting & ETag/TTL Önbellek Mimarisi)
 
 ### 🛡️ Güvenlik Sertleştirmeleri & Hız Sınırlama (Rate Limiting)
+- **`render.yaml`**:
+  - Render PostgreSQL üzerinde `postgres` kullanıcı adı ayrılmış/yasaklı olduğundan `databases[0].user: linkspace_user` olarak düzeltildi.
 - **`backend/src/middleware/rateLimiter.js`**:
   - Dış bağımlılık olmadan çalışan kayan pencere (Sliding Window) ve periyodik çöp toplayıcılı bellek içi rate limiter geliştirildi.
   - `globalLimiter`: 15 dakikada 300 istek limiti ile genel API koruması.
