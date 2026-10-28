@@ -1,6 +1,7 @@
 import { Router } from 'express'
 import { query } from '../db.js'
 import { requireAuth } from '../middleware/authMiddleware.js'
+import { messagesLimiter } from '../middleware/rateLimiter.js'
 
 const router = Router()
 
@@ -32,8 +33,8 @@ let mockMessages = [
 ]
 let nextMockId = 3
 
-// 1. POST /api/messages - Ziyaretçilerin mesaj göndermesi (Açık Uç Nokta)
-router.post('/', async (req, res) => {
+// 1. POST /api/messages - Ziyaretçilerin mesaj göndermesi (Açık Uç Nokta, Spam Korumalı)
+router.post('/', messagesLimiter, async (req, res) => {
   try {
     const { name, email, message } = req.body
 

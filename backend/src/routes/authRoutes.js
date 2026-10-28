@@ -3,13 +3,14 @@ import bcrypt from 'bcryptjs'
 import jwt from 'jsonwebtoken'
 import { query } from '../db.js'
 import { requireAuth } from '../middleware/authMiddleware.js'
+import { authLimiter } from '../middleware/rateLimiter.js'
 
 const router = Router()
 const JWT_SECRET = process.env.JWT_SECRET || 'super_secret_linktree_jwt_key_2026_x99!'
 const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '7d'
 
 // POST /api/auth/register (Email, şifre hash'leme, benzersiz username kontrolü)
-router.post('/register', async (req, res) => {
+router.post('/register', authLimiter, async (req, res) => {
   try {
     const { username, email, password, name } = req.body
 
@@ -132,7 +133,7 @@ const createDemoSession = (res) => {
 }
 
 // POST /api/auth/login
-router.post('/login', async (req, res) => {
+router.post('/login', authLimiter, async (req, res) => {
   try {
     const { username, password } = req.body
 

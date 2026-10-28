@@ -1,6 +1,6 @@
 # 🔍 02 - MEVCUT DURUM VE TEKNİK BORÇ ANALİZİ (CURRENT STATE)
 
-> **Son Güncelleme**: 23 Ekim 2026 (Zengin Link Türleri: Akıllı Embed Oynatıcı & Kilitli/Hassas Linkler - v0.31.0)  
+> **Son Güncelleme**: 28 Ekim 2026 (Kurumsal Güvenlik Kalkanı, Rate Limiting & ETag/TTL Önbellek Mimarisi - v0.32.0)  
 > **Durum**: Full-Stack Mimari (Express + PostgreSQL + Vue 3) + Dribbble Sales CRM (#0C0C0B, #161616, #FFFF00) Tasarım Sistemi  
 > **Proje Türü**: Full-Stack Linktree & Link Hub (CRM Dark & Light Edition)
 
@@ -11,19 +11,23 @@
 ### A. `backend/` (Express.js REST API Servisi)
 - **Sunucu Portu**: `:5000`
 - **Uç Noktalar**:
-  - `/api/profile`: Profil GET & PUT (sosyal medya bağlantıları `socialLinks JSONB` dahil).
-  - `/api/profile/:username`: Ziyaretçiler için profil ve yalnızca aktif (`is_active = true`) bağlantılar (olmayan kullanıcıda 404 durumu, graceful fallback korumalı).
+  - `/api/profile`: Profil GET & PUT (60s TTL & ETag önbellekli GET, sosyal medya bağlantıları `socialLinks JSONB` dahil).
+  - `/api/profile/:username`: Ziyaretçiler için profil ve yalnızca aktif (`is_active = true`) bağlantılar (60s TTL & ETag önbellekli, olmayan kullanıcıda 404 durumu, graceful fallback korumalı).
   - `/api/links`: CRUD, atomik tıklama artırma (`/click`), sıralama güncelleme (`PUT /reorder` & `POST /reorder`), sayaç sıfırlama (`/reset-clicks`). **Güvenli ve Geçerli URL Regex doğrulamalı (`isValidUrl`), XSS korumalı (`javascript:`, `data:` vb. engelleme)**. **Zaman Ayarlı / Süresi Dolan Bağlantı Desteği (`is_scheduled`, `schedule_start`, `schedule_end`, `show_countdown`)**; süresi dolan bağlantılar ziyaretçi sorgularında (`profileRoutes.js`) otomatik olarak filtrelenerek gizlenir. **Bağlantı Kategorileri & Klasörler (`category` VARCHAR)**: Bağlantıları klasörler altında gruplama, akordeon açılır/kapanır gösterim ve kategori filtreleme. **Zengin Link Türleri (Smart / Rich Links)**: Otomatik URL algılamalı mini oynatıcı embed desteği (`embed_type`, `show_embed` - YouTube, Spotify, SoundCloud) ve kilitli bağlantı koruması (`is_locked`, `lock_type`, `passcode`, `lock_warning` - 4 haneli PIN şifresi veya 18+ yaş onayı modalı).
-  - `/api/ai/tones`, `/api/ai/generate-bio`: Yapay zeka biyografi metin üretim motoru. Kullanıcının unvanı, uzmanlık etiketleri ve ses tonuna göre 4 farklı stilde (Kurumsal, Samimi & Girişimci, Minimalist Siberpunk, Yaratıcı) karakter limitli (160 karaktere tam uyumlu) bio alternatifleri üretir. Kesintisiz çevrimdışı fallback mimarilidir.
-  - `/api/settings/theme`: Tema okuma ve kaydetme (çevrimdışı bellek içi fallback korumalı).
-  - `/api/settings/seo`: OpenGraph başlık, açıklama, görsel ve özel domain yapılandırması (GET public & PUT auth korumalı, çevrimdışı fallback korumalı).
+  - `/api/ai/tones`, `/api/ai/generate-bio`: Yapay zeka biyografi metin üretim motoru (AI bot korumalı `aiLimiter`: 1 dakikada maks 5 istek). Kullanıcının unvanı, uzmanlık etiketleri ve ses tonuna göre 4 farklı stilde bio alternatifleri üretir.
+  - `/api/settings/theme`: Tema okuma ve kaydetme (60s TTL & ETag önbellekli GET, çevrimdışı bellek içi fallback korumalı).
+  - `/api/settings/seo`: OpenGraph başlık, açıklama, görsel ve özel domain yapılandırması (60s TTL & ETag önbellekli GET, çevrimdışı fallback korumalı).
   - `/api/settings/verify-domain`: Özel alan adı DNS CNAME ve A-kaydı doğrulama testi (POST auth korumalı).
-  - `/api/auth/register`: Yeni kullanıcı kaydı (email, benzersiz kullanıcı adı kontrolü, bcrypt parola hashleme ve profil tohumlama).
-  - `/api/auth/login`, `/api/auth/me`, `/api/auth/change-password`: JWT tabanlı oturum açma, doğrulama ve şifre değiştirme.
+  - `/api/settings/cache/stats`, `/api/settings/cache/clear`: Yönetici için anlık RAM önbellek istatistikleri ve tek tıkla önbellek sıfırlama rotaları.
+  - `/api/auth/register`, `/api/auth/login`: Brute-Force korumalı (`authLimiter`: 15 dakikada maks 10 deneme), JWT tabanlı oturum açma, doğrulama ve şifre değiştirme.
   - `/api/analytics`: Ziyaretçi ve QR cihaz analitiği (GET `/`, POST `/visit`, POST `/simulate`, POST `/reset`).
-  - `/api/messages`: Ziyaretçi mesaj gönderimi (`POST /`), admin mesaj listesi ve okunmamış sayısı (`GET /`), okundu durumu güncelleme (`PATCH /:id/read`), mesaj silme (`DELETE /:id`), anlık demo mesaj simülasyonu (`POST /simulate`). Dayanıklı bellek içi fallback (offline-resilient in-memory fallback) korumalı.
+  - `/api/messages`: Ziyaretçi mesaj gönderimi (`POST /` - Spam korumalı `messagesLimiter`: 1 saatte maks 5 mesaj), admin mesaj listesi ve okunmamış sayısı (`GET /`), okundu durumu güncelleme (`PATCH /:id/read`), mesaj silme (`DELETE /:id`), anlık demo mesaj simülasyonu (`POST /simulate`).
   - `/api/docs`, `/api/docs/swagger.json`, `/api/docs/postman.json`: İnteraktif Swagger UI, raw OpenAPI 3.0 JSON ve indirilebilir Postman koleksiyonu.
-  - `/api/health`: Canlılık kontrolü.
+  - `/api/health`: Canlılık, RAM bellek kullanımı, rate limiter, ETag önbellek durumu ve aktif versiyon kontrolü (`v0.32.0`).
+- **Güvenlik ve Önbellek Mimarisi**:
+  - `securityHeaders.js`: HSTS (1 yıl), X-Frame-Options (Clickjacking koruması), X-Content-Type-Options (MIME Sniffing koruması), Strict Referrer Policy ve X-Powered-By gizleme.
+  - `rateLimiter.js`: Kayan pencere (Sliding Window) ve periyodik çöp toplayıcılı hafif bellek içi hız sınırlayıcı (Global, Auth, AI ve Messages limiter'ları).
+  - `cacheService.js`: RAM üzerinde ETag hash'leme ve HTTP 304 Not Modified yanıtı sunan 60s TTL önbellek servisi. Link, profil veya SEO güncellendiğinde otomatik önbellek geçersiz kılma (`invalidateCache`).
 - **Üretim Dağıtım Mimarisi (Render & GitHub)**: Kök `package.json` ile tek komutta frontend ve backend derleme (`npm run build`), Express üzerinden `frontend/dist` statik SPA sunumu (`express.static` ve catch-all SPA router), `render.yaml` Blueprint ile tek tıkla PostgreSQL veritabanı + Node.js servisi orkestrasyonu.
 - **Veritabanı Katmanı**:
   - `src/db.js`: PostgreSQL havuzu (`pg.Pool`).

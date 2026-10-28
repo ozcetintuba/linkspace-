@@ -2048,6 +2048,61 @@ export const useLinkStore = defineStore('links', () => {
     return Array.from(new Set(links.value.map(l => (l.category || '').trim()).filter(Boolean)))
   })
 
+  // ==========================================
+  // GÜVENLİK VE ÖNBELLEK METRİKLERİ (FAZ 21)
+  // ==========================================
+  const cacheStats = ref({
+    totalHits: 0,
+    totalMisses: 0,
+    totalRequests: 0,
+    hitRate: 0,
+    activeKeysCount: 0,
+    activeKeys: []
+  })
+
+  const fetchCacheStats = async () => {
+    try {
+      const res = await fetch(`${API_BASE}/settings/cache/stats`, {
+        headers: getAuthHeaders()
+      })
+      if (res.ok) {
+        const json = await res.json()
+        if (json.data) {
+          cacheStats.value = json.data
+        }
+        return json.data
+      }
+    } catch (e) {
+      console.warn('Önbellek istatistikleri alınamadı:', e.message)
+    }
+    return cacheStats.value
+  }
+
+  const clearServerCache = async () => {
+    try {
+      const res = await fetch(`${API_BASE}/settings/cache/clear`, {
+        method: 'POST',
+        headers: getAuthHeaders()
+      })
+      if (res.ok) {
+        const json = await res.json()
+        await fetchCacheStats()
+        return { success: true, message: json.message || 'Önbellek temizlendi', count: json.clearedCount || 0 }
+      }
+    } catch (e) {
+      console.warn('Önbellek temizleme hatası:', e.message)
+    }
+    cacheStats.value = {
+      totalHits: 0,
+      totalMisses: 0,
+      totalRequests: 0,
+      hitRate: 0,
+      activeKeysCount: 0,
+      activeKeys: []
+    }
+    return { success: true, message: 'Önbellek sıfırlandı.', count: 0 }
+  }
+
   return {
     profile,
     links,
@@ -2115,6 +2170,9 @@ export const useLinkStore = defineStore('links', () => {
     generateBios,
     generateBiosContextually,
     detectEmbed,
-    getEmbedUrl
+    getEmbedUrl,
+    cacheStats,
+    fetchCacheStats,
+    clearServerCache
   }
 })

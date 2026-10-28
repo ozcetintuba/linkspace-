@@ -1,6 +1,7 @@
 import { Router } from 'express'
 import { query } from '../db.js'
 import { requireAuth } from '../middleware/authMiddleware.js'
+import { cacheMiddleware, invalidateCache, cacheService } from '../middleware/cacheService.js'
 
 const router = Router()
 
@@ -20,8 +21,8 @@ const mockSettings = {
 // TEMA AYARLARI
 // ========================================================
 
-// GET /api/settings/theme (Herkese açık)
-router.get('/theme', async (req, res) => {
+// GET /api/settings/theme (Herkese açık, 60s TTL & ETag Önbellekli)
+router.get('/theme', cacheMiddleware(60), async (req, res) => {
   try {
     try {
       const result = await query("SELECT value FROM settings WHERE key = 'theme'")
@@ -57,6 +58,7 @@ router.put('/theme', requireAuth, async (req, res) => {
       mockSettings.theme = theme
     }
 
+    invalidateCache('theme')
     res.json({ theme, message: 'Tema başarıyla kaydedildi' })
   } catch (error) {
     console.error('Tema güncelleme hatası:', error)
@@ -68,8 +70,8 @@ router.put('/theme', requireAuth, async (req, res) => {
 // SEO & SOSYAL PAYLAŞIM AYARLARI (FAZ 16 - SEÇENEK B)
 // ========================================================
 
-// GET /api/settings/seo (Herkese açık - Profil ve Önizleme için)
-router.get('/seo', async (req, res) => {
+// GET /api/settings/seo (Herkese açık - Profil ve Önizleme için, 60s TTL & ETag Önbellekli)
+router.get('/seo', cacheMiddleware(60), async (req, res) => {
   try {
     try {
       const result = await query("SELECT value FROM settings WHERE key = 'seo'")
@@ -112,6 +114,9 @@ router.put('/seo', requireAuth, async (req, res) => {
       console.warn('⚠️ [DB Çevrimdışı] SEO ayarları belleğe kaydediliyor:', dbErr.message)
       mockSettings.seo = updatedSeo
     }
+
+    invalidateCache('seo')
+    invalidateCache('profile')
 
     return res.json({
       success: true,
@@ -182,6 +187,28 @@ router.post('/verify-domain', requireAuth, async (req, res) => {
     console.error('Domain doğrulama hatası:', error)
     res.status(500).json({ error: 'Alan adı doğrulama işlemi sırasında bir hata oluştu' })
   }
+})
+
+// ========================================================
+// ÖNBELLEK & PERFORMANS YÖNETİMİ (FAZ 21)
+// ========================================================
+
+// GET /api/settings/cache/stats (Yalnızca Yönetici)
+router.get('/cache/stats', requireAuth, (req, res) => {
+  res.json({
+    success: true,
+    data: cacheService.getStats()
+  })
+})
+
+// POST /api/settings/cache/clear (Yalnızca Yönetici)
+router.post('/cache/clear', requireAuth, (req, res) => {
+  const clearedCount = cacheService.clearAll()
+  res.json({
+    success: true,
+    message: `Tüm sistem önbelleği temizlendi (${clearedCount} anahtar silindi).`,
+    clearedCount
+  })
 })
 
 export default router

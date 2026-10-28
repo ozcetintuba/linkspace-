@@ -1,4 +1,5 @@
 import { Router } from 'express'
+import { aiLimiter } from '../middleware/rateLimiter.js'
 
 const router = Router()
 
@@ -195,8 +196,8 @@ router.get('/tones', (req, res) => {
   })
 })
 
-// POST /api/ai/generate-bio (Biyografi metinleri üretir)
-router.post('/generate-bio', async (req, res) => {
+// POST /api/ai/generate-bio (Biyografi metinleri üretir, AI Bot Korumalı)
+router.post('/generate-bio', aiLimiter, async (req, res) => {
   try {
     const { role, skills, tone, keywords, currentBio } = req.body || {}
 

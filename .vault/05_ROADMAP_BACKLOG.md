@@ -369,8 +369,34 @@ Bu liste, projenin geliştirme fazlarını ve önceliklendirilmiş iş paketleri
 
 ---
 
+## 📌 Faz 21: Kurumsal Güvenlik Kalkanı, Rate Limiting & ETag/TTL Önbellek Mimarisi (TAMAMLANDI ✅)
+> **Hedef**: Express REST API üzerinde brute-force, DDoS ve spam saldırılarına karşı akıllı rate limiting; HTTP güvenlik başlıkları (HSTS, No-Sniff, Clickjacking koruması); sık okunan public uç noktalar (`/profile`, `/theme`, `/seo`) için 60 saniyelik ETag ve conditional HTTP 304 önbellek mekanizması ve Admin Ayarlar sekmesinde canlı önbellek yönetim paneli.
+
+- [x] **Görev 21.1: Hafif Bellek İçi Kayan Pencere Rate Limiter'ı (`backend/src/middleware/rateLimiter.js`)**
+  - Sıfır dış bağımlılıkla çalışan bellek içi `InMemoryRateLimiter` sınıfı kodlandı.
+  - 4 farklı limit profili tanımlandı:
+    - `globalLimiter`: Genel API koruması (15 dakikada 300 istek).
+    - `authLimiter`: Giriş/Kayıt brute-force engelleme (15 dakikada 10 deneme).
+    - `aiLimiter`: Biyografi bot suistimal koruması (1 dakikada 5 istek).
+    - `messagesLimiter`: İletişim mesaj kutusu spam koruması (1 saatte 5 mesaj).
+- [x] **Görev 21.2: HTTP Güvenlik Sertleştirmeleri (`backend/src/middleware/securityHeaders.js`)**
+  - X-Content-Type-Options: `nosniff`, X-Frame-Options: `SAMEORIGIN`, X-XSS-Protection, Strict-Transport-Security (HSTS - 1 yıl), Referrer-Policy ve X-Powered-By gizleme middleware'i devreye alındı.
+- [x] **Görev 21.3: ETag & TTL Tabanlı In-Memory Önbellek Servisi (`backend/src/middleware/cacheService.js`)**
+  - `GET /api/profile`, `/api/profile/:username`, `/api/settings/theme`, `/api/settings/seo` için 60 saniye TTL önbellekleme.
+  - Tarayıcı `If-None-Match` başlığı gönderdiğinde gereksiz veri transferini engelleyen `304 Not Modified` yanıtı.
+  - Link veya profil güncellendiğinde (`POST/PUT/DELETE /api/links`, `PUT /api/profile`, `PUT /api/settings/seo`) önbelleği otomatik tazeleyen `invalidateCache` mekanizması.
+- [x] **Görev 21.4: Önbellek Yönetim API Uç Noktaları (`backend/src/routes/settingsRoutes.js`)**
+  - `GET /api/settings/cache/stats`: RAM önbellek metrikleri (isabet oranı %, hit/miss sayıları, aktif anahtarlar ve kalan TTL süreleri).
+  - `POST /api/settings/cache/clear`: Tek tıkla tüm önbelleği temizleme rotası (yalnızca yetkili yönetici).
+- [x] **Görev 21.5: Pinia Store ve Admin Arayüzü Entegrasyonu (`linkStore.js` & `AdminView.vue`)**
+  - `cacheStats`, `fetchCacheStats` ve `clearServerCache` aksiyonları eklendi.
+  - Admin Ayarlar sekmesine Dribbble Sales CRM (#0C0C0B / #161616 / #FFFF00) uyumlu "Güvenlik Kalkanı & Performans Önbelleği" paneli eklendi:
+    - Canlı metrik kartları (Hit Rate %, RAM'den yanıtlanan istekler, taze sorgular, aktif TTL anahtarları).
+    - Tek tıkla metrikleri yenileme ve önbellek temizleme butonları.
+
+---
+
 ## 📌 Sıradaki Aday Fazlar (Gelecek Yol Haritası)
-- **Faz 21 (Sırada - Aşama 2)**: Güvenlik & Performans Paketi (Express Rate Limiting, Brute-Force Koruması, In-Memory ETag/TTL Caching).
 - **Faz 22 (Aşama 3)**: Derinlemesine Analitik ve Metrik Takibi (Referrer/Kaynak Takibi, Cihaz Dağılımı Grafikleri, Saatlik Tıklama Trendleri).
 - **Faz 23 (Aşama 4)**: Çoklu Profil / Sayfa Yönetimi (Multi-Tenant Profile Switching).
 - **Faz 24 (Aşama 5)**: Canlı Entegrasyonlar ve Webhook'lar (Discord / Telegram / Slack anlık bildirimleri).

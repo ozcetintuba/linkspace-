@@ -14,6 +14,10 @@ import analyticsRoutes from './routes/analyticsRoutes.js'
 import messagesRoutes from './routes/messagesRoutes.js'
 import aiRoutes from './routes/aiRoutes.js'
 
+import { securityHeaders } from './middleware/securityHeaders.js'
+import { globalLimiter } from './middleware/rateLimiter.js'
+import { cacheService } from './middleware/cacheService.js'
+
 dotenv.config()
 
 const __filename = fileURLToPath(import.meta.url)
@@ -23,9 +27,16 @@ const docsDir = path.resolve(__dirname, '../../docs')
 const app = express()
 const PORT = process.env.PORT || 5000
 
-// Middleware
+// Güvenlik & Başlık Sertleştirmeleri
+app.disable('x-powered-by')
+app.use(securityHeaders)
+
+// Temel Middleware'ler
 app.use(cors())
 app.use(express.json())
+
+// Genel API Hız Sınırlayıcı (Rate Limiter - 15 dakikada 300 istek)
+app.use('/api', globalLimiter)
 
 // İstek günlüğü (Request logger)
 app.use((req, res, next) => {
@@ -33,12 +44,24 @@ app.use((req, res, next) => {
   next()
 })
 
-// Sağlık kontrolü
+// Sağlık & Performans kontrolü
 app.get('/api/health', (req, res) => {
   res.json({
     status: 'ok',
     timestamp: new Date().toISOString(),
-    service: 'linktree-backend'
+    service: 'linktree-backend',
+    version: 'v0.32.0',
+    uptimeSeconds: Math.floor(process.uptime()),
+    memory: {
+      rssMB: Math.round(process.memoryUsage().rss / 1024 / 1024),
+      heapUsedMB: Math.round(process.memoryUsage().heapUsed / 1024 / 1024)
+    },
+    security: {
+      rateLimiterActive: true,
+      securityHeadersActive: true,
+      etagCacheActive: true
+    },
+    cache: cacheService.getStats()
   })
 })
 

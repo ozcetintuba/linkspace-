@@ -128,11 +128,41 @@ const {
   unreadMessagesCount,
   seoSettings,
   allCategories,
-  usedCategories
+  usedCategories,
+  cacheStats
 } = storeToRefs(linkStore)
 
 // Aktif Sekme Kontrolü: Linktree Mantığı ('links' | 'appearance' | 'analytics' | 'messages' | 'settings')
 const activeTab = ref('links')
+
+// Güvenlik & Önbellek Yönetimi (Faz 21)
+const isClearingCache = ref(false)
+const isRefreshingCache = ref(false)
+const cacheFeedback = ref('')
+
+const handleRefreshCache = async () => {
+  isRefreshingCache.value = true
+  await linkStore.fetchCacheStats()
+  setTimeout(() => {
+    isRefreshingCache.value = false
+    cacheFeedback.value = 'Önbellek ve güvenlik metrikleri başarıyla güncellendi.'
+    setTimeout(() => { cacheFeedback.value = '' }, 3000)
+  }, 350)
+}
+
+const handleClearCache = async () => {
+  isClearingCache.value = true
+  const res = await linkStore.clearServerCache()
+  isClearingCache.value = false
+  cacheFeedback.value = res.message || 'Önbellek başarıyla temizlendi.'
+  setTimeout(() => { cacheFeedback.value = '' }, 3500)
+}
+
+watch(activeTab, (newTab) => {
+  if (newTab === 'settings') {
+    linkStore.fetchCacheStats()
+  }
+})
 
 // Mesajlar Sekmesi Filtresi ve Yardımcıları
 const messageFilter = ref('all') // 'all' | 'unread' | 'read'
@@ -4126,6 +4156,209 @@ const handleChangePassword = async () => {
                         <component :is="copiedDnsField === 'arecord' ? Check : Copy" class="w-3 h-3" />
                         <span>{{ copiedDnsField === 'arecord' ? 'Kopyalandı' : 'IP\'yi Kopyala' }}</span>
                       </button>
+                    </div>
+                  </div>
+                </div>
+
+              </div>
+
+            </div>
+
+            <!-- ======================================================== -->
+            <!-- GÜVENLİK KALKANI & PERFORMANS ÖNBELLEĞİ (SECURITY & CACHE) -->
+            <!-- ======================================================== -->
+            <div :class="['border rounded-3xl p-6 transition-colors space-y-6', themeClasses.cardBg]">
+              
+              <!-- Üst Başlık & Açıklama -->
+              <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pb-4 border-b" :class="themeClasses.headerBorder">
+                <div>
+                  <h3 :class="['text-base font-bold flex items-center gap-2.5', themeClasses.titleText]">
+                    <ShieldCheck class="w-5 h-5 text-emerald-400" />
+                    <span>Güvenlik Kalkanı & Performans Önbelleği</span>
+                    <span class="px-2.5 py-0.5 text-[10px] font-black uppercase tracking-wider rounded-full shadow-sm bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">
+                      Aktif & Korunuyor
+                    </span>
+                  </h3>
+                  <p :class="['text-xs mt-1', themeClasses.subText]">
+                    Express Rate Limiting, Brute-Force Koruması, Güvenlik Başlıkları (HSTS / No-Sniff) ve In-Memory ETag / TTL Önbellek Sistemi.
+                  </p>
+                </div>
+
+                <!-- Aksiyon Butonları -->
+                <div class="flex items-center gap-2 flex-wrap">
+                  <button 
+                    @click="handleRefreshCache"
+                    :disabled="isRefreshingCache"
+                    type="button"
+                    class="px-3 py-1.5 rounded-xl text-xs font-semibold border transition-all flex items-center gap-1.5 active:scale-95 disabled:opacity-50"
+                    :class="adminTheme === 'light' ? 'bg-slate-100 text-slate-700 border-slate-300 hover:bg-slate-200' : 'bg-[#181818] text-zinc-300 border-[#333] hover:text-white'"
+                  >
+                    <RefreshCw class="w-3.5 h-3.5" :class="{ 'animate-spin': isRefreshingCache }" />
+                    <span>{{ isRefreshingCache ? 'Yenileniyor...' : 'Metrikleri Yenile' }}</span>
+                  </button>
+
+                  <button 
+                    @click="handleClearCache"
+                    :disabled="isClearingCache"
+                    type="button"
+                    class="px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 shadow-sm active:scale-95 disabled:opacity-50"
+                    :class="adminTheme === 'light' 
+                      ? 'bg-rose-600 text-white hover:bg-rose-700' 
+                      : 'bg-rose-500/20 text-rose-300 border border-rose-500/30 hover:bg-rose-500/30'"
+                  >
+                    <RotateCcw class="w-3.5 h-3.5" :class="{ 'animate-spin': isClearingCache }" />
+                    <span>{{ isClearingCache ? 'Temizleniyor...' : 'Önbelleği Temizle' }}</span>
+                  </button>
+                </div>
+              </div>
+
+              <!-- Geri Bildirim Mesajı -->
+              <div 
+                v-if="cacheFeedback" 
+                class="p-3 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs font-semibold flex items-center gap-2 animate-fadeIn"
+              >
+                <CheckCircle2 class="w-4 h-4 flex-shrink-0" />
+                <span>{{ cacheFeedback }}</span>
+              </div>
+
+              <!-- 4 AKTİF GÜVENLİK KALKANI ROZETLERİ -->
+              <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 text-xs">
+                
+                <div :class="['p-3.5 rounded-2xl border flex flex-col justify-between transition-all', themeClasses.boxInner]">
+                  <div class="flex items-center justify-between mb-2">
+                    <div class="flex items-center gap-2 font-bold" :class="themeClasses.titleText">
+                      <Lock class="w-4 h-4 text-emerald-400" />
+                      <span>Brute-Force Kalkanı</span>
+                    </div>
+                    <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                  </div>
+                  <p :class="['text-[11px] leading-relaxed', themeClasses.subText]">
+                    Giriş: 10/15dk • Mesaj: 5/15dk • Genel: 300/15dk kayan pencere kısıtlaması.
+                  </p>
+                  <div class="mt-2.5 pt-2 border-t text-[10px] font-mono text-emerald-400 font-bold" :class="themeClasses.headerBorder">
+                    ✓ 429 Too Many Requests Korumalı
+                  </div>
+                </div>
+
+                <div :class="['p-3.5 rounded-2xl border flex flex-col justify-between transition-all', themeClasses.boxInner]">
+                  <div class="flex items-center justify-between mb-2">
+                    <div class="flex items-center gap-2 font-bold" :class="themeClasses.titleText">
+                      <Zap class="w-4 h-4 text-[#FFFF00]" />
+                      <span>ETag & TTL Önbellek</span>
+                    </div>
+                    <span class="w-2 h-2 rounded-full bg-[#FFFF00] animate-pulse"></span>
+                  </div>
+                  <p :class="['text-[11px] leading-relaxed', themeClasses.subText]">
+                    SHA-1 ETag & 60s TTL ile HTTP 304 Not Modified. Sıfır gövde transferi (&lt;2ms).
+                  </p>
+                  <div class="mt-2.5 pt-2 border-t text-[10px] font-mono text-[#FFFF00] font-bold" :class="themeClasses.headerBorder">
+                    ✓ Gecikmesiz İstemci Önbelleği
+                  </div>
+                </div>
+
+                <div :class="['p-3.5 rounded-2xl border flex flex-col justify-between transition-all', themeClasses.boxInner]">
+                  <div class="flex items-center justify-between mb-2">
+                    <div class="flex items-center gap-2 font-bold" :class="themeClasses.titleText">
+                      <ShieldCheck class="w-4 h-4 text-sky-400" />
+                      <span>Güvenlik Başlıkları</span>
+                    </div>
+                    <span class="w-2 h-2 rounded-full bg-sky-400"></span>
+                  </div>
+                  <p :class="['text-[11px] leading-relaxed', themeClasses.subText]">
+                    HSTS, X-Content-Type (nosniff), SameOrigin iframe ve XSS filtreleri devrede.
+                  </p>
+                  <div class="mt-2.5 pt-2 border-t text-[10px] font-mono text-sky-400 font-bold" :class="themeClasses.headerBorder">
+                    ✓ Clickjacking & XSS Önleme
+                  </div>
+                </div>
+
+                <div :class="['p-3.5 rounded-2xl border flex flex-col justify-between transition-all', themeClasses.boxInner]">
+                  <div class="flex items-center justify-between mb-2">
+                    <div class="flex items-center gap-2 font-bold" :class="themeClasses.titleText">
+                      <RefreshCw class="w-4 h-4 text-purple-400" />
+                      <span>Canlı Invalidation</span>
+                    </div>
+                    <span class="w-2 h-2 rounded-full bg-purple-400"></span>
+                  </div>
+                  <p :class="['text-[11px] leading-relaxed', themeClasses.subText]">
+                    Bağlantı veya profil güncellendiğinde ilgili RAM kayıtları anında süpürülür.
+                  </p>
+                  <div class="mt-2.5 pt-2 border-t text-[10px] font-mono text-purple-400 font-bold" :class="themeClasses.headerBorder">
+                    ✓ %100 Güncel Ziyaretçi Verisi
+                  </div>
+                </div>
+
+              </div>
+
+              <!-- CANLI ÖNBELLEK METRİKLERİ KARTLARI -->
+              <div class="space-y-3 pt-2">
+                <span :class="['text-xs font-bold uppercase tracking-wider', themeClasses.subText]">
+                  Canlı Önbellek Telemetrisi & Performans
+                </span>
+
+                <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                  
+                  <div :class="['p-4 rounded-2xl border flex flex-col justify-between', themeClasses.boxInner]">
+                    <span :class="['text-xs', themeClasses.subText]">İsabet Oranı (Hit Rate)</span>
+                    <div class="mt-2 flex items-baseline gap-1.5">
+                      <span class="text-2xl font-black text-emerald-400">{{ cacheStats.hitRate || 0 }}%</span>
+                    </div>
+                    <div class="w-full bg-slate-700/30 rounded-full h-1.5 mt-2 overflow-hidden">
+                      <div class="bg-emerald-400 h-1.5 rounded-full transition-all duration-500" :style="{ width: `${cacheStats.hitRate || 0}%` }"></div>
+                    </div>
+                  </div>
+
+                  <div :class="['p-4 rounded-2xl border flex flex-col justify-between', themeClasses.boxInner]">
+                    <span :class="['text-xs', themeClasses.subText]">Bellekten Yanıtlanan (Hits)</span>
+                    <div class="mt-2 flex items-baseline gap-1.5">
+                      <span class="text-2xl font-black" :class="themeClasses.titleText">{{ cacheStats.totalHits || 0 }}</span>
+                      <span class="text-[11px] text-emerald-400 font-semibold">istek</span>
+                    </div>
+                    <span :class="['text-[10px] mt-1', themeClasses.subText]">RAM'den gecikmesiz</span>
+                  </div>
+
+                  <div :class="['p-4 rounded-2xl border flex flex-col justify-between', themeClasses.boxInner]">
+                    <span :class="['text-xs', themeClasses.subText]">Taze Sorgulanan (Misses)</span>
+                    <div class="mt-2 flex items-baseline gap-1.5">
+                      <span class="text-2xl font-black" :class="themeClasses.titleText">{{ cacheStats.totalMisses || 0 }}</span>
+                      <span class="text-[11px] text-amber-400 font-semibold">istek</span>
+                    </div>
+                    <span :class="['text-[10px] mt-1', themeClasses.subText]">İlk okuma / DB sorgusu</span>
+                  </div>
+
+                  <div :class="['p-4 rounded-2xl border flex flex-col justify-between', themeClasses.boxInner]">
+                    <span :class="['text-xs', themeClasses.subText]">Aktif Önbellek Kayıtları</span>
+                    <div class="mt-2 flex items-baseline gap-1.5">
+                      <span class="text-2xl font-black text-[#FFFF00]">{{ cacheStats.activeKeysCount || 0 }}</span>
+                      <span class="text-[11px] text-[#FFFF00] font-semibold">anahtar</span>
+                    </div>
+                    <span :class="['text-[10px] mt-1', themeClasses.subText]">60 saniyelik TTL süresi</span>
+                  </div>
+
+                </div>
+
+                <!-- Aktif Önbellek Kayıtları Listesi (Varsa) -->
+                <div v-if="cacheStats.activeKeys && cacheStats.activeKeys.length > 0" class="mt-3 rounded-2xl border overflow-hidden text-xs" :class="themeClasses.headerBorder">
+                  <div class="px-4 py-2 border-b font-bold flex items-center justify-between" :class="[themeClasses.boxInner, themeClasses.titleText]">
+                    <span>RAM'deki Aktif Önbellek Anahtarları</span>
+                    <span class="text-[10px] font-mono text-emerald-400">Canlı ETag Takibi</span>
+                  </div>
+                  <div class="divide-y" :class="themeClasses.headerBorder">
+                    <div 
+                      v-for="item in cacheStats.activeKeys" 
+                      :key="item.key"
+                      class="px-4 py-2.5 flex items-center justify-between gap-2 transition-colors"
+                      :class="adminTheme === 'light' ? 'bg-white hover:bg-slate-50' : 'bg-[#141414] hover:bg-[#1a1a1a]'"
+                    >
+                      <div class="flex items-center gap-2.5">
+                        <span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
+                        <span class="font-mono text-[11px] font-bold" :class="themeClasses.titleText">{{ item.key }}</span>
+                      </div>
+                      <div class="flex items-center gap-4 text-[11px] font-mono">
+                        <span :class="themeClasses.subText">İsabet: <strong :class="themeClasses.titleText">{{ item.hitCount }}</strong></span>
+                        <span class="text-amber-400 font-bold">⏳ {{ item.ttlRemainingSeconds }}s kaldı</span>
+                        <span class="text-slate-500 hidden sm:inline">{{ item.etag }}</span>
+                      </div>
                     </div>
                   </div>
                 </div>

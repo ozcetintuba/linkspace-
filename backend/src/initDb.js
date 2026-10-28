@@ -201,6 +201,6 @@ export const initializeDatabase = async () => {
 }
 
 // Dosya doğrudan çalıştırıldığında (node src/initDb.js)
-if (process.argv[1].endsWith('initDb.js')) {
+if (process.argv[1]?.endsWith('initDb.js')) {
   initializeDatabase().then(() => pool.end())
 }

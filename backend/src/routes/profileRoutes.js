@@ -1,6 +1,7 @@
 import { Router } from 'express'
 import { query } from '../db.js'
 import { requireAuth } from '../middleware/authMiddleware.js'
+import { cacheMiddleware, invalidateCache } from '../middleware/cacheService.js'
 
 const router = Router()
 
@@ -26,8 +27,8 @@ const mockProfile = {
   }
 }
 
-// GET /api/profile (Herkese açık)
-router.get('/', async (req, res) => {
+// GET /api/profile (Herkese açık, 60s TTL & ETag Önbellekli)
+router.get('/', cacheMiddleware(60), async (req, res) => {
   try {
     try {
       const result = await query(`
@@ -63,8 +64,8 @@ router.get('/', async (req, res) => {
   }
 })
 
-// GET /api/profile/:username (Giriş yapmamış ziyaretçiler için sadece aktif linkleri ve profil bilgilerini döner)
-router.get('/:username', async (req, res) => {
+// GET /api/profile/:username (Giriş yapmamış ziyaretçiler için aktif linkleri döner, 60s TTL & ETag Önbellekli)
+router.get('/:username', cacheMiddleware(60), async (req, res) => {
   try {
     const { username } = req.params
     if (!username) {
@@ -307,9 +308,11 @@ router.put('/', requireAuth, async (req, res) => {
         safeStatusColor,
         safeIsVerified
       ])
+      invalidateCache('profile')
       return res.json(insertResult.rows[0])
     }
 
+    invalidateCache('profile')
     res.json(result.rows[0])
   } catch (error) {
     console.error('Profil güncelleme hatası:', error)

@@ -1,6 +1,7 @@
 import { Router } from 'express'
 import { query } from '../db.js'
 import { requireAuth } from '../middleware/authMiddleware.js'
+import { invalidateCache } from '../middleware/cacheService.js'
 
 const router = Router()
 
@@ -207,6 +208,7 @@ router.post('/', requireAuth, async (req, res) => {
       finalEmbedType, finalShowEmbed, finalIsLocked, finalLockType, finalPasscode, finalLockWarning
     ])
 
+    invalidateCache('profile')
     res.status(201).json(result.rows[0])
   } catch (error) {
     console.error('Link ekleme hatası:', error)
@@ -294,6 +296,7 @@ router.put('/:id', requireAuth, async (req, res) => {
       updatedLockType, updatedPasscode, updatedLockWarning, id
     ])
 
+    invalidateCache('profile')
     res.json(result.rows[0])
   } catch (error) {
     console.error('Link güncelleme hatası:', error)
@@ -311,6 +314,7 @@ router.delete('/:id', requireAuth, async (req, res) => {
       return res.status(404).json({ error: 'Silinecek bağlantı bulunamadı' })
     }
 
+    invalidateCache('profile')
     res.json({ message: 'Bağlantı başarıyla silindi', id: result.rows[0].id })
   } catch (error) {
     console.error('Link silme hatası:', error)
@@ -362,6 +366,7 @@ const handleReorder = async (req, res) => {
     }
     await query('COMMIT')
 
+    invalidateCache('profile')
     res.json({ message: 'Sıralama başarıyla kaydedildi' })
   } catch (error) {
     await query('ROLLBACK')
@@ -378,6 +383,7 @@ router.post('/reset-clicks', requireAuth, async (req, res) => {
   try {
     const { id } = req.body
 
+    invalidateCache('profile')
     if (id) {
       await query('UPDATE links SET clicks = 0 WHERE id = $1', [id])
       res.json({ message: 'Bağlantı tıklama sayacı sıfırlandı' })

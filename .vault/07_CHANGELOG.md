@@ -4,6 +4,41 @@ Tüm önemli mimari değişiklikler, özellik eklemeleri ve düzeltmeler bu dosy
 
 ---
 
+## [v0.32.0] - 2026-10-28 (Kurumsal Güvenlik Kalkanı, Rate Limiting & ETag/TTL Önbellek Mimarisi)
+
+### 🛡️ Güvenlik Sertleştirmeleri & Hız Sınırlama (Rate Limiting)
+- **`backend/src/middleware/rateLimiter.js`**:
+  - Dış bağımlılık olmadan çalışan kayan pencere (Sliding Window) ve periyodik çöp toplayıcılı bellek içi rate limiter geliştirildi.
+  - `globalLimiter`: 15 dakikada 300 istek limiti ile genel API koruması.
+  - `authLimiter`: 15 dakikada 10 istek limiti ile brute-force parola denemelerini engelleme (`/api/auth/login`, `/api/auth/register`).
+  - `aiLimiter`: 1 dakikada 5 istek limiti ile yapay zeka biyografi üretim motoru bot koruması (`/api/ai/generate-bio`).
+  - `messagesLimiter`: 1 saatte 5 mesaj limiti ile ziyaretçi iletişim formu spam koruması (`/api/messages`).
+- **`backend/src/middleware/securityHeaders.js`**:
+  - HTTP başlıkları sertleştirildi: `X-Content-Type-Options: nosniff`, `X-Frame-Options: SAMEORIGIN`, `X-XSS-Protection: 1; mode=block`, `Strict-Transport-Security` (HSTS 1 yıl), `Referrer-Policy: strict-origin-when-cross-origin`, `Permissions-Policy`.
+  - `X-Powered-By` sunucu imzası gizlendi.
+
+### ⚡ ETag & TTL Tabanlı In-Memory Önbellek & ETag Motoru
+- **`backend/src/middleware/cacheService.js`**:
+  - Public GET uç noktaları (`/api/profile`, `/api/profile/:username`, `/api/settings/theme`, `/api/settings/seo`) için 60 saniyelik TTL ve ETag hashleme mekanizması kuruldu.
+  - İstemci `If-None-Match` başlığı sunduğunda veritabanına ve ağa yük bindirmeden doğrudan `304 Not Modified` yanıtı dönülerek hız ve bant genişliği optimize edildi.
+  - Bağlantı veya profil güncellendiğinde (`linksRoutes.js`, `profileRoutes.js`, `settingsRoutes.js`) ilgili önbelleği anında temizleyen `invalidateCache()` fonksiyonu devreye alındı.
+- **`backend/src/routes/settingsRoutes.js`**:
+  - `GET /api/settings/cache/stats`: RAM önbellek metriklerini döndüren yönetim rotası.
+  - `POST /api/settings/cache/clear`: Yönetici paneli için anlık önbellek sıfırlama rotası.
+- **`backend/src/server.js`**:
+  - `/api/health` sağlık kontrolü çıktısına RAM kullanımı, önbellek istatistikleri ve aktif güvenlik modülleri eklendi.
+
+### 🎛️ Pinia Store & Yönetim Paneli Önbellek Dashboard'u
+- **`frontend/src/stores/linkStore.js`**:
+  - `cacheStats` reaktif durumu, `fetchCacheStats()` ve `clearServerCache()` aksiyonları tanımlandı.
+- **`frontend/src/views/AdminView.vue`**:
+  - Ayarlar sekmesine "Güvenlik Kalkanı & Performans Önbelleği" paneli eklendi:
+    - Canlı metrikler: İsabet Oranı (Hit Rate %), RAM'den Yanıtlanan İstekler, Taze Sorgular, Aktif Anahtarlar.
+    - ETag anahtarları ve kalan TTL geri sayım listesi.
+    - Tek tıkla "Metrikleri Yenile" ve "Önbelleği Temizle" aksiyon butonları.
+
+---
+
 ## [v0.31.1] - 2026-10-23 (Render & Canlı Dağıtım İyileştirmesi: Bağlantı Dayanıklılığı)
 
 ### 🚀 Render Dağıtım İyileştirmesi (Production Resilience)
