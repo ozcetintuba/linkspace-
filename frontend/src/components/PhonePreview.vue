@@ -498,7 +498,7 @@ const statusConfig = computed(() => {
 
             <!-- Dinamik Rozetler & Beceriler (Phone Mockup) -->
             <div 
-              v-if="profile.badges && profile.badges.length > 0"
+              v-if="profile.showBadges && profile.badges && profile.badges.length > 0"
               class="flex items-center justify-center flex-wrap gap-1 mt-2 max-w-[230px]"
             >
               <template v-for="(badge, bIdx) in profile.badges" :key="badge.id || bIdx">

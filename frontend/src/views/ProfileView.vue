@@ -956,7 +956,7 @@ const getLinkSubtitle = (link) => {
 
       <!-- Dinamik Yetenek & İlgi Alanı Rozetleri (Showcase Badges) -->
       <div 
-        v-if="profile.badges && profile.badges.length > 0" 
+        v-if="profile.showBadges && profile.badges && profile.badges.length > 0" 
         class="flex items-center justify-center flex-wrap gap-2 mb-6 select-none"
       >
         <template v-for="(badge, bIdx) in profile.badges" :key="badge.id || bIdx">
