@@ -1,4 +1,5 @@
 import fs from 'fs'
+import os from 'os'
 import path from 'path'
 import { fileURLToPath } from 'url'
 import express from 'express'
@@ -63,6 +64,25 @@ app.get('/api/health', (req, res) => {
       etagCacheActive: true
     },
     cache: cacheService.getStats()
+  })
+})
+
+// Ağ ve IP Bilgisi (QR Kod ve Mobil Test Yardımı)
+app.get('/api/network-info', (req, res) => {
+  const nets = os.networkInterfaces()
+  let localIp = '127.0.0.1'
+  for (const name of Object.keys(nets)) {
+    for (const net of nets[name]) {
+      if (net.family === 'IPv4' && !net.internal) {
+        localIp = net.address
+        break
+      }
+    }
+  }
+  res.json({
+    localIp,
+    port: PORT,
+    renderUrl: 'https://linkspace-app.onrender.com'
   })
 })
 

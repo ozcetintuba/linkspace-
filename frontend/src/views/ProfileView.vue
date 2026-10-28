@@ -368,14 +368,29 @@ const showShareModal = ref(false)
 const isCopied = ref(false)
 const qrCodeDataUrl = ref('')
 const isQrMinimized = ref(false)
-const networkMode = ref('wifi') // 'wifi' | 'current'
 
-// Yerel Wi-Fi IP Algılama ve Kullanıcı Tarafından Düzenlenebilirlik
-const detectedHost = (typeof window !== 'undefined' && window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1')
-  ? window.location.hostname
-  : '192.168.1.26'
+const isPublicWeb = typeof window !== 'undefined' && 
+  window.location.hostname !== 'localhost' && 
+  window.location.hostname !== '127.0.0.1'
 
-const customHostInput = ref(typeof localStorage !== 'undefined' ? (localStorage.getItem('linkspace_custom_host') || detectedHost) : detectedHost)
+// Canlı webde doğrudan 'current' (Render veya Custom Domain), yerelde 'live' (Render URL)
+const networkMode = ref(isPublicWeb ? 'current' : 'live')
+
+// Yerel Wi-Fi IP Algılama (Varsayılan kullanıcının yerel Wi-Fi IP'si: 192.168.0.10)
+const detectedHost = ref('192.168.0.10')
+
+if (typeof window !== 'undefined') {
+  fetch('/api/network-info')
+    .then(r => r.json())
+    .then(data => {
+      if (data.localIp && data.localIp !== '127.0.0.1') {
+        detectedHost.value = data.localIp
+      }
+    })
+    .catch(() => {})
+}
+
+const customHostInput = ref(typeof localStorage !== 'undefined' ? (localStorage.getItem('linkspace_custom_host') || detectedHost.value) : detectedHost.value)
 const isEditingCustomHost = ref(false)
 
 const saveCustomHost = () => {
@@ -385,24 +400,39 @@ const saveCustomHost = () => {
   }
 }
 
+const liveCloudUrl = computed(() => {
+  const path = route.path && route.path !== '/' ? route.path : '/'
+  return `https://linkspace-app.onrender.com${path}`
+})
+
 const wifiUrl = computed(() => {
   const path = route.path && route.path !== '/' ? route.path : '/'
-  const host = customHostInput.value.trim() || detectedHost
-  return `http://${host}:5173${path}`
+  const host = customHostInput.value.trim() || detectedHost.value || '192.168.0.10'
+  return `http://${host}:3000${path}`
 })
 
 const currentUrl = computed(() => {
   if (typeof window !== 'undefined') {
     return window.location.href
   }
-  return `http://${detectedHost}:5173/`
+  return `https://linkspace-app.onrender.com/`
 })
 
 const activeShareUrl = computed(() => {
+  const path = route.path && route.path !== '/' ? route.path : '/'
+  // 1. Özel Domain
   if (networkMode.value === 'domain' && seoSettings.value?.customDomain && seoSettings.value?.domainVerified) {
-    return `https://${seoSettings.value.customDomain}/`
+    return `https://${seoSettings.value.customDomain}${path}`
   }
-  return networkMode.value === 'wifi' ? wifiUrl.value : currentUrl.value
+  // 2. Canlı Web (Render veya tarayıcıdaki gerçek domain)
+  if (isPublicWeb || networkMode.value === 'current') {
+    return currentUrl.value
+  }
+  if (networkMode.value === 'live') {
+    return liveCloudUrl.value
+  }
+  // 3. Yerel Wi-Fi
+  return wifiUrl.value
 })
 
 // Dinamik OpenGraph ve SEO Meta Tag Senkronizasyonu

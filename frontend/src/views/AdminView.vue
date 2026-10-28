@@ -612,22 +612,45 @@ const showMobilePreview = ref(false)
 const showShareModal = ref(false)
 const copiedShareUrl = ref(false)
 const qrCodeDataUrl = ref('')
-const networkMode = ref('wifi') // 'wifi' | 'localhost'
-const localWifiIp = (typeof window !== 'undefined' && window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1')
-  ? window.location.hostname
-  : '192.168.1.26'
 
+const isPublicWeb = typeof window !== 'undefined' && 
+  window.location.hostname !== 'localhost' && 
+  window.location.hostname !== '127.0.0.1'
 
-const wifiUrl = computed(() => `http://${localWifiIp}:5173/`)
+const networkMode = ref('live') // 'live' | 'wifi' | 'localhost'
+const localWifiIp = ref('192.168.0.10')
+
+if (typeof window !== 'undefined') {
+  fetch('/api/network-info')
+    .then(r => r.json())
+    .then(data => {
+      if (data.localIp && data.localIp !== '127.0.0.1') {
+        localWifiIp.value = data.localIp
+      }
+    })
+    .catch(() => {})
+}
+
+const liveCloudUrl = computed(() => 'https://linkspace-app.onrender.com/')
+const wifiUrl = computed(() => `http://${localWifiIp.value}:3000/`)
 const localhostUrl = computed(() => {
   if (typeof window !== 'undefined') {
     return `${window.location.origin}/`
   }
-  return 'http://localhost:5173/'
+  return 'http://localhost:3000/'
 })
 
 const activeShareUrl = computed(() => {
-  return networkMode.value === 'wifi' ? wifiUrl.value : localhostUrl.value
+  if (isPublicWeb) {
+    return `${window.location.origin}/`
+  }
+  if (networkMode.value === 'live') {
+    return liveCloudUrl.value
+  }
+  if (networkMode.value === 'wifi') {
+    return wifiUrl.value
+  }
+  return localhostUrl.value
 })
 
 const qrTargetUrl = computed(() => {
@@ -6005,8 +6028,21 @@ const handleChangePassword = async () => {
               </div>
             </div>
 
-            <!-- Ağ Modu Seçici (Wi-Fi / Localhost) -->
+            <!-- Ağ Modu Seçici (Canlı Web / Wi-Fi) -->
             <div class="flex p-1 rounded-2xl bg-[#101010] border border-[#282828]">
+              <button 
+                type="button"
+                @click="networkMode = 'live'"
+                :class="[
+                  'flex-1 py-2 text-xs font-semibold rounded-xl transition-all flex items-center justify-center gap-1.5',
+                  networkMode === 'live' 
+                    ? 'bg-[#FFFF00] text-black font-bold shadow-md shadow-yellow-500/20' 
+                    : 'text-[#8E8E93] hover:text-white'
+                ]"
+              >
+                <Globe class="w-3.5 h-3.5" />
+                <span>🌍 Canlı Web (Önerilen)</span>
+              </button>
               <button 
                 type="button"
                 @click="networkMode = 'wifi'"
@@ -6018,20 +6054,7 @@ const handleChangePassword = async () => {
                 ]"
               >
                 <Wifi class="w-3.5 h-3.5" />
-                <span>📱 Telefonda Aç (Wi-Fi)</span>
-              </button>
-              <button 
-                type="button"
-                @click="networkMode = 'localhost'"
-                :class="[
-                  'flex-1 py-2 text-xs font-semibold rounded-xl transition-all flex items-center justify-center gap-1.5',
-                  networkMode === 'localhost' 
-                    ? 'bg-[#FFFF00] text-black font-bold shadow-md shadow-yellow-500/20' 
-                    : 'text-[#8E8E93] hover:text-white'
-                ]"
-              >
-                <Smartphone class="w-3.5 h-3.5" />
-                <span>💻 Bu Cihazda</span>
+                <span>📱 Aynı Wi-Fi</span>
               </button>
             </div>
 

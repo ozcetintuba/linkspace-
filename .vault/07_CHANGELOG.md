@@ -4,6 +4,16 @@ Tüm önemli mimari değişiklikler, özellik eklemeleri ve düzeltmeler bu dosy
 
 ---
 
+## [v0.36.4] - 2026-10-28 (Kritik Düzeltme: QR Kod Mobil Erişim ve Dinamik Ağ IP Entegrasyonu)
+
+### 📱 Mobil QR Kod ve Ağ Erişimi Onarımları
+- **Hatalı Port ve IP Giderildi**: QR kodların hedef URL'inde daha önce Vite geliştirme sunucusuna ait olan `:5173` portu ve ulaşılamayan statik `192.168.1.26` IP adresi bulunuyordu. Bu sebeple telefonla okutulduğunda bağlantı zaman aşımına uğruyordu.
+- **Canlı Web Desteği**: Render canlı sunucusunda ve özel domainlerde QR kod artık doğrudan tam güvenli `https://linkspace-app.onrender.com/?src=qr` adresini üretir; mobil veri (4G/5G) veya herhangi bir Wi-Fi üzerinden tek tıkla açılır.
+- **Dinamik Ağ IP API'si (`GET /api/network-info`)**: Yerel geliştirmede bilgisayarın güncel Wi-Fi IP adresini (`192.168.0.10`) ve aktif port 3000'i dinamik olarak istemciye ileten uç nokta eklendi.
+- **Paylaşım Modalı İyileştirmesi**: Yönetici ve profil paylaşım ekranlarında *"🌍 Canlı Web (Önerilen)"* ve *"📱 Aynı Wi-Fi"* seçenekleri sunuldu.
+
+---
+
 ## [v0.36.3] - 2026-10-28 (Kritik Düzeltme: Dairesel Watcher Sonsuz Döngüsü & Tarayıcı Kilitlenmesi Onarımı)
 
 ### 🛠️ Performans ve Kararlılık Onarımları
