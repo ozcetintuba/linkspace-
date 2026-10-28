@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed, watch, onMounted } from 'vue'
+import { ref, reactive, computed, watch, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 import ThreeBackground from '../components/ThreeBackground.vue'
 import ThreeAvatarMascot from '../components/ThreeAvatarMascot.vue'
@@ -94,6 +94,14 @@ const toggleAvatarMode = () => {
 
 // Çevrimdışı (Offline-First) Durum Yönetimi & Background Sync
 const isOffline = ref(typeof navigator !== 'undefined' ? !navigator.onLine : false)
+const toastMessage = ref('')
+
+const showToast = (msg) => {
+  toastMessage.value = msg
+  setTimeout(() => {
+    toastMessage.value = ''
+  }, 3500)
+}
 
 const handleOnlineStatus = async () => {
   isOffline.value = false
@@ -2411,5 +2419,25 @@ const handleDownloadVCard = async () => {
         </div>
       </div>
     </div>
+  </Teleport>
+
+  <!-- Bildirim Toastı (Offline / Bilgilendirme) -->
+  <Teleport to="body">
+    <transition
+      enter-active-class="transition duration-300 ease-out"
+      enter-from-class="translate-y-4 opacity-0 scale-95"
+      enter-to-class="translate-y-0 opacity-100 scale-100"
+      leave-active-class="transition duration-200 ease-in"
+      leave-from-class="translate-y-0 opacity-100 scale-100"
+      leave-to-class="translate-y-4 opacity-0 scale-95"
+    >
+      <div
+        v-if="toastMessage"
+        class="fixed bottom-6 left-1/2 -translate-x-1/2 z-[100] px-4 py-2.5 rounded-xl bg-black/95 text-white border border-[#FFFF00]/40 text-xs font-medium shadow-2xl flex items-center gap-2 max-w-[90vw]"
+      >
+        <span class="w-2 h-2 rounded-full bg-[#FFFF00] animate-ping shrink-0"></span>
+        <span>{{ toastMessage }}</span>
+      </div>
+    </transition>
   </Teleport>
 </template>
