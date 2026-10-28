@@ -24,7 +24,12 @@ import {
   SUGGESTED_SKILLS,
   DEFAULT_CATEGORIES,
   detectEmbed,
-  getEmbedUrl
+  getEmbedUrl,
+  MASCOT_SKINS,
+  MASCOT_ACCESSORIES,
+  MASCOT_EYE_COLORS,
+  MASCOT_MOODS,
+  DEFAULT_MASCOT_CONFIG
 } from '../stores/linkStore'
 import { useAuthStore } from '../stores/authStore'
 import PhonePreview from '../components/PhonePreview.vue'
@@ -1250,7 +1255,13 @@ const profileForm = ref({
   showBadges: profile.value.showBadges !== undefined ? Boolean(profile.value.showBadges) : false,
   enable3dBackground: profile.value.enable3dBackground !== false,
   avatarMode: profile.value.avatarMode || 'switchable',
-  enableSpringPhysics: profile.value.enableSpringPhysics !== false
+  enableSpringPhysics: profile.value.enableSpringPhysics !== false,
+  mascotConfig: {
+    skin: profile.value?.mascotConfig?.skin || 'cyber',
+    accessory: profile.value?.mascotConfig?.accessory || 'antenna',
+    eyeColor: profile.value?.mascotConfig?.eyeColor || '#FFFF00',
+    mood: profile.value?.mascotConfig?.mood || 'happy'
+  }
 })
 const isSavingProfile = ref(false)
 
@@ -1439,6 +1450,12 @@ watch(() => profile.value?.id, () => {
     profileForm.value.enable3dBackground = profile.value.enable3dBackground !== false
     profileForm.value.avatarMode = profile.value.avatarMode || 'switchable'
     profileForm.value.enableSpringPhysics = profile.value.enableSpringPhysics !== false
+    profileForm.value.mascotConfig = {
+      skin: profile.value?.mascotConfig?.skin || 'cyber',
+      accessory: profile.value?.mascotConfig?.accessory || 'antenna',
+      eyeColor: profile.value?.mascotConfig?.eyeColor || '#FFFF00',
+      mood: profile.value?.mascotConfig?.mood || 'happy'
+    }
   }
 })
 
@@ -1454,6 +1471,42 @@ watch(
   },
   { deep: true }
 )
+
+
+// 3D Siber & Sevimli Maskot Etkileşim Yöneticileri
+const selectMascotSkin = (skin) => {
+  profileForm.value.mascotConfig.skin = skin.id
+  profileForm.value.mascotConfig.accessory = skin.defaultAccessory
+  profileForm.value.mascotConfig.eyeColor = skin.defaultNeon
+  if (profile.value) {
+    if (!profile.value.mascotConfig) profile.value.mascotConfig = {}
+    profile.value.mascotConfig = { ...profileForm.value.mascotConfig }
+  }
+}
+
+const selectMascotAccessory = (accId) => {
+  profileForm.value.mascotConfig.accessory = accId
+  if (profile.value) {
+    if (!profile.value.mascotConfig) profile.value.mascotConfig = {}
+    profile.value.mascotConfig = { ...profileForm.value.mascotConfig }
+  }
+}
+
+const selectMascotEyeColor = (hex) => {
+  profileForm.value.mascotConfig.eyeColor = hex
+  if (profile.value) {
+    if (!profile.value.mascotConfig) profile.value.mascotConfig = {}
+    profile.value.mascotConfig = { ...profileForm.value.mascotConfig }
+  }
+}
+
+const selectMascotMood = (moodId) => {
+  profileForm.value.mascotConfig.mood = moodId
+  if (profile.value) {
+    if (!profile.value.mascotConfig) profile.value.mascotConfig = {}
+    profile.value.mascotConfig = { ...profileForm.value.mascotConfig }
+  }
+}
 
 const handleSaveProfile = async () => {
   isSavingProfile.value = true
@@ -1492,7 +1545,8 @@ const handleSaveProfile = async () => {
     showBadges: Boolean(profileForm.value.showBadges),
     enable3dBackground: profileForm.value.enable3dBackground !== false,
     avatarMode: profileForm.value.avatarMode || 'switchable',
-    enableSpringPhysics: profileForm.value.enableSpringPhysics !== false
+    enableSpringPhysics: profileForm.value.enableSpringPhysics !== false,
+    mascotConfig: { ...profileForm.value.mascotConfig }
   })
   isSavingProfile.value = false
   showToast('Profil ve sosyal medya ayarları kaydedildi!')
@@ -3134,6 +3188,148 @@ const handleChangePassword = async () => {
                     </div>
                   </div>
                 </div>
+
+                  <!-- 3D SİBER & SEVİMLİ MASKOT STÜDYOSU (Çoklu Karakter Seçenekleri) -->
+                  <div 
+                    v-if="profileForm.avatarMode !== 'photo'"
+                    :class="['p-4 rounded-xl border space-y-4 transition-all duration-300', themeClasses.boxInner]"
+                  >
+                    <!-- Başlık & Açıklama -->
+                    <div class="flex items-center justify-between pb-2 border-b" :class="adminTheme === 'dark' ? 'border-neutral-800' : 'border-slate-200'">
+                      <div class="flex items-center gap-2">
+                        <div class="w-7 h-7 rounded-lg flex items-center justify-center bg-gradient-to-tr from-amber-500 to-yellow-300 text-black shadow-sm font-bold text-sm">
+                          🤖
+                        </div>
+                        <div>
+                          <h4 :class="['text-xs font-bold flex items-center gap-1.5', themeClasses.titleText]">
+                            <span>3D Siber & Sevimli Maskot Stüdyosu</span>
+                            <span class="text-[9px] px-2 py-0.5 rounded-full font-mono font-bold tracking-wider uppercase bg-[#FFFF00]/20 text-[#FFFF00] border border-[#FFFF00]/40">
+                              Canlı 3D WebGL
+                            </span>
+                          </h4>
+                          <p class="text-[10px] text-neutral-400">
+                            Ziyaretçilerinizi karşılayacak 3D karakterin kostümünü, sevimli kulaklarını ve göz rengini seçin.
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+
+                    <!-- 1. Karakter Teması & Cilt Seçimi (5 Çeşit) -->
+                    <div>
+                      <label :class="['block text-[11px] font-bold mb-2 flex items-center justify-between', themeClasses.titleText]">
+                        <span class="flex items-center gap-1">
+                          <Sparkles class="w-3 h-3 text-[#FFFF00]" />
+                          Karakter Modeli & Kostüm:
+                        </span>
+                        <span class="text-[10px] text-neutral-400 font-mono font-normal">
+                          Aktif: {{ MASCOT_SKINS.find(s => s.id === profileForm.mascotConfig?.skin)?.name || 'Cyber Linky' }}
+                        </span>
+                      </label>
+                      <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2.5">
+                        <button
+                          v-for="skin in MASCOT_SKINS"
+                          :key="skin.id"
+                          type="button"
+                          @click="selectMascotSkin(skin)"
+                          class="p-2.5 rounded-xl border text-left transition-all duration-200 cursor-pointer flex flex-col justify-between group relative overflow-hidden"
+                          :class="profileForm.mascotConfig?.skin === skin.id
+                            ? (adminTheme === 'light' ? 'border-yellow-500 bg-yellow-50 ring-2 ring-yellow-400/40' : 'border-[#FFFF00] bg-[#FFFF00]/10 ring-2 ring-[#FFFF00]/30')
+                            : (adminTheme === 'dark' ? 'border-[#282828] bg-[#141414] hover:border-neutral-600' : 'border-slate-200 bg-white hover:border-slate-300')"
+                        >
+                          <div class="flex items-center justify-between mb-1.5">
+                            <span class="text-base">{{ skin.emoji }}</span>
+                            <span 
+                              v-if="profileForm.mascotConfig?.skin === skin.id"
+                              class="text-[9px] px-1.5 py-0.5 rounded-full font-bold uppercase font-mono bg-[#FFFF00] text-black shadow-xs"
+                            >
+                              Seçili
+                            </span>
+                          </div>
+                          <div>
+                            <p class="text-xs font-bold leading-tight" :class="themeClasses.titleText">{{ skin.name }}</p>
+                            <p class="text-[9.5px] opacity-75 mt-0.5 leading-snug">{{ skin.tagline }}</p>
+                          </div>
+                          <!-- Mini Renk Çubuğu -->
+                          <div class="mt-2 flex items-center gap-1">
+                            <span class="w-3 h-3 rounded-full border border-black/30 shadow-xs" :style="{ backgroundColor: skin.defaultNeon }"></span>
+                            <span class="text-[8.5px] font-mono opacity-60">{{ skin.defaultAccessory === 'ears' ? '🐱 Kulaklı' : (skin.defaultAccessory === 'halo' ? '😇 Haleli' : '📡 Antenli') }}</span>
+                          </div>
+                        </button>
+                      </div>
+                    </div>
+
+                    <!-- 2. Aksesuar & Başlık Seçimi -->
+                    <div class="pt-2 border-t" :class="adminTheme === 'dark' ? 'border-neutral-800' : 'border-slate-200'">
+                      <label :class="['block text-[11px] font-bold mb-2', themeClasses.titleText]">
+                        Karakter Aksesuarı / Başlık:
+                      </label>
+                      <div class="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                        <button
+                          v-for="acc in MASCOT_ACCESSORIES"
+                          :key="acc.id"
+                          type="button"
+                          @click="selectMascotAccessory(acc.id)"
+                          class="p-2 rounded-lg border text-center transition-all cursor-pointer flex flex-col items-center gap-1"
+                          :class="profileForm.mascotConfig?.accessory === acc.id
+                            ? (adminTheme === 'light' ? 'border-yellow-500 bg-yellow-100 text-black font-bold' : 'border-[#FFFF00] bg-[#FFFF00]/15 text-[#FFFF00] font-bold')
+                            : (adminTheme === 'dark' ? 'border-[#282828] bg-[#141414] text-neutral-300 hover:border-neutral-600' : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300')"
+                        >
+                          <span class="text-lg">{{ acc.emoji }}</span>
+                          <span class="text-[10px] leading-tight">{{ acc.name }}</span>
+                        </button>
+                      </div>
+                    </div>
+
+                    <!-- 3. Göz & LED Işık Rengi -->
+                    <div class="pt-2 border-t" :class="adminTheme === 'dark' ? 'border-neutral-800' : 'border-slate-200'">
+                      <label :class="['block text-[11px] font-bold mb-2', themeClasses.titleText]">
+                        Göz & Neon Işıma Rengi:
+                      </label>
+                      <div class="flex flex-wrap items-center gap-2">
+                        <button
+                          v-for="color in MASCOT_EYE_COLORS"
+                          :key="color.id"
+                          type="button"
+                          @click="selectMascotEyeColor(color.hex)"
+                          class="group relative flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border text-xs font-mono transition-all cursor-pointer"
+                          :class="profileForm.mascotConfig?.eyeColor === color.hex
+                            ? (adminTheme === 'light' ? 'border-yellow-500 bg-yellow-100 ring-2 ring-yellow-400 font-bold text-black' : 'border-white bg-white/10 ring-2 ring-white/50 font-bold text-white')
+                            : (adminTheme === 'dark' ? 'border-[#282828] bg-[#141414] text-neutral-400 hover:border-neutral-600' : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300')"
+                          :title="color.name"
+                        >
+                          <span 
+                            class="w-3 h-3 rounded-full shadow-sm"
+                            :style="{ backgroundColor: color.hex }"
+                          ></span>
+                          <span class="text-[10.5px]">{{ color.name }}</span>
+                        </button>
+                      </div>
+                    </div>
+
+                    <!-- 4. Karakter İfadesi (Mood) -->
+                    <div class="pt-2 border-t" :class="adminTheme === 'dark' ? 'border-neutral-800' : 'border-slate-200'">
+                      <label :class="['block text-[11px] font-bold mb-2', themeClasses.titleText]">
+                        Yüz İfadesi & Mimik (Mood):
+                      </label>
+                      <div class="grid grid-cols-3 gap-2">
+                        <button
+                          v-for="mood in MASCOT_MOODS"
+                          :key="mood.id"
+                          type="button"
+                          @click="selectMascotMood(mood.id)"
+                          class="p-2 rounded-lg border text-center transition-all cursor-pointer flex flex-col items-center gap-0.5"
+                          :class="profileForm.mascotConfig?.mood === mood.id
+                            ? (adminTheme === 'light' ? 'border-yellow-500 bg-yellow-100 text-black font-bold' : 'border-[#FFFF00] bg-[#FFFF00]/15 text-[#FFFF00] font-bold')
+                            : (adminTheme === 'dark' ? 'border-[#282828] bg-[#141414] text-neutral-300 hover:border-neutral-600' : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300')"
+                        >
+                          <span class="text-base">{{ mood.emoji }}</span>
+                          <span class="text-[10px] font-bold">{{ mood.name }}</span>
+                          <span class="text-[8.5px] opacity-70 leading-none">{{ mood.description }}</span>
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+
 
                 <!-- 1.2 AVATAR & PROFİL FOTOĞRAFI (Gelişmiş Seçenekler) -->
                 <div class="space-y-4 pb-5 border-b" :class="themeClasses.headerBorder">

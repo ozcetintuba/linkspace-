@@ -459,7 +459,12 @@ const statusConfig = computed(() => {
             <!-- Avatar veya 3D Siber Maskot -->
             <div class="relative group mb-2 z-10 flex flex-col items-center">
               <div v-if="phoneAvatarMode === '3d'" class="relative flex items-center justify-center">
-                <ThreeAvatarMascot :size="68" :theme="activeTheme.id" :interactive="true" />
+                <ThreeAvatarMascot 
+                  :size="68" 
+                  :theme="activeTheme.id" 
+                  :config="profile?.mascotConfig"
+                  :interactive="true" 
+                />
               </div>
               <div v-else class="relative">
                 <div 

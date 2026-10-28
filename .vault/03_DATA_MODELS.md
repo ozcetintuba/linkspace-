@@ -54,6 +54,13 @@ interface Profile {
   showBadges?: boolean;               // Profilde yetenek/rol rozetlerini göster/gizle (varsayılan: false)
   customDomain?: string;              // Özel alan adı (örn: "tubaozcetin.com")
   subdomain?: string;                 // Alt alan adı (örn: "tuba.linkspace.me")
+  avatarMode?: 'switchable' | 'mascot' | 'photo'; // Avatar görünüm modu
+  mascotConfig?: {                    // 3D Karakter & Maskot Stüdyosu ayarları
+    skin?: 'cyber' | 'sakura' | 'astro' | 'synthwave' | 'boba';
+    accessory?: 'antenna' | 'ears' | 'halo' | 'headset';
+    eyeColor?: string;                // Hex renk kodu ('#FFFF00', '#FF2A85', vb.)
+    mood?: 'happy' | 'wink' | 'cool'; // Karakter yüz ifadesi
+  };
 }
 ```
 

@@ -714,6 +714,101 @@ export const generateBiosContextually = ({ role, skills = [], tone = 'profession
   }))
 }
 
+// ==========================================
+// 3D SİBER & SEVİMLİ MASKOT KİŞİSELLEŞTİRME
+// ==========================================
+export const MASCOT_SKINS = [
+  {
+    id: 'cyber',
+    name: 'Cyber Linky',
+    tagline: 'Orijinal Siber Android',
+    emoji: '⚡',
+    description: 'Mat obsidian titanyum kask, siber detaylar ve ikonik Linkspace neon sarısı.',
+    helmetColor: 0x121214,
+    secondaryColor: 0x24242a,
+    defaultNeon: '#FFFF00',
+    defaultAccessory: 'antenna',
+    badgeClass: 'bg-black text-[#FFFF00] border-[#FFFF00]/40'
+  },
+  {
+    id: 'sakura',
+    name: 'Chibi Sakura',
+    tagline: 'Sevimli Chibi & Kedi Kulaklı',
+    emoji: '🌸',
+    description: 'Tatlı porselen süt beyazı kask, pastel pembe zırh ve ışıltılı pembe LED gözler.',
+    helmetColor: 0xFFF0F5,
+    secondaryColor: 0xFFB6C1,
+    defaultNeon: '#FF2A85',
+    defaultAccessory: 'ears',
+    badgeClass: 'bg-pink-950/70 text-pink-300 border-pink-500/40'
+  },
+  {
+    id: 'astro',
+    name: 'Astro Pup',
+    tagline: 'Kar Beyazı Uzay Botu',
+    emoji: '🚀',
+    description: 'Glossy seramik beyaz uzay zırhı, camgöbeği (cyan) vizör ve neon detaylar.',
+    helmetColor: 0xF8FAFC,
+    secondaryColor: 0xCBD5E1,
+    defaultNeon: '#00E5FF',
+    defaultAccessory: 'headset',
+    badgeClass: 'bg-sky-950/70 text-cyan-300 border-cyan-500/40'
+  },
+  {
+    id: 'synthwave',
+    name: 'Synthwave 80s',
+    tagline: 'Retro Arcade & Melek Halesi',
+    emoji: '💜',
+    description: 'Derin galaksi moru gövde, parlak neon fuşya ve tepede süzülen orbital ışık halesi.',
+    helmetColor: 0x180A26,
+    secondaryColor: 0x361658,
+    defaultNeon: '#BD00FF',
+    defaultAccessory: 'halo',
+    badgeClass: 'bg-purple-950/70 text-purple-300 border-purple-500/40'
+  },
+  {
+    id: 'boba',
+    name: 'Boba Mint',
+    tagline: 'Matcha & Ferah Zümrüt',
+    emoji: '🍃',
+    description: 'Krem nane yeşili porselen, pastel yeşim tonları ve canlı zümrüt ışıklar.',
+    helmetColor: 0xECFDF5,
+    secondaryColor: 0xA7F3D0,
+    defaultNeon: '#10B981',
+    defaultAccessory: 'ears',
+    badgeClass: 'bg-emerald-950/70 text-emerald-300 border-emerald-500/40'
+  }
+]
+
+export const MASCOT_ACCESSORIES = [
+  { id: 'ears', name: 'Kedi Kulakları', emoji: '🐱', description: 'Sevimli 3D kawaii kulakçıklar' },
+  { id: 'antenna', name: 'Sinyal Anteni', emoji: '📡', description: 'Nefes alan LED tepe anteni' },
+  { id: 'halo', name: 'Melek Halesi', emoji: '😇', description: 'Tepede süzülen ışıltılı orbital halka' },
+  { id: 'headset', name: 'Siber Kulaklık', emoji: '🎧', description: 'Çift neon halkalı ses üniteleri' }
+]
+
+export const MASCOT_EYE_COLORS = [
+  { id: '#FFFF00', name: 'Elektrik Sarısı', hex: '#FFFF00', bgClass: 'bg-[#FFFF00]' },
+  { id: '#FF2A85', name: 'Şeker Pembe', hex: '#FF2A85', bgClass: 'bg-[#FF2A85]' },
+  { id: '#00E5FF', name: 'Okyanus Mavisi', hex: '#00E5FF', bgClass: 'bg-[#00E5FF]' },
+  { id: '#10B981', name: 'Zümrüt Yeşili', hex: '#10B981', bgClass: 'bg-[#10B981]' },
+  { id: '#BD00FF', name: 'Synth Mor', hex: '#BD00FF', bgClass: 'bg-[#BD00FF]' },
+  { id: '#FF5722', name: 'Alev Turuncu', hex: '#FF5722', bgClass: 'bg-[#FF5722]' }
+]
+
+export const MASCOT_MOODS = [
+  { id: 'happy', name: 'Neşeli', emoji: '😊', description: 'Geniş gülen yüz ve parıldayan gözler' },
+  { id: 'wink', name: 'Göz Kırpan', emoji: '😉', description: 'Eğlenceli ve samimi göz kırpışı' },
+  { id: 'cool', name: 'Havalı', emoji: '😎', description: 'Siber vizör ve keskin bakışlar' }
+]
+
+export const DEFAULT_MASCOT_CONFIG = {
+  skin: 'cyber',
+  accessory: 'antenna',
+  eyeColor: '#FFFF00',
+  mood: 'happy'
+}
+
 const DEFAULT_PROFILE = {
   name: 'Tuba Gül',
   username: '@tubagul',
@@ -752,7 +847,10 @@ const DEFAULT_PROFILE = {
   subdomain: '',
   enable3dBackground: true,
   avatarMode: 'switchable',
-  enableSpringPhysics: true
+  enableSpringPhysics: true,
+  mascotConfig: {
+    ...DEFAULT_MASCOT_CONFIG
+  }
 }
 
 export const formatForDatetimeInput = (val) => {
@@ -1124,6 +1222,10 @@ export const useLinkStore = defineStore('links', () => {
           socialLinks: {
             ...DEFAULT_PROFILE.socialLinks,
             ...(parsed.socialLinks || {})
+          },
+          mascotConfig: {
+            ...DEFAULT_MASCOT_CONFIG,
+            ...(parsed.mascotConfig || {})
           }
         }
       }
@@ -1233,7 +1335,11 @@ export const useLinkStore = defineStore('links', () => {
           },
           groupByCategory: profileData.groupByCategory !== undefined ? Boolean(profileData.groupByCategory) : false,
           foldersDefaultExpanded: profileData.foldersDefaultExpanded !== undefined ? Boolean(profileData.foldersDefaultExpanded) : true,
-          showBadges: profileData.showBadges !== undefined ? Boolean(profileData.showBadges) : false
+          showBadges: profileData.showBadges !== undefined ? Boolean(profileData.showBadges) : false,
+          mascotConfig: {
+            ...DEFAULT_MASCOT_CONFIG,
+            ...(profileData.mascotConfig || profile.value?.mascotConfig || {})
+          }
         }
       }
       if (linksRes.ok) {
@@ -1342,7 +1448,11 @@ export const useLinkStore = defineStore('links', () => {
             showBadges: data.profile.showBadges !== undefined ? Boolean(data.profile.showBadges) : false,
             enable3dBackground: data.profile.enable3dBackground !== undefined ? Boolean(data.profile.enable3dBackground) : true,
             avatarMode: data.profile.avatarMode || 'switchable',
-            enableSpringPhysics: data.profile.enableSpringPhysics !== undefined ? Boolean(data.profile.enableSpringPhysics) : true
+            enableSpringPhysics: data.profile.enableSpringPhysics !== undefined ? Boolean(data.profile.enableSpringPhysics) : true,
+            mascotConfig: {
+              ...DEFAULT_MASCOT_CONFIG,
+              ...(data.profile.mascotConfig || {})
+            }
           }
         }
         if (Array.isArray(data.links)) {

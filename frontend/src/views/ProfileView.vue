@@ -1146,7 +1146,8 @@ const handleDownloadVCard = async () => {
         <div v-if="currentAvatarView === '3d'" class="relative flex items-center justify-center">
           <ThreeAvatarMascot 
             :size="132" 
-            :theme="activeTheme.id" 
+            :theme="activeTheme.id"
+            :config="profile?.mascotConfig"
             :interactive="true"
           />
         </div>

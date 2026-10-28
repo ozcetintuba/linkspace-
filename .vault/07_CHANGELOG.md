@@ -4,6 +4,26 @@ Tüm önemli mimari değişiklikler, özellik eklemeleri ve düzeltmeler bu dosy
 
 ---
 
+## [v0.37.0] - 2026-10-29 (3D Maskot & Avatar Stüdyosu: Çoklu Karakter, Chibi Kawaii ve Canlı Özelleştirme)
+
+### 🤖 3D Karakter Stüdyosu & Kostüm Çeşitliliği (`ThreeAvatarMascot.vue`, `linkStore.js`, `AdminView.vue`)
+- **5 Hazır Karakter Modeli (Skins)**:
+  - ⚡ **Cyber Linky**: Orijinal mat obsidian titanyum zırh, neon elektrik sarısı LED'ler ve siber sinyal anteni.
+  - 🌸 **Chibi Sakura**: Tatlı süt beyazı porselen kask, pastel pembe zırh, sevimli kedi kulakçıkları ve parıldayan pembe LED yanak allığı.
+  - 🚀 **Astro Pup**: Parlak seramik beyaz NASA uzay kıyafeti, siber kulaklıklar ve elektrik camgöbeği (cyan) vizör.
+  - 💜 **Synthwave 80s**: Derin galaksi moru gövde, neon fuşya detaylar ve tepede dönen ışıltılı orbital melek halesi.
+  - 🍃 **Boba Mint**: Ferahlatıcı matcha nane yeşili porselen, yeşim zırh ve canlı zümrüt yeşili LED ışıklar.
+- **Aksesuar Seçimi (Accessories)**:
+  - 🐱 *Kedi Kulakları* (3D çift kulakçık ve iç parıltı)
+  - 📡 *Sinyal Anteni* (Nefes alan tepe ışıldağı)
+  - 😇 *Melek Halesi* (Orbital dönen neon halka)
+  - 🎧 *Siber Kulaklık* (Çift halkalı başlık)
+- **Göz & Neon Işıma Rengi Seçici**: 6 bağımsız renk seçeneği (Elektrik Sarısı, Şeker Pembe, Okyanus Mavisi, Zümrüt, Synth Mor, Alev Turuncu).
+- **Yüz İfadesi (Mood / Expression)**: 😊 Neşeli (Happy Smile), 😉 Göz Kırpan (Playful Wink), 😎 Havalı (Cool Cyber).
+- **Yönetim Paneli & Canlı Önizleme Entegrasyonu**: Yönetici panelinde yapılan her seçim, sağ taraftaki Canlı Telefon Önizlemesinde ve mobil profil görünümünde anında tepki verir ve kalıcı olarak saklanır.
+
+---
+
 ## [v0.36.6] - 2026-10-28 (Mobil Deneyim: 3D Maskot Varsayılan Açılış ve Dokunmatik Kontroller)
 
 ### 📱 Mobil Uyumluluk & 3D Avatar Başlatma
