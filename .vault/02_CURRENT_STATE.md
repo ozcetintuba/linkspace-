@@ -1,6 +1,6 @@
 # 🔍 02 - MEVCUT DURUM VE TEKNİK BORÇ ANALİZİ (CURRENT STATE)
 
-> **Son Güncelleme**: 28 Ekim 2026 (AI Copilot, Web Share Target, Biyometrik WebAuthn & Offline-First Sync - v0.36.0)  
+> **Son Güncelleme**: 28 Ekim 2026 (Kritik Düzeltme & TDZ ReferenceError Giderimi - v0.36.1)  
 > **Durum**: Full-Stack Mimari (Express + PostgreSQL + Vue 3 + Three.js WebGL + FIDO2 WebAuthn + PWA Background Sync) + Dribbble Sales CRM (#0C0C0B, #161616, #FFFF00) Tasarım Sistemi + Render Canlı Dağıtım (`https://linkspace-app.onrender.com`)  
 > **Proje Türü**: Full-Stack Linktree & Link Hub (CRM Dark & Light Edition)
 
@@ -9,7 +9,7 @@
 ## 1. Aktif Bileşenler ve Servisler
 
 ### A. `backend/` (Express.js REST API Servisi)
-- **Sunucu Portu**: `:5000`
+- **Sunucu Portu**: `:3000` (Tüm arayüzlerde `0.0.0.0` dinlemesi)
 - **Uç Noktalar**:
   - `/api/profile`: Profil GET & PUT (60s TTL & ETag önbellekli GET, sosyal medya bağlantıları `socialLinks JSONB` dahil).
   - `/api/profile/:username`: Ziyaretçiler için profil ve yalnızca aktif (`is_active = true`) bağlantılar (60s TTL & ETag önbellekli, olmayan kullanıcıda 404 durumu, graceful fallback korumalı).
