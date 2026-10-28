@@ -67,7 +67,8 @@ import {
   Folder,
   FolderOpen,
   ChevronDown,
-  Maximize2
+  Maximize2,
+  Minimize2
 } from 'lucide-vue-next'
 
 const linkStore = useLinkStore()
@@ -417,12 +418,13 @@ const qrTargetUrl = computed(() => {
 const generateQrCode = async (targetUrl) => {
   try {
     qrCodeDataUrl.value = await QRCode.toDataURL(targetUrl, {
-      width: 280,
+      width: 360,
       margin: 1.5,
       color: {
-        dark: '#0f172a',
+        dark: '#0C0C0B',
         light: '#ffffff'
-      }
+      },
+      errorCorrectionLevel: 'H'
     })
   } catch (err) {
     console.error('QR Kod oluşturulamadı:', err)
@@ -1518,39 +1520,46 @@ const getLinkSubtitle = (link) => {
     </div>
   </main>
 
-  <!-- Sağ Altta Sürekli Açık Duran Gerçek QR Kod Kartı (Floating QR Widget) -->
+  <!-- Sağ Altta Sürekli Açık Duran Profesyonel Viewfinder QR Kartı (Luxury Floating Pass) -->
   <aside 
     aria-label="Profil QR Kodu"
-    class="fixed bottom-4 right-4 sm:bottom-6 sm:right-6 z-40 select-none"
+    class="fixed bottom-4 right-4 sm:bottom-6 sm:right-6 z-40 select-none max-w-[200px] sm:max-w-[220px]"
   >
-    <!-- Açık QR Kartı -->
+    <!-- Açık Durum: Dribbble Tech-Luxury Kartı -->
     <div 
       v-if="!isQrMinimized"
       :class="[
-        'rounded-2xl sm:rounded-3xl p-2.5 sm:p-3 border shadow-2xl backdrop-blur-xl transition-all duration-300 flex flex-col items-center group',
+        'rounded-[26px] p-3 sm:p-3.5 border shadow-[0_20px_50px_rgba(0,0,0,0.7)] backdrop-blur-2xl transition-all duration-300 flex flex-col items-center relative overflow-hidden group',
         activeTheme.id === 'pure-light'
-          ? 'bg-white/95 border-slate-200 shadow-slate-900/10 text-slate-800'
-          : 'bg-[#141414]/95 border-[#282828] shadow-black/90 text-white ring-1 ring-[#FFFF00]/25'
+          ? 'bg-white/95 border-slate-200 text-slate-800 shadow-slate-900/10'
+          : 'bg-[#121212]/95 border-[#262626] text-white ring-1 ring-white/10 hover:ring-[#FFFF00]/40'
       ]"
     >
-      <!-- Üst Mini Başlık & Eylem Butonları -->
-      <div class="w-full flex items-center justify-between gap-2 mb-2 px-0.5">
-        <span class="flex items-center gap-1.5 text-[11px] font-bold" :class="activeTheme.id === 'pure-light' ? 'text-slate-800' : 'text-white'">
-          <span class="w-1.5 h-1.5 rounded-full bg-[#FFFF00] animate-pulse"></span>
-          <span>QR Kod</span>
-        </span>
-        <div class="flex items-center gap-1">
-          <!-- Büyüt / Paylaşım Penceresi -->
+      <!-- Arka Plan Neon Parıltısı -->
+      <div class="pointer-events-none absolute -top-8 -right-8 w-20 h-20 bg-[#FFFF00]/10 rounded-full blur-xl"></div>
+
+      <!-- Kart Üst Barı: Marka & Kullanıcı & Aksiyonlar -->
+      <div class="w-full flex items-center justify-between gap-1.5 mb-2.5 px-0.5">
+        <div class="flex items-center gap-1.5 min-w-0">
+          <Zap class="w-3.5 h-3.5 text-[#FFFF00] fill-[#FFFF00] shrink-0 drop-shadow-[0_0_6px_rgba(255,255,0,0.6)]" />
+          <div class="min-w-0">
+            <span class="text-[10px] font-mono font-bold block truncate" :class="activeTheme.id === 'pure-light' ? 'text-slate-900' : 'text-white'">
+              {{ displayUsername }}
+            </span>
+          </div>
+        </div>
+
+        <!-- Üst Butonlar (Küçült / Büyüt) -->
+        <div class="flex items-center gap-0.5 shrink-0">
           <button 
             type="button"
             @click="showShareModal = true"
             class="p-1 rounded-lg transition-colors cursor-pointer"
             :class="activeTheme.id === 'pure-light' ? 'hover:bg-slate-100 text-slate-400 hover:text-black' : 'hover:bg-white/10 text-neutral-400 hover:text-[#FFFF00]'"
-            title="Büyüt ve Paylaşım Seçeneklerini Aç"
+            title="Büyüt ve Paylaş"
           >
             <Maximize2 class="w-3 h-3" />
           </button>
-          <!-- Simge Durumuna Küçült -->
           <button 
             type="button"
             @click="isQrMinimized = true"
@@ -1563,48 +1572,72 @@ const getLinkSubtitle = (link) => {
         </div>
       </div>
 
-      <!-- Doğrudan Taranabilir Gerçek QR Kod Görseli -->
+      <!-- Kamera Viewfinder (Vizör) Çerçevesi İçinde QR Kod -->
       <div 
         @click="showShareModal = true"
-        class="w-24 h-24 sm:w-28 sm:h-28 bg-white p-1.5 rounded-xl sm:rounded-2xl shadow-inner border border-slate-200 flex items-center justify-center cursor-pointer transition-transform hover:scale-[1.03]"
+        class="relative p-1.5 bg-black/40 rounded-2xl cursor-pointer group-hover:scale-[1.02] transition-transform duration-300 w-full flex items-center justify-center border border-white/5"
         title="Büyütmek ve paylaşım seçeneklerini görmek için tıkla"
       >
-        <img 
-          v-if="qrCodeDataUrl" 
-          :src="qrCodeDataUrl" 
-          :alt="`${profile.name} QR Kodu`" 
-          class="w-full h-full object-contain"
-        />
-        <div v-else class="text-[10px] text-slate-400 animate-pulse text-center">QR yükleniyor...</div>
+        <!-- 4 Köşe Neon Vizör İşareti (HUD Viewfinder Brackets) -->
+        <div class="absolute -top-1 -left-1 w-3 h-3 border-t-2 border-l-2 border-[#FFFF00] rounded-tl-sm pointer-events-none"></div>
+        <div class="absolute -top-1 -right-1 w-3 h-3 border-t-2 border-r-2 border-[#FFFF00] rounded-tr-sm pointer-events-none"></div>
+        <div class="absolute -bottom-1 -left-1 w-3 h-3 border-b-2 border-l-2 border-[#FFFF00] rounded-bl-sm pointer-events-none"></div>
+        <div class="absolute -bottom-1 -right-1 w-3 h-3 border-b-2 border-r-2 border-[#FFFF00] rounded-br-sm pointer-events-none"></div>
+
+        <!-- Yüksek Kontrastlı QR Görseli -->
+        <div class="w-24 h-24 sm:w-28 sm:h-28 bg-white p-1 rounded-xl shadow-inner flex items-center justify-center overflow-hidden">
+          <img 
+            v-if="qrCodeDataUrl" 
+            :src="qrCodeDataUrl" 
+            :alt="`${profile.name} QR Kodu`" 
+            class="w-full h-full object-contain"
+          />
+          <div v-else class="text-[9px] text-slate-400 animate-pulse text-center">QR yükleniyor...</div>
+        </div>
       </div>
 
-      <!-- Alt Tıkla / Bilgi Yazısı -->
-      <button 
-        type="button"
-        @click="showShareModal = true"
-        class="mt-2 text-[10px] sm:text-[11px] font-semibold flex items-center gap-1 opacity-85 hover:opacity-100 transition-opacity cursor-pointer"
-        :class="activeTheme.id === 'pure-light' ? 'text-slate-600' : 'text-neutral-300'"
-      >
-        <QrCode class="w-3 h-3 text-[#FFFF00]" />
-        <span>Kamerayla Tara</span>
-      </button>
+      <!-- Kart Alt Barı: Canlı Bilgi & Hızlı Kopyala -->
+      <div class="w-full mt-2.5 pt-2 border-t flex items-center justify-between gap-1 text-[10px]" :class="activeTheme.id === 'pure-light' ? 'border-slate-200' : 'border-white/10'">
+        <div class="flex items-center gap-1 opacity-80" :class="activeTheme.id === 'pure-light' ? 'text-slate-600' : 'text-neutral-300'">
+          <span class="relative flex h-1.5 w-1.5 shrink-0">
+            <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+            <span class="relative inline-flex rounded-full h-1.5 w-1.5 bg-emerald-500"></span>
+          </span>
+          <span class="font-medium text-[9px] truncate">Kamerayla Tara</span>
+        </div>
+
+        <button 
+          type="button"
+          @click.stop="copyProfileLink"
+          class="px-2 py-0.5 rounded-lg text-[9px] font-bold transition-all flex items-center gap-1 cursor-pointer active:scale-95 shrink-0"
+          :class="isCopied 
+            ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' 
+            : (activeTheme.id === 'pure-light' ? 'bg-slate-100 hover:bg-slate-200 text-slate-800' : 'bg-white/10 hover:bg-[#FFFF00] hover:text-black text-white')"
+          :title="isCopied ? 'Kopyalandı!' : 'Profili Kopyala'"
+        >
+          <Check v-if="isCopied" class="w-2.5 h-2.5" />
+          <Copy v-else class="w-2.5 h-2.5" />
+          <span>{{ isCopied ? 'Kopyalandı' : 'Kopyala' }}</span>
+        </button>
+      </div>
     </div>
 
-    <!-- Küçültülmüş Hal (Simge Butonu) -->
+    <!-- Küçültülmüş Durum: Kompakt Neon Hap Buton -->
     <button 
       v-else
       type="button"
       @click="isQrMinimized = false"
       :class="[
-        'flex items-center gap-2 px-3 py-2.5 rounded-full text-xs font-bold shadow-2xl backdrop-blur-md transition-all duration-300 hover:scale-105 active:scale-95 border cursor-pointer',
+        'flex items-center gap-2 px-3 py-2 rounded-full text-xs font-bold shadow-2xl backdrop-blur-md transition-all duration-300 hover:scale-105 active:scale-95 border cursor-pointer group',
         activeTheme.id === 'pure-light' 
-          ? 'bg-[#FFFF00] text-black border-yellow-300 shadow-xl shadow-yellow-500/30' 
-          : 'bg-[#141414]/95 text-[#FFFF00] border-[#282828] hover:border-[#FFFF00] shadow-black/90 ring-1 ring-[#FFFF00]/25'
+          ? 'bg-white text-slate-900 border-slate-300 shadow-xl shadow-slate-900/10 hover:border-yellow-400' 
+          : 'bg-[#121212]/95 text-white border-[#282828] hover:border-[#FFFF00] shadow-black/90 ring-1 ring-[#FFFF00]/30 hover:ring-[#FFFF00]/60'
       ]"
-      title="QR Kodu Aç"
+      title="QR Kod Kartını Aç"
     >
-      <QrCode class="w-4 h-4" />
-      <span>QR Kod</span>
+      <Zap class="w-3.5 h-3.5 text-[#FFFF00] fill-[#FFFF00] group-hover:scale-110 transition-transform" />
+      <span class="text-[11px] font-mono font-semibold">QR Kart</span>
+      <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
     </button>
   </aside>
 

@@ -4,6 +4,19 @@ Tüm önemli mimari değişiklikler, özellik eklemeleri ve düzeltmeler bu dosy
 
 ---
 
+## [v0.33.2] - 2026-10-28 (Ultra Lüks Vizör QR Kart Tasarımı & Hızlı Aksiyonlar)
+
+### 🎴 Profesyonel Viewfinder (Kamera Vizörü) Tasarımlı QR Kartı
+- **Lüks Obsidyen & Neon Sarı Vizör Estetiği**:
+  - Profil sayfasının sağ altındaki QR widget'ı, sitenin koyu minimalist konseptiyle (`#0C0C0B`, `#121212`, `#FFFF00`) tam uyumlu şık bir "Tech Pass" kartına dönüştürüldü.
+  - Kamera vizörü köşebentleri (`HUD Viewfinder Brackets` - neon sarı 4 köşe çizgisi) ile gerçek taranabilir kamera odak hissi kazandırıldı.
+  - Kart başlığında `Zap` yıldırım amblemi ve kullanıcının dinamik kullanıcı adı (`@handle`) eklendi.
+  - Canlı kamera sinyal göstergesi (yeşil yanıp sönen radar efekti: "Kamerayla Tara") ve tek tıkla panoya bağlantı kopyalama (`Hızlı Kopyala` butonu) eklendi.
+- **Yüksek Çözünürlüklü ve Hatasız QR Üretimi**:
+  - QR kod piksel çözünürlüğü `360px`'e ve hata düzeltme seviyesi `H` (High Level %30 tolerans) standartlarına yükseltildi. Koyu renk koyu obsidyen `#0C0C0B` ile eşleştirildi.
+- **Kompakt Minimized Pill**:
+  - Simge durumuna küçültüldüğünde neon sarı yıldırım ve yeşil canlı durum indikatörlü kapsül buton biçimini alır.
+
 ## [v0.33.1] - 2026-10-28 (QR Kod Okutan Cihazların Tespiti & Canlı Akış Akıllılığı)
 
 ### 📱 QR Kod Cihaz Tespiti & Akıllı Analitik Motoru
