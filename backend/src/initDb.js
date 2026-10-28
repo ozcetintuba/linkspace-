@@ -36,8 +36,11 @@ export const initializeDatabase = async () => {
       ALTER TABLE profiles ALTER COLUMN status_color SET DEFAULT 'none';
       ALTER TABLE profiles ADD COLUMN IF NOT EXISTS is_verified BOOLEAN DEFAULT TRUE;
       ALTER TABLE profiles ADD COLUMN IF NOT EXISTS group_by_category BOOLEAN DEFAULT false;
+      ALTER TABLE profiles ADD COLUMN IF NOT EXISTS group_style VARCHAR(20) DEFAULT 'accordion';
       ALTER TABLE profiles ADD COLUMN IF NOT EXISTS folders_default_expanded BOOLEAN DEFAULT true;
       ALTER TABLE profiles ADD COLUMN IF NOT EXISTS show_badges BOOLEAN DEFAULT false;
+      ALTER TABLE profiles ADD COLUMN IF NOT EXISTS custom_domain VARCHAR(255) DEFAULT '';
+      ALTER TABLE profiles ADD COLUMN IF NOT EXISTS subdomain VARCHAR(100) DEFAULT '';
       UPDATE profiles SET status_color = 'none' WHERE status_color = 'emerald';
       UPDATE profiles SET show_badges = false WHERE show_badges IS NULL;
       UPDATE profiles SET group_by_category = false WHERE group_by_category IS NULL;
@@ -69,6 +72,14 @@ export const initializeDatabase = async () => {
       ALTER TABLE links ADD COLUMN IF NOT EXISTS lock_type VARCHAR(20) DEFAULT 'pin';
       ALTER TABLE links ADD COLUMN IF NOT EXISTS passcode VARCHAR(50) DEFAULT '';
       ALTER TABLE links ADD COLUMN IF NOT EXISTS lock_warning VARCHAR(255) DEFAULT '';
+      ALTER TABLE links ADD COLUMN IF NOT EXISTS is_header BOOLEAN DEFAULT FALSE;
+      ALTER TABLE links ADD COLUMN IF NOT EXISTS ab_test_enabled BOOLEAN DEFAULT FALSE;
+      ALTER TABLE links ADD COLUMN IF NOT EXISTS title_b VARCHAR(255) DEFAULT '';
+      ALTER TABLE links ADD COLUMN IF NOT EXISTS url_b TEXT DEFAULT '';
+      ALTER TABLE links ADD COLUMN IF NOT EXISTS clicks_a INTEGER DEFAULT 0;
+      ALTER TABLE links ADD COLUMN IF NOT EXISTS clicks_b INTEGER DEFAULT 0;
+      ALTER TABLE links ADD COLUMN IF NOT EXISTS views_a INTEGER DEFAULT 0;
+      ALTER TABLE links ADD COLUMN IF NOT EXISTS views_b INTEGER DEFAULT 0;
     `)
 
     // 3. Ayarlar & Tema Tablosu
@@ -136,8 +147,10 @@ export const initializeDatabase = async () => {
         country VARCHAR(100) DEFAULT 'TR',
         city VARCHAR(100) DEFAULT 'İstanbul',
         user_agent TEXT DEFAULT '',
+        variant VARCHAR(5) DEFAULT 'a',
         created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
       );
+      ALTER TABLE click_events ADD COLUMN IF NOT EXISTS variant VARCHAR(5) DEFAULT 'a';
       CREATE INDEX IF NOT EXISTS idx_click_events_link_id ON click_events(link_id);
       CREATE INDEX IF NOT EXISTS idx_click_events_created_at ON click_events(created_at);
     `)

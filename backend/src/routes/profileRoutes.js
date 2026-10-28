@@ -50,8 +50,11 @@ router.get('/', cacheMiddleware(60), async (req, res) => {
           COALESCE(badges, '[]'::jsonb) AS "badges",
           COALESCE(social_links, '{}'::jsonb) AS "socialLinks",
           COALESCE(group_by_category, false) AS "groupByCategory",
+          COALESCE(group_style, 'accordion') AS "groupStyle",
           COALESCE(folders_default_expanded, true) AS "foldersDefaultExpanded",
-          COALESCE(show_badges, false) AS "showBadges"
+          COALESCE(show_badges, false) AS "showBadges",
+          COALESCE(custom_domain, '') AS "customDomain",
+          COALESCE(subdomain, '') AS "subdomain"
         FROM profiles 
         ORDER BY id ASC 
         LIMIT 1
@@ -98,8 +101,11 @@ router.get('/:username', cacheMiddleware(60), async (req, res) => {
         COALESCE(badges, '[]'::jsonb) AS "badges",
         COALESCE(social_links, '{}'::jsonb) AS "socialLinks",
         COALESCE(group_by_category, false) AS "groupByCategory",
+        COALESCE(group_style, 'accordion') AS "groupStyle",
         COALESCE(folders_default_expanded, true) AS "foldersDefaultExpanded",
-        COALESCE(show_badges, false) AS "showBadges"
+        COALESCE(show_badges, false) AS "showBadges",
+        COALESCE(custom_domain, '') AS "customDomain",
+        COALESCE(subdomain, '') AS "subdomain"
       FROM profiles 
       WHERE LOWER(REPLACE(username, '@', '')) = $1
       LIMIT 1
@@ -132,7 +138,15 @@ router.get('/:username', cacheMiddleware(60), async (req, res) => {
         COALESCE(is_locked, false) AS "isLocked",
         COALESCE(lock_type, 'pin') AS "lockType",
         COALESCE(passcode, '') AS "passcode",
-        COALESCE(lock_warning, '') AS "lockWarning"
+        COALESCE(lock_warning, '') AS "lockWarning",
+        COALESCE(is_header, false) AS "isHeader",
+        COALESCE(ab_test_enabled, false) AS "abTestEnabled",
+        COALESCE(title_b, '') AS "titleB",
+        COALESCE(url_b, '') AS "urlB",
+        COALESCE(clicks_a, 0) AS "clicksA",
+        COALESCE(clicks_b, 0) AS "clicksB",
+        COALESCE(views_a, 0) AS "viewsA",
+        COALESCE(views_b, 0) AS "viewsB"
       FROM links 
       WHERE is_active = true
         AND (is_scheduled = false OR schedule_end IS NULL OR schedule_end >= CURRENT_TIMESTAMP)
@@ -155,8 +169,11 @@ router.get('/:username', cacheMiddleware(60), async (req, res) => {
         badges: profile.badges || [],
         socialLinks: profile.socialLinks,
         groupByCategory: profile.groupByCategory !== undefined ? Boolean(profile.groupByCategory) : false,
+        groupStyle: profile.groupStyle || 'accordion',
         foldersDefaultExpanded: profile.foldersDefaultExpanded !== undefined ? Boolean(profile.foldersDefaultExpanded) : true,
-        showBadges: profile.showBadges !== undefined ? Boolean(profile.showBadges) : false
+        showBadges: profile.showBadges !== undefined ? Boolean(profile.showBadges) : false,
+        customDomain: profile.customDomain || '',
+        subdomain: profile.subdomain || ''
       },
       links: linksResult.rows
     })
@@ -220,8 +237,11 @@ router.put('/', requireAuth, async (req, res) => {
       badges, 
       socialLinks,
       groupByCategory,
+      groupStyle,
       foldersDefaultExpanded,
-      showBadges
+      showBadges,
+      customDomain,
+      subdomain
     } = req.body
 
     if (!name || !username) {
@@ -238,8 +258,11 @@ router.put('/', requireAuth, async (req, res) => {
     const safeStatusColor = statusColor || 'none'
     const safeIsVerified = isVerified !== undefined ? Boolean(isVerified) : true
     const safeGroupByCategory = groupByCategory !== undefined ? Boolean(groupByCategory) : false
+    const safeGroupStyle = groupStyle || 'accordion'
     const safeFoldersDefaultExpanded = foldersDefaultExpanded !== undefined ? Boolean(foldersDefaultExpanded) : true
     const safeShowBadges = showBadges !== undefined ? Boolean(showBadges) : false
+    const safeCustomDomain = customDomain !== undefined ? String(customDomain).trim() : ''
+    const safeSubdomain = subdomain !== undefined ? String(subdomain).trim() : ''
 
     const result = await query(`
       UPDATE profiles 
@@ -260,6 +283,9 @@ router.put('/', requireAuth, async (req, res) => {
         group_by_category = $14,
         folders_default_expanded = $15,
         show_badges = $16,
+        group_style = $17,
+        custom_domain = $18,
+        subdomain = $19,
         updated_at = CURRENT_TIMESTAMP
       WHERE id = (SELECT id FROM profiles ORDER BY id ASC LIMIT 1)
       RETURNING 
@@ -277,8 +303,11 @@ router.put('/', requireAuth, async (req, res) => {
         COALESCE(badges, '[]'::jsonb) AS "badges", 
         COALESCE(social_links, '{}'::jsonb) AS "socialLinks",
         COALESCE(group_by_category, false) AS "groupByCategory",
+        COALESCE(group_style, 'accordion') AS "groupStyle",
         COALESCE(folders_default_expanded, true) AS "foldersDefaultExpanded",
-        COALESCE(show_badges, false) AS "showBadges"
+        COALESCE(show_badges, false) AS "showBadges",
+        COALESCE(custom_domain, '') AS "customDomain",
+        COALESCE(subdomain, '') AS "subdomain"
     `, [
       name.trim(), 
       username.trim(), 
@@ -295,7 +324,10 @@ router.put('/', requireAuth, async (req, res) => {
       safeIsVerified,
       safeGroupByCategory,
       safeFoldersDefaultExpanded,
-      safeShowBadges
+      safeShowBadges,
+      safeGroupStyle,
+      safeCustomDomain,
+      safeSubdomain
     ])
 
     if (result.rows.length === 0) {

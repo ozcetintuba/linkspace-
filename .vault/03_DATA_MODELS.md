@@ -49,8 +49,11 @@ interface Profile {
     style?: string;            // 'glass' | 'neon' | 'solid'
   };
   groupByCategory?: boolean;          // Profilde bağlantıları kategorilere göre klasörleme açma/kapama (varsayılan: false)
+  groupStyle?: 'accordion' | 'headers'; // Gruplama formatı ('accordion': açılır klasörler, 'headers': sayfa içi metin ayraçları)
   foldersDefaultExpanded?: boolean;   // Klasörler açıkken varsayılan olarak açık mı kapalı mı başlasın (varsayılan: true)
   showBadges?: boolean;               // Profilde yetenek/rol rozetlerini göster/gizle (varsayılan: false)
+  customDomain?: string;              // Özel alan adı (örn: "tubaozcetin.com")
+  subdomain?: string;                 // Alt alan adı (örn: "tuba.linkspace.me")
 }
 ```
 
@@ -112,6 +115,15 @@ interface LinkItem {
   lockType?: string;        // 'pin' (4 haneli şifre) | 'age' (18+ yaş onayı)
   passcode?: string;        // PIN şifresi (örn: "1234")
   lockWarning?: string;     // Kilit açma modalında gösterilecek özel uyarı mesajı
+  // Bölüm Ayracı & A/B Split Testing Alanları (v0.34.0)
+  isHeader?: boolean;       // Buton yerine bölüm/kategori ayracı metin başlığı olarak göster (varsayılan: false)
+  abTestEnabled?: boolean;  // A/B bölünmüş test aktif mi (varsayılan: false)
+  titleB?: string;          // Varyant B alternatif başlığı
+  urlB?: string;            // Varyant B alternatif URL'si
+  clicksA?: number;         // Varyant A tıklanma sayısı
+  clicksB?: number;         // Varyant B tıklanma sayısı
+  viewsA?: number;          // Varyant A görüntülenme sayısı
+  viewsB?: number;          // Varyant B görüntülenme sayısı
 }
 
 interface LinkFolderGroup {

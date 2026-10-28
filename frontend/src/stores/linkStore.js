@@ -745,8 +745,11 @@ const DEFAULT_PROFILE = {
     style: 'glass'
   },
   groupByCategory: false,
+  groupStyle: 'accordion',
   foldersDefaultExpanded: true,
-  showBadges: false
+  showBadges: false,
+  customDomain: '',
+  subdomain: ''
 }
 
 export const formatForDatetimeInput = (val) => {
@@ -1091,7 +1094,15 @@ export const useLinkStore = defineStore('links', () => {
           isLocked: Boolean(link.isLocked),
           lockType: link.lockType || 'pin',
           passcode: link.passcode !== undefined ? String(link.passcode).trim() : '',
-          lockWarning: link.lockWarning !== undefined ? String(link.lockWarning).trim() : ''
+          lockWarning: link.lockWarning !== undefined ? String(link.lockWarning).trim() : '',
+          isHeader: Boolean(link.isHeader),
+          abTestEnabled: Boolean(link.abTestEnabled),
+          titleB: link.titleB || '',
+          urlB: link.urlB || '',
+          clicksA: typeof link.clicksA === 'number' ? link.clicksA : 0,
+          clicksB: typeof link.clicksB === 'number' ? link.clicksB : 0,
+          viewsA: typeof link.viewsA === 'number' ? link.viewsA : 0,
+          viewsB: typeof link.viewsB === 'number' ? link.viewsB : 0
         }))
       }
 
@@ -1239,7 +1250,15 @@ export const useLinkStore = defineStore('links', () => {
           isLocked: Boolean(link.isLocked),
           lockType: link.lockType || 'pin',
           passcode: link.passcode !== undefined ? String(link.passcode).trim() : '',
-          lockWarning: link.lockWarning !== undefined ? String(link.lockWarning).trim() : ''
+          lockWarning: link.lockWarning !== undefined ? String(link.lockWarning).trim() : '',
+          isHeader: Boolean(link.isHeader),
+          abTestEnabled: Boolean(link.abTestEnabled),
+          titleB: link.titleB || '',
+          urlB: link.urlB || '',
+          clicksA: typeof link.clicksA === 'number' ? link.clicksA : 0,
+          clicksB: typeof link.clicksB === 'number' ? link.clicksB : 0,
+          viewsA: typeof link.viewsA === 'number' ? link.viewsA : 0,
+          viewsB: typeof link.viewsB === 'number' ? link.viewsB : 0
         }))
       }
       if (themeRes.ok) {
@@ -1337,7 +1356,15 @@ export const useLinkStore = defineStore('links', () => {
             isLocked: Boolean(l.isLocked),
             lockType: l.lockType || 'pin',
             passcode: l.passcode !== undefined ? String(l.passcode).trim() : '',
-            lockWarning: l.lockWarning !== undefined ? String(l.lockWarning).trim() : ''
+            lockWarning: l.lockWarning !== undefined ? String(l.lockWarning).trim() : '',
+            isHeader: Boolean(l.isHeader),
+            abTestEnabled: Boolean(l.abTestEnabled),
+            titleB: l.titleB || '',
+            urlB: l.urlB || '',
+            clicksA: typeof l.clicksA === 'number' ? l.clicksA : 0,
+            clicksB: typeof l.clicksB === 'number' ? l.clicksB : 0,
+            viewsA: typeof l.viewsA === 'number' ? l.viewsA : 0,
+            viewsB: typeof l.viewsB === 'number' ? l.viewsB : 0
           }))
         }
         return { success: true, profile: data.profile, links: data.links }
@@ -1455,11 +1482,16 @@ export const useLinkStore = defineStore('links', () => {
     return [...links.value].sort((a, b) => (b.clicks || 0) - (a.clicks || 0))[0]
   })
 
-  // Tıklama Takibi (Analytics Action - Detaylı Referrer & Device Analitiği)
+  // Tıklama Takibi (Analytics Action - Detaylı Referrer & Device & A/B Varyant Analitiği)
   const trackClick = async (id, meta = {}) => {
     const link = links.value.find(l => l.id === id)
     if (link) {
       link.clicks = (link.clicks || 0) + 1
+      if (meta.variant === 'b') {
+        link.clicksB = (link.clicksB || 0) + 1
+      } else {
+        link.clicksA = (link.clicksA || 0) + 1
+      }
       if (isBackendConnected.value) {
         try {
           await fetch(`${API_BASE}/links/${id}/click`, { 
@@ -1469,6 +1501,29 @@ export const useLinkStore = defineStore('links', () => {
           })
         } catch (e) {
           console.warn('Backend tıklama takip hatası:', e)
+        }
+      }
+    }
+  }
+
+  // A/B Testi Görüntülenme Takibi
+  const recordImpression = async (id, variant = 'a') => {
+    const link = links.value.find(l => l.id === id)
+    if (link) {
+      if (variant === 'b') {
+        link.viewsB = (link.viewsB || 0) + 1
+      } else {
+        link.viewsA = (link.viewsA || 0) + 1
+      }
+      if (isBackendConnected.value) {
+        try {
+          await fetch(`${API_BASE}/links/${id}/impression`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ variant })
+          })
+        } catch (e) {
+          // ignore
         }
       }
     }
@@ -2178,6 +2233,7 @@ export const useLinkStore = defineStore('links', () => {
     activeCount,
     topLink,
     trackClick,
+    recordImpression,
     resetClicks,
     addLink,
     deleteLink,

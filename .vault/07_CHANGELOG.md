@@ -4,6 +4,39 @@ Tüm önemli mimari değişiklikler, özellik eklemeleri ve düzeltmeler bu dosy
 
 ---
 
+## [v0.34.0] - 2026-10-28 (PWA, Akıllı Link Ağacı Ayraçları, A/B Split Testing & Çoklu Oturum)
+
+### 📲 1. PWA (Progressive Web App) Desteği
+- **Manifest & Service Worker Entegrasyonu**:
+  - `manifest.json` ve `manifest.webmanifest` yapılandırması tamamlandı. 192x192 ve 512x512 maskable PNG simgeleri üretilip `frontend/public/` dizinine eklendi.
+  - `sw.js` Service Worker önbellekleme stratejisi (API istekleri için Network-First, statik varlıklar için Stale-While-Revalidate) oluşturuldu.
+- **Akıllı "Ana Ekrana Ekle" & iOS Yükleme Bildirimi (`PwaInstallPrompt.vue`)**:
+  - Mobil Android Chrome ve Masaüstü tarayıcılarda `beforeinstallprompt` yakalanarak şık neon sarı "Uygulamayı Yükle" bildirimi sunulur.
+  - iPhone ve iPad Safari ziyaretçileri için "Paylaş (⬆️) -> Ana Ekrana Ekle" yönlendirme kartı entegre edildi.
+
+### 🌳 2. Akıllı Link Ağacı, Bölüm Ayraçları & Gruplama Stilleri
+- **Başlık / Kategori Ayraçları (`isHeader`)**:
+  - Kullanıcılar bağlantı listesine doğrudan "Sosyal Medya", "Projelerim", "Sponsorlu İçerikler" gibi tıklanamayan şık metin ayraçları ekleyebilir.
+- **Gruplama Formatı Seçimi (`groupStyle: 'accordion' | 'headers'`)**:
+  - Yönetici panelinde klasörleme açıkken kullanıcılar "Akordeon Klasörleri (Açılır kutular)" veya "Bölüm Başlıkları (Sayfa içi ayraçlar)" arasında tek tıkla geçiş yapabilir.
+
+### 🧪 3. A/B Testi Altyapısı (Split Testing)
+- **Varyant A & Varyant B Test Motoru**:
+  - Her bir bağlantı için tek tıkla A/B testi etkinleştirilebilir; alternatif başlık (`titleB`) ve alternatif hedef URL (`urlB`) tanımlanabilir.
+  - Ziyaretçilere %50 / %50 rastlantısal ve oturum boyunca tutarlı varyant gösterilir.
+  - Yönetici panelinde A vs B tıklanma sayaçları, performans karşılaştırması ve kazanan varyant rozeti (🏆 Lider: A / B) raporlanır.
+
+### 🌐 4. Custom Subdomain & Özel Domain Yönlendirme
+- **Subdomain & CNAME Yönetim Arayüzü**:
+  - Yönetim paneli Ayarlar sekmesinde alt alan adı (`tuba.linkspace.me`) ve özel alan adı (`tubaozcetin.com`) yönetim alanı, CNAME ve A Record kopyalama butonları ve SSL/DNS doğrulama rozeti sağlandı.
+
+### 🔐 5. Sosyal Giriş (OAuth 2.0) ve Çoklu Oturum Yönetimi
+- **OAuth Sağlayıcıları & Aktif Oturumlar**:
+  - Google ve GitHub tek tıkla giriş entegrasyon durum kartları eklendi.
+  - "Aktif Cihaz Oturumları (Active Sessions)" listesi ile kullanıcının hangi cihazlardan (Windows PC Chrome, Apple iPhone Safari vb.) bağlı olduğu, IP adresleri ve son aktivite zamanları listelenir; tek tıkla diğer oturumları sonlandırma imkanı sunulur.
+
+---
+
 ## [v0.33.2] - 2026-10-28 (Ultra Lüks Vizör QR Kart Tasarımı & Hızlı Aksiyonlar)
 
 ### 🎴 Profesyonel Viewfinder (Kamera Vizörü) Tasarımlı QR Kartı

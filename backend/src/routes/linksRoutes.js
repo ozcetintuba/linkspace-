@@ -92,7 +92,15 @@ router.get('/', async (req, res) => {
           COALESCE(is_locked, false) AS "isLocked",
           COALESCE(lock_type, 'pin') AS "lockType",
           COALESCE(passcode, '') AS "passcode",
-          COALESCE(lock_warning, '') AS "lockWarning"
+          COALESCE(lock_warning, '') AS "lockWarning",
+          COALESCE(is_header, false) AS "isHeader",
+          COALESCE(ab_test_enabled, false) AS "abTestEnabled",
+          COALESCE(title_b, '') AS "titleB",
+          COALESCE(url_b, '') AS "urlB",
+          COALESCE(clicks_a, 0) AS "clicksA",
+          COALESCE(clicks_b, 0) AS "clicksB",
+          COALESCE(views_a, 0) AS "viewsA",
+          COALESCE(views_b, 0) AS "viewsB"
         FROM links 
         ORDER BY order_index ASC, id DESC
       `)
@@ -151,23 +159,41 @@ router.post('/', requireAuth, async (req, res) => {
       isLocked,
       lockType,
       passcode,
-      lockWarning
+      lockWarning,
+      isHeader,
+      abTestEnabled,
+      titleB,
+      urlB
     } = req.body
 
-    if (!title || !url) {
-      return res.status(400).json({ error: 'Başlık ve URL zorunludur' })
+    const finalIsHeader = Boolean(isHeader)
+    if (!title) {
+      return res.status(400).json({ error: 'Başlık zorunludur' })
     }
 
-    if (!isValidUrl(url)) {
+    if (!finalIsHeader && !url) {
+      return res.status(400).json({ error: 'URL zorunludur' })
+    }
+
+    if (!finalIsHeader && !isValidUrl(url)) {
       return res.status(400).json({ 
         error: 'Geçersiz veya güvensiz URL formatı. Lütfen geçerli bir web adresi girin (örn: https://ornek.com).' 
       })
     }
 
-    const trimmedUrl = url.trim()
-    const formattedUrl = (trimmedUrl.startsWith('http://') || trimmedUrl.startsWith('https://') || trimmedUrl.startsWith('mailto:') || trimmedUrl.startsWith('tel:'))
-      ? trimmedUrl 
-      : `https://${trimmedUrl}`
+    const trimmedUrl = (url || '').trim()
+    const formattedUrl = finalIsHeader 
+      ? '' 
+      : ((trimmedUrl.startsWith('http://') || trimmedUrl.startsWith('https://') || trimmedUrl.startsWith('mailto:') || trimmedUrl.startsWith('tel:'))
+        ? trimmedUrl 
+        : `https://${trimmedUrl}`)
+
+    const finalAbTestEnabled = Boolean(abTestEnabled)
+    const finalTitleB = titleB !== undefined ? String(titleB).trim() : ''
+    let finalUrlB = (urlB || '').trim()
+    if (finalUrlB && !finalUrlB.startsWith('http://') && !finalUrlB.startsWith('https://')) {
+      finalUrlB = `https://${finalUrlB}`
+    }
 
     // Mevcut en küçük order_index değerinden 1 küçük yap veya 0 ata (en üste eklensin)
     const minOrderResult = await query('SELECT MIN(order_index) as min_order FROM links')
@@ -191,9 +217,10 @@ router.post('/', requireAuth, async (req, res) => {
       INSERT INTO links (
         id, title, url, is_active, icon, custom_color, clicks, order_index, 
         is_scheduled, schedule_start, schedule_end, show_countdown, category,
-        embed_type, show_embed, is_locked, lock_type, passcode, lock_warning
+        embed_type, show_embed, is_locked, lock_type, passcode, lock_warning,
+        is_header, ab_test_enabled, title_b, url_b, clicks_a, clicks_b, views_a, views_b
       )
-      VALUES ($1, $2, $3, $4, $5, $6, 0, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18)
+      VALUES ($1, $2, $3, $4, $5, $6, 0, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, 0, 0, 0, 0)
       RETURNING 
         id, title, url, is_active AS "isActive", icon, custom_color AS "customColor", 
         clicks, order_index AS "orderIndex", is_scheduled AS "isScheduled", 
@@ -201,11 +228,20 @@ router.post('/', requireAuth, async (req, res) => {
         show_countdown AS "showCountdown", COALESCE(category, '') AS "category",
         COALESCE(embed_type, 'none') AS "embedType", COALESCE(show_embed, false) AS "showEmbed",
         COALESCE(is_locked, false) AS "isLocked", COALESCE(lock_type, 'pin') AS "lockType",
-        COALESCE(passcode, '') AS "passcode", COALESCE(lock_warning, '') AS "lockWarning"
+        COALESCE(passcode, '') AS "passcode", COALESCE(lock_warning, '') AS "lockWarning",
+        COALESCE(is_header, false) AS "isHeader",
+        COALESCE(ab_test_enabled, false) AS "abTestEnabled",
+        COALESCE(title_b, '') AS "titleB",
+        COALESCE(url_b, '') AS "urlB",
+        COALESCE(clicks_a, 0) AS "clicksA",
+        COALESCE(clicks_b, 0) AS "clicksB",
+        COALESCE(views_a, 0) AS "viewsA",
+        COALESCE(views_b, 0) AS "viewsB"
     `, [
       newId, title.trim(), formattedUrl.trim(), finalIsActive, icon || null, customColor || 'default', 
       nextOrder, finalIsScheduled, finalScheduleStart, finalScheduleEnd, finalShowCountdown, finalCategory,
-      finalEmbedType, finalShowEmbed, finalIsLocked, finalLockType, finalPasscode, finalLockWarning
+      finalEmbedType, finalShowEmbed, finalIsLocked, finalLockType, finalPasscode, finalLockWarning,
+      finalIsHeader, finalAbTestEnabled, finalTitleB, finalUrlB
     ])
 
     invalidateCache('profile')
@@ -236,7 +272,11 @@ router.put('/:id', requireAuth, async (req, res) => {
       isLocked,
       lockType,
       passcode,
-      lockWarning
+      lockWarning,
+      isHeader,
+      abTestEnabled,
+      titleB,
+      urlB
     } = req.body
 
     const existing = await query('SELECT * FROM links WHERE id = $1', [id])
@@ -246,18 +286,30 @@ router.put('/:id', requireAuth, async (req, res) => {
 
     const current = existing.rows[0]
     const updatedTitle = title !== undefined ? title.trim() : current.title
+    const updatedIsHeader = isHeader !== undefined ? Boolean(isHeader) : Boolean(current.is_header)
+
     let updatedUrl = current.url
     if (url !== undefined) {
-      if (!isValidUrl(url)) {
+      if (!updatedIsHeader && !isValidUrl(url)) {
         return res.status(400).json({ 
           error: 'Geçersiz veya güvensiz URL formatı. Lütfen geçerli bir web adresi girin (örn: https://ornek.com).' 
         })
       }
       const trimmed = url.trim()
-      updatedUrl = (trimmed.startsWith('http://') || trimmed.startsWith('https://') || trimmed.startsWith('mailto:') || trimmed.startsWith('tel:')) 
-        ? trimmed 
-        : `https://${trimmed}`
+      updatedUrl = updatedIsHeader
+        ? ''
+        : ((trimmed.startsWith('http://') || trimmed.startsWith('https://') || trimmed.startsWith('mailto:') || trimmed.startsWith('tel:')) 
+          ? trimmed 
+          : `https://${trimmed}`)
     }
+
+    const updatedAbTestEnabled = abTestEnabled !== undefined ? Boolean(abTestEnabled) : Boolean(current.ab_test_enabled)
+    const updatedTitleB = titleB !== undefined ? String(titleB).trim() : (current.title_b || '')
+    let updatedUrlB = urlB !== undefined ? String(urlB).trim() : (current.url_b || '')
+    if (updatedUrlB && !updatedUrlB.startsWith('http://') && !updatedUrlB.startsWith('https://')) {
+      updatedUrlB = `https://${updatedUrlB}`
+    }
+
     const updatedIsActive = isActive !== undefined ? isActive : current.is_active
     const updatedIcon = icon !== undefined ? icon : current.icon
     const updatedCustomColor = customColor !== undefined ? customColor : (current.custom_color || 'default')
@@ -279,8 +331,10 @@ router.put('/:id', requireAuth, async (req, res) => {
         title = $1, url = $2, is_active = $3, icon = $4, custom_color = $5, 
         is_scheduled = $6, schedule_start = $7, schedule_end = $8, show_countdown = $9, 
         category = $10, embed_type = $11, show_embed = $12, is_locked = $13, 
-        lock_type = $14, passcode = $15, lock_warning = $16, updated_at = CURRENT_TIMESTAMP
-      WHERE id = $17
+        lock_type = $14, passcode = $15, lock_warning = $16,
+        is_header = $17, ab_test_enabled = $18, title_b = $19, url_b = $20,
+        updated_at = CURRENT_TIMESTAMP
+      WHERE id = $21
       RETURNING 
         id, title, url, is_active AS "isActive", icon, custom_color AS "customColor", 
         clicks, order_index AS "orderIndex", is_scheduled AS "isScheduled", 
@@ -288,12 +342,21 @@ router.put('/:id', requireAuth, async (req, res) => {
         show_countdown AS "showCountdown", COALESCE(category, '') AS "category",
         COALESCE(embed_type, 'none') AS "embedType", COALESCE(show_embed, false) AS "showEmbed",
         COALESCE(is_locked, false) AS "isLocked", COALESCE(lock_type, 'pin') AS "lockType",
-        COALESCE(passcode, '') AS "passcode", COALESCE(lock_warning, '') AS "lockWarning"
+        COALESCE(passcode, '') AS "passcode", COALESCE(lock_warning, '') AS "lockWarning",
+        COALESCE(is_header, false) AS "isHeader",
+        COALESCE(ab_test_enabled, false) AS "abTestEnabled",
+        COALESCE(title_b, '') AS "titleB",
+        COALESCE(url_b, '') AS "urlB",
+        COALESCE(clicks_a, 0) AS "clicksA",
+        COALESCE(clicks_b, 0) AS "clicksB",
+        COALESCE(views_a, 0) AS "viewsA",
+        COALESCE(views_b, 0) AS "viewsB"
     `, [
       updatedTitle, updatedUrl, updatedIsActive, updatedIcon, updatedCustomColor, 
       updatedIsScheduled, updatedScheduleStart, updatedScheduleEnd, updatedShowCountdown, 
       updatedCategory, updatedEmbedType, updatedShowEmbed, updatedIsLocked, 
-      updatedLockType, updatedPasscode, updatedLockWarning, id
+      updatedLockType, updatedPasscode, updatedLockWarning,
+      updatedIsHeader, updatedAbTestEnabled, updatedTitleB, updatedUrlB, id
     ])
 
     invalidateCache('profile')
@@ -322,19 +385,27 @@ router.delete('/:id', requireAuth, async (req, res) => {
   }
 })
 
-// POST /api/links/:id/click (Tıklanma sayısını 1 artır - Atomic + Ayrıntılı Analitik Olay Kaydı)
+// POST /api/links/:id/click (Tıklanma sayısını 1 artır - Atomic + A/B Varyantı + Ayrıntılı Analitik Olay Kaydı)
 router.post('/:id/click', async (req, res) => {
   try {
     const { id } = req.params
-    const { referrer = '', device = '' } = req.body || {}
+    const { referrer = '', device = '', variant = 'a' } = req.body || {}
+    const isVariantB = variant === 'b'
 
-    // 1. Sayaç güncelle
-    const result = await query(`
-      UPDATE links
-      SET clicks = clicks + 1
-      WHERE id = $1
-      RETURNING id, clicks
-    `, [id])
+    // 1. Sayaç güncelle (Genel clicks + A/B varyant sayacı)
+    const result = isVariantB
+      ? await query(`
+          UPDATE links
+          SET clicks = clicks + 1, clicks_b = clicks_b + 1
+          WHERE id = $1
+          RETURNING id, clicks, clicks_a AS "clicksA", clicks_b AS "clicksB"
+        `, [id])
+      : await query(`
+          UPDATE links
+          SET clicks = clicks + 1, clicks_a = clicks_a + 1
+          WHERE id = $1
+          RETURNING id, clicks, clicks_a AS "clicksA", clicks_b AS "clicksB"
+        `, [id])
 
     if (result.rows.length === 0) {
       return res.status(404).json({ error: 'Bağlantı bulunamadı' })
@@ -354,11 +425,11 @@ router.post('/:id/click', async (req, res) => {
     const detectedDevice = device || (/mobile|android|iphone|ipad|ipod/i.test(userAgent) ? 'mobile' : 'desktop')
     const ipAddress = (req.headers['x-forwarded-for'] || req.socket?.remoteAddress || '127.0.0.1').split(',')[0].trim()
 
-    // 4. Ayrıntılı tıklama olayını click_events tablosuna asenkron kaydet
+    // 4. Ayrıntılı tıklama olayını click_events tablosuna asenkron kaydet (varyant bilgisiyle birlikte)
     await query(`
-      INSERT INTO click_events (link_id, referrer, device, ip_address, user_agent)
-      VALUES ($1, $2, $3, $4, $5)
-    `, [id, detectedSource, detectedDevice, ipAddress, userAgent]).catch(e => {
+      INSERT INTO click_events (link_id, referrer, device, ip_address, user_agent, variant)
+      VALUES ($1, $2, $3, $4, $5, $6)
+    `, [id, detectedSource, detectedDevice, ipAddress, userAgent, isVariantB ? 'b' : 'a']).catch(e => {
       console.warn('⚠️ click_events tablosuna log kaydedilemedi:', e.message)
     })
 
@@ -366,6 +437,22 @@ router.post('/:id/click', async (req, res) => {
   } catch (error) {
     console.warn('Veritabanı çevrimdışı, tıklama istemci tarafında tutuluyor:', error.message)
     res.json({ id: parseInt(req.params.id) || req.params.id, success: true, offline: true })
+  }
+})
+
+// POST /api/links/:id/impression (A/B Testi Varyant Görüntülenme Sayacı)
+router.post('/:id/impression', async (req, res) => {
+  try {
+    const { id } = req.params
+    const { variant = 'a' } = req.body || {}
+    if (variant === 'b') {
+      await query('UPDATE links SET views_b = views_b + 1 WHERE id = $1', [id])
+    } else {
+      await query('UPDATE links SET views_a = views_a + 1 WHERE id = $1', [id])
+    }
+    res.json({ success: true })
+  } catch (error) {
+    res.json({ success: false })
   }
 })
 

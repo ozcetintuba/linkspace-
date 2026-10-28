@@ -567,17 +567,51 @@ const copyProfileLink = async () => {
   }
 }
 
+// A/B Testi Varyant Belirleyici (Kullanıcı Oturumu Boyunca Tutarlı Varyant)
+const linkVariants = reactive({})
+
+const getLinkDisplayInfo = (link) => {
+  if (!link) return { title: '', url: '', variant: 'a' }
+  if (!link.abTestEnabled) {
+    return { title: link.title, url: link.url, variant: 'a' }
+  }
+
+  if (!linkVariants[link.id]) {
+    const storageKey = `linkspace_ab_${link.id}`
+    let saved = sessionStorage.getItem(storageKey)
+    if (!saved || (saved !== 'a' && saved !== 'b')) {
+      saved = Math.random() < 0.5 ? 'a' : 'b'
+      sessionStorage.setItem(storageKey, saved)
+      // Gösterim (impression) kaydet
+      linkStore.recordImpression(link.id, saved)
+    }
+    linkVariants[link.id] = saved
+  }
+
+  const variant = linkVariants[link.id]
+  const isVariantB = variant === 'b'
+  return {
+    title: (isVariantB && link.titleB) ? link.titleB : link.title,
+    url: (isVariantB && link.urlB) ? link.urlB : link.url,
+    variant
+  }
+}
+
 // Butona tıklandığında asenkron olarak /click uç noktasına istek at ve hedef sekmeyi aç (window.open(url, '_blank'))
 const openLink = (link) => {
-  if (!link || !link.url) return
+  if (!link) return
+  if (link.isHeader) return // Başlık / Ayraç tıklanamaz
 
-  // 1. Asenkron olarak /click uç noktasına istek at ve sayacı artır (Detaylı Analitik)
+  const info = getLinkDisplayInfo(link)
+  if (!info.url) return
+
+  // 1. Asenkron olarak /click uç noktasına istek at ve sayacı artır (Detaylı Analitik & A/B Varyantı)
   const referrer = route.query.src === 'qr' ? 'qr' : (typeof document !== 'undefined' && document.referrer ? document.referrer : 'direct')
   const device = isMobileDevice() ? 'mobile' : 'desktop'
-  linkStore.trackClick(link.id, { referrer, device })
+  linkStore.trackClick(link.id, { referrer, device, variant: info.variant })
 
   // 2. Güvenli hedef URL hazırla ve yeni sekmede aç
-  const rawUrl = link.url.trim()
+  const rawUrl = info.url.trim()
   const targetUrl = (rawUrl.startsWith('http://') || rawUrl.startsWith('https://') || rawUrl.startsWith('mailto:'))
     ? rawUrl
     : `https://${rawUrl}`
@@ -741,6 +775,32 @@ const groupedFilteredItems = computed(() => {
     return filteredLinks.value.map(link => ({ type: 'link', id: `link-${link.id}`, link }))
   }
 
+  // Eğer gruplama stili "headers" (Bölüm Ayraçları) ise:
+  if (profile.value?.groupStyle === 'headers') {
+    const items = []
+    const seenCategories = new Set()
+    const uncategorized = []
+
+    for (const link of filteredLinks.value) {
+      const cat = (link.category || '').trim()
+      if (!cat) {
+        uncategorized.push({ type: 'link', id: `link-${link.id}`, link })
+      } else {
+        if (!seenCategories.has(cat)) {
+          seenCategories.add(cat)
+          items.push({ 
+            type: 'link', 
+            id: `header-${cat}`, 
+            link: { id: `cat-header-${cat}`, title: cat, isHeader: true } 
+          })
+        }
+        items.push({ type: 'link', id: `link-${link.id}`, link })
+      }
+    }
+    return [...items, ...uncategorized]
+  }
+
+  // Varsayılan: Akordeon Klasörleri (type: 'folder')
   const items = []
   const folderMap = new Map()
 
@@ -1079,9 +1139,27 @@ const getLinkSubtitle = (link) => {
       <div class="w-full space-y-3.5 max-w-lg mx-auto">
         <template v-for="item in groupedFilteredItems" :key="item.id">
           
-          <!-- DURUM A: Bağımsız Bağlantı (Klasörsüz) -->
+          <!-- DURUM A: Bağımsız Bağlantı (Klasörsüz) veya Başlık Ayracı -->
           <div v-if="item.type === 'link'" class="w-full">
+            <!-- Başlık / Kategori Ayracı (Section Header) -->
+            <div 
+              v-if="item.link.isHeader"
+              class="w-full pt-5 pb-1.5 flex items-center gap-3 select-none"
+            >
+              <div class="h-px flex-1" :class="activeTheme.id === 'pure-light' ? 'bg-slate-300' : 'bg-white/15'"></div>
+              <span 
+                class="text-xs font-mono font-bold tracking-wider uppercase px-2.5 py-1 rounded-lg flex items-center gap-1.5 shadow-xs"
+                :class="activeTheme.id === 'pure-light' ? 'text-slate-800 bg-slate-100 border border-slate-200' : 'text-neutral-200 bg-white/5 border border-white/10'"
+              >
+                <span class="text-[#FFFF00]">✦</span>
+                <span>{{ item.link.title }}</span>
+              </span>
+              <div class="h-px flex-1" :class="activeTheme.id === 'pure-light' ? 'bg-slate-300' : 'bg-white/15'"></div>
+            </div>
+
+            <!-- Normal Tıklanabilir Bağlantı Kartı -->
             <button 
+              v-else
               type="button"
               @click="handleLinkAction(item.link)"
               :class="[
@@ -1109,7 +1187,7 @@ const getLinkSubtitle = (link) => {
                 <div class="min-w-0 text-left">
                   <div class="flex items-center gap-2 flex-wrap">
                     <div :class="['font-extrabold text-sm sm:text-base tracking-tight truncate transition-colors', activeTheme.id === 'pure-light' ? 'text-black' : 'text-white group-hover:text-[#FFFF00]']">
-                      {{ item.link.title }}
+                      {{ getLinkDisplayInfo(item.link).title }}
                     </div>
 
                     <!-- Kilitli Rozeti -->
@@ -1300,7 +1378,18 @@ const getLinkSubtitle = (link) => {
               :class="activeTheme.id === 'pure-light' ? 'border-amber-400/70' : 'border-[#FFFF00]/35'"
             >
               <div v-for="subLink in item.links" :key="subLink.id" class="w-full">
+                <!-- Klasör İçi Başlık Ayracı -->
+                <div 
+                  v-if="subLink.isHeader"
+                  class="w-full pt-3 pb-1 flex items-center gap-2 select-none"
+                >
+                  <div class="h-px flex-1" :class="activeTheme.id === 'pure-light' ? 'bg-slate-300' : 'bg-white/10'"></div>
+                  <span class="text-[11px] font-mono font-bold tracking-wider uppercase text-neutral-400">✦ {{ subLink.title }}</span>
+                  <div class="h-px flex-1" :class="activeTheme.id === 'pure-light' ? 'bg-slate-300' : 'bg-white/10'"></div>
+                </div>
+
                 <button 
+                  v-else
                   type="button"
                   @click="handleLinkAction(subLink)"
                   :class="[
@@ -1328,7 +1417,7 @@ const getLinkSubtitle = (link) => {
                     <div class="min-w-0 text-left">
                       <div class="flex items-center gap-1.5 flex-wrap">
                         <div :class="['font-extrabold text-xs sm:text-sm tracking-tight truncate transition-colors', activeTheme.id === 'pure-light' ? 'text-black' : 'text-white group-hover:text-[#FFFF00]']">
-                          {{ subLink.title }}
+                          {{ getLinkDisplayInfo(subLink).title }}
                         </div>
 
                         <!-- Kilitli Rozeti -->

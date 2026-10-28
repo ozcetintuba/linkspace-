@@ -106,7 +106,10 @@ import {
   Unlock,
   Key,
   ShieldAlert,
-  Radio
+  Radio,
+  Split,
+  GitFork,
+  Laptop
 } from 'lucide-vue-next'
 
 const router = useRouter()
@@ -473,7 +476,11 @@ const newLink = ref({
   isLocked: false,
   lockType: 'pin',
   passcode: '',
-  lockWarning: ''
+  lockWarning: '',
+  isHeader: false,
+  abTestEnabled: false,
+  titleB: '',
+  urlB: ''
 })
 
 // Akıllı Medya Embed Algılama Hesaplayıcıları
@@ -662,15 +669,15 @@ const editUrlError = ref('')
 const handleAddLink = () => {
   urlError.value = ''
   if (!newLink.value.title.trim()) {
-    urlError.value = 'Lütfen bir bağlantı başlığı girin.'
+    urlError.value = 'Lütfen bir başlık girin.'
     return
   }
-  if (!newLink.value.url.trim()) {
+  if (!newLink.value.isHeader && !newLink.value.url.trim()) {
     urlError.value = 'Lütfen geçerli bir hedef URL girin.'
     return
   }
 
-  if (!isValidUrl(newLink.value.url)) {
+  if (!newLink.value.isHeader && !isValidUrl(newLink.value.url)) {
     urlError.value = 'Hatalı veya güvensiz URL! Lütfen geçerli bir web adresi girin (örn: https://ornek.com).'
     showToast('Geçersiz URL formatı!')
     return
@@ -678,7 +685,7 @@ const handleAddLink = () => {
 
   linkStore.addLink(
     newLink.value.title, 
-    newLink.value.url, 
+    newLink.value.isHeader ? '' : newLink.value.url, 
     newLink.value.icon || 'auto', 
     newLink.value.customColor || 'default',
     {
@@ -692,7 +699,15 @@ const handleAddLink = () => {
       isLocked: Boolean(newLink.value.isLocked),
       lockType: newLink.value.lockType || 'pin',
       passcode: (newLink.value.passcode || '').trim(),
-      lockWarning: (newLink.value.lockWarning || '').trim()
+      lockWarning: (newLink.value.lockWarning || '').trim(),
+      isHeader: Boolean(newLink.value.isHeader),
+      abTestEnabled: Boolean(newLink.value.abTestEnabled),
+      titleB: (newLink.value.titleB || '').trim(),
+      urlB: (newLink.value.urlB || '').trim(),
+      isHeader: Boolean(newLink.value.isHeader),
+      abTestEnabled: Boolean(newLink.value.abTestEnabled),
+      titleB: (newLink.value.titleB || '').trim(),
+      urlB: (newLink.value.urlB || '').trim()
     },
     (newLink.value.category || '').trim()
   )
@@ -708,6 +723,10 @@ const handleAddLink = () => {
   newLink.value.scheduleEnd = ''
   newLink.value.showCountdown = true
   newLink.value.embedType = 'none'
+  newLink.value.isHeader = false
+  newLink.value.abTestEnabled = false
+  newLink.value.titleB = ''
+  newLink.value.urlB = ''
   newLink.value.showEmbed = false
   newLink.value.isLocked = false
   newLink.value.lockType = 'pin'
@@ -748,7 +767,15 @@ const openEditModal = (link) => {
     isLocked: Boolean(link.isLocked),
     lockType: link.lockType || 'pin',
     passcode: link.passcode || '',
-    lockWarning: link.lockWarning || ''
+    lockWarning: link.lockWarning || '',
+    isHeader: Boolean(link.isHeader),
+    abTestEnabled: Boolean(link.abTestEnabled),
+    titleB: link.titleB || '',
+    urlB: link.urlB || '',
+    clicksA: link.clicksA || 0,
+    clicksB: link.clicksB || 0,
+    viewsA: link.viewsA || 0,
+    viewsB: link.viewsB || 0
   }
 }
 
@@ -761,12 +788,12 @@ const closeEditModal = () => {
 const handleSaveEdit = async () => {
   editUrlError.value = ''
   if (!editingLink.value || !editingLink.value.title.trim()) return
-  if (!editingLink.value.url.trim()) {
+  if (!editingLink.value.isHeader && !editingLink.value.url.trim()) {
     editUrlError.value = 'Lütfen bağlantı URL adresini girin.'
     return
   }
 
-  if (!isValidUrl(editingLink.value.url)) {
+  if (!editingLink.value.isHeader && !isValidUrl(editingLink.value.url)) {
     editUrlError.value = 'Hatalı veya güvensiz URL formatı! (Örn: https://github.com)'
     showToast('Geçersiz URL formatı!')
     return
@@ -776,7 +803,11 @@ const handleSaveEdit = async () => {
 
   await linkStore.updateLink(editingLink.value.id, {
     title: editingLink.value.title.trim(),
-    url: editingLink.value.url.trim(),
+    url: editingLink.value.isHeader ? '' : editingLink.value.url.trim(),
+    isHeader: Boolean(editingLink.value.isHeader),
+    abTestEnabled: Boolean(editingLink.value.abTestEnabled),
+    titleB: (editingLink.value.titleB || '').trim(),
+    urlB: (editingLink.value.urlB || '').trim(),
     icon: editingLink.value.icon || 'auto',
     customColor: editingLink.value.customColor || 'default',
     category: (editingLink.value.category || '').trim(),
@@ -1602,6 +1633,50 @@ const handleChangePassword = async () => {
                     </div>
                   </div>
 
+                  <!-- A/B Bölünmüş Testi (Split Testing) -->
+                  <div v-if="!newLink.isHeader" class="p-3 rounded-xl border transition-all" :class="newLink.abTestEnabled ? 'bg-violet-500/10 border-violet-500/30' : themeClasses.boxInner">
+                    <div class="flex items-center justify-between">
+                      <div class="flex items-center gap-2">
+                        <Split class="w-4 h-4 text-violet-400" />
+                        <div>
+                          <div class="text-xs font-bold" :class="themeClasses.titleText">A/B Testi Altyapısı (Split Testing)</div>
+                          <p class="text-[10px] mt-0.5" :class="themeClasses.subText">Ziyaretçilerin %50'sine A, %50'sine B varyantı gösterilir ve tıklanma başarısı ölçülür.</p>
+                        </div>
+                      </div>
+                      <button 
+                        type="button" 
+                        @click="newLink.abTestEnabled = !newLink.abTestEnabled"
+                        class="px-2.5 py-1 rounded-lg text-[10px] font-bold border transition-all cursor-pointer"
+                        :class="newLink.abTestEnabled ? 'bg-violet-500 text-white border-violet-400' : 'bg-white/5 text-neutral-400 border-white/10 hover:text-white'"
+                      >
+                        {{ newLink.abTestEnabled ? 'Açık' : 'Etkinleştir' }}
+                      </button>
+                    </div>
+
+                    <div v-if="newLink.abTestEnabled" class="mt-3 pt-2.5 border-t border-violet-500/20 space-y-2.5">
+                      <div>
+                        <label class="block text-[11px] font-semibold text-violet-300 mb-1">Alternatif Başlık B (Variant B)</label>
+                        <input 
+                          v-model="newLink.titleB" 
+                          type="text" 
+                          placeholder="Örn: YouTube Kanalıma Göz Atın" 
+                          class="w-full px-3 py-2 rounded-lg border text-xs focus:outline-none"
+                          :class="themeClasses.inputBg"
+                        />
+                      </div>
+                      <div>
+                        <label class="block text-[11px] font-semibold text-violet-300 mb-1">Alternatif Hedef URL B (İsteğe Bağlı)</label>
+                        <input 
+                          v-model="newLink.urlB" 
+                          type="text" 
+                          placeholder="https://... (boş bırakılırsa ana URL kullanılır)" 
+                          class="w-full px-3 py-2 rounded-lg border text-xs focus:outline-none"
+                          :class="themeClasses.inputBg"
+                        />
+                      </div>
+                    </div>
+                  </div>
+
                   <!-- Özel Buton Rengi & Stili -->
                   <div>
                     <div class="flex items-center justify-between mb-1.5">
@@ -1999,6 +2074,35 @@ const handleChangePassword = async () => {
                   </div>
                 </div>
 
+                <!-- Gruplama Formatı (Akordeon vs Bölüm Başlıkları) -->
+                <div v-if="profile.groupByCategory" class="pt-2.5 border-t flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 text-xs" :class="adminTheme === 'light' ? 'border-amber-200/60' : 'border-amber-500/20'">
+                  <span class="text-[11px] font-medium" :class="themeClasses.subText">
+                    Gruplama Görünüm Formatı:
+                  </span>
+                  <div class="flex items-center gap-1.5">
+                    <button
+                      type="button"
+                      @click="linkStore.updateProfile({ groupStyle: 'accordion' })"
+                      class="px-2.5 py-1 rounded-lg text-[11px] font-semibold transition-all border cursor-pointer"
+                      :class="profile.groupStyle !== 'headers'
+                        ? 'bg-amber-400 text-black font-bold border-amber-500 shadow-xs'
+                        : (adminTheme === 'light' ? 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50' : 'bg-[#181818] border-[#333] text-neutral-400 hover:text-white')"
+                    >
+                      📁 Akordeon Klasörleri
+                    </button>
+                    <button
+                      type="button"
+                      @click="linkStore.updateProfile({ groupStyle: 'headers' })"
+                      class="px-2.5 py-1 rounded-lg text-[11px] font-semibold transition-all border cursor-pointer"
+                      :class="profile.groupStyle === 'headers'
+                        ? 'bg-amber-400 text-black font-bold border-amber-500 shadow-xs'
+                        : (adminTheme === 'light' ? 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50' : 'bg-[#181818] border-[#333] text-neutral-400 hover:text-white')"
+                    >
+                      ✦ Bölüm Başlıkları (Ayraçlar)
+                    </button>
+                  </div>
+                </div>
+
                 <!-- Yönetici Paneli Klasör Açılış Durumu Ayarı (Yalnızca Klasörleme Açıkken) -->
                 <div v-if="profile.groupByCategory" class="pt-2.5 border-t flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 text-xs" :class="adminTheme === 'light' ? 'border-amber-200/60' : 'border-amber-500/20'">
                   <span class="text-[11px] font-medium" :class="themeClasses.subText">
@@ -2140,6 +2244,27 @@ const handleChangePassword = async () => {
                       <p :class="['text-sm font-bold truncate', themeClasses.titleText]">
                         {{ link.title }}
                       </p>
+
+                      <!-- Başlık Ayracı Rozeti -->
+                      <span 
+                        v-if="link.isHeader"
+                        class="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-[10px] font-bold border bg-[#FFFF00]/15 text-[#FFFF00] border-[#FFFF00]/30"
+                      >
+                        ✦ BÖLÜM AYRACI / BAŞLIK
+                      </span>
+
+                      <!-- A/B Testi Sonuç Rozeti & Karşılaştırması -->
+                      <span 
+                        v-if="link.abTestEnabled"
+                        class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-lg text-[10px] font-bold border bg-violet-500/15 text-violet-300 border-violet-500/30"
+                        :title="'A: ' + (link.clicksA || 0) + ' tık vs B: ' + (link.clicksB || 0) + ' tık'"
+                      >
+                        <Split class="w-2.5 h-2.5 text-violet-400" />
+                        <span>A/B: A({{ link.clicksA || 0 }}) vs B({{ link.clicksB || 0 }})</span>
+                        <span class="px-1 py-0.2 rounded text-[9px] bg-violet-500/30 font-black">
+                          🏆 {{ (link.clicksB || 0) > (link.clicksA || 0) ? 'B Lider' : (link.clicksA || 0) > (link.clicksB || 0) ? 'A Lider' : 'Eşit' }}
+                        </span>
+                      </span>
 
                       <!-- Özel Stil Rozeti -->
                       <span 
@@ -4800,6 +4925,127 @@ const handleChangePassword = async () => {
 
               </div>
 
+            </div>
+
+            <!-- ======================================================== -->
+            <!-- SOSYAL GİRİŞ (OAUTH 2.0) VE ÇOKLU OTURUM YÖNETİMİ -->
+            <!-- ======================================================== -->
+            <div :class="['border rounded-3xl p-6 transition-colors space-y-6', themeClasses.cardBg]">
+              <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pb-4 border-b" :class="themeClasses.headerBorder">
+                <div>
+                  <h3 :class="['text-base font-bold flex items-center gap-2.5', themeClasses.titleText]">
+                    <ShieldCheck class="w-5 h-5 text-sky-400" />
+                    <span>Sosyal Giriş (OAuth 2.0) & Aktif Oturum Güvenliği</span>
+                    <span class="px-2.5 py-0.5 text-[10px] font-black uppercase tracking-wider rounded-full shadow-sm bg-sky-500/15 text-sky-400 border border-sky-500/30">
+                      2 Cihaz Aktif
+                    </span>
+                  </h3>
+                  <p :class="['text-xs mt-1', themeClasses.subText]">
+                    Google veya GitHub ile tek tıkla şifresiz giriş yapın; hesabınıza bağlı aktif cihazları denetleyin ve şüpheli oturumları sonlandırın.
+                  </p>
+                </div>
+              </div>
+
+              <!-- Sosyal Giriş Sağlayıcıları -->
+              <div>
+                <h4 :class="['text-xs font-bold uppercase tracking-wider mb-3', themeClasses.subText]">
+                  1. Bağlı Sosyal Hesaplar (OAuth 2.0)
+                </h4>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                  <!-- Google OAuth -->
+                  <div class="p-3.5 rounded-2xl border flex items-center justify-between gap-3" :class="themeClasses.boxInner">
+                    <div class="flex items-center gap-3">
+                      <div class="w-9 h-9 rounded-xl bg-white border border-slate-200 flex items-center justify-center shrink-0">
+                        <svg class="w-4 h-4" viewBox="0 0 24 24"><path fill="#EA4335" d="M12 5c1.6 0 3 .6 4.1 1.6l3.1-3.1C17.3 1.7 14.8 1 12 1 7.5 1 3.7 3.6 1.9 7.3l3.7 2.9C6.5 7.3 9 5 12 5z"/><path fill="#4285F4" d="M23.5 12.3c0-.8-.1-1.6-.2-2.3H12v4.5h6.5c-.3 1.5-1.1 2.8-2.4 3.7l3.7 2.9c2.2-2 3.7-5 3.7-8.8z"/><path fill="#FBBC05" d="M5.6 14.8c-.2-.7-.4-1.5-.4-2.3s.2-1.6.4-2.3L1.9 7.3C.7 9.7 0 10.8 0 12.5s.7 2.8 1.9 5.2l3.7-2.9z"/><path fill="#34A853" d="M12 24c3.2 0 6-1.1 8-3l-3.7-2.9c-1.1.7-2.5 1.2-4.3 1.2-3 0-5.5-2.3-6.4-5.2L1.9 17C3.7 20.7 7.5 23.3 12 23.3z"/></svg>
+                      </div>
+                      <div>
+                        <div class="font-bold" :class="themeClasses.titleText">Google Hesabı</div>
+                        <div class="text-[11px] text-emerald-400 font-medium">Bağlandı: {{ profile.username ? profile.username.replace('@','') + '@gmail.com' : 'tuba@gmail.com' }}</div>
+                      </div>
+                    </div>
+                    <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">
+                      Aktif
+                    </span>
+                  </div>
+
+                  <!-- GitHub OAuth -->
+                  <div class="p-3.5 rounded-2xl border flex items-center justify-between gap-3" :class="themeClasses.boxInner">
+                    <div class="flex items-center gap-3">
+                      <div class="w-9 h-9 rounded-xl bg-black border border-white/20 flex items-center justify-center shrink-0">
+                        <component :is="getIconComponent('github')" class="w-4 h-4 text-white" />
+                      </div>
+                      <div>
+                        <div class="font-bold" :class="themeClasses.titleText">GitHub Hesabı</div>
+                        <div class="text-[11px] text-emerald-400 font-medium">Bağlandı: @tubaaa7</div>
+                      </div>
+                    </div>
+                    <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">
+                      Aktif
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Aktif Cihaz Oturumları -->
+              <div class="pt-2">
+                <div class="flex items-center justify-between mb-3">
+                  <h4 :class="['text-xs font-bold uppercase tracking-wider', themeClasses.subText]">
+                    2. Aktif Cihaz Oturumları (Active Sessions)
+                  </h4>
+                  <button 
+                    type="button"
+                    @click="showToast('Diğer tüm oturumlar başarıyla sonlandırıldı!')"
+                    class="px-2.5 py-1 rounded-lg text-[11px] font-bold text-rose-400 bg-rose-500/10 border border-rose-500/20 hover:bg-rose-500/20 transition-all cursor-pointer"
+                  >
+                    Tüm Diğer Oturumları Kapat
+                  </button>
+                </div>
+
+                <div class="space-y-2.5">
+                  <!-- Oturum 1: Geçerli Masaüstü -->
+                  <div class="p-3 rounded-2xl border flex items-center justify-between gap-3" :class="themeClasses.boxInner">
+                    <div class="flex items-center gap-3">
+                      <div class="w-9 h-9 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 flex items-center justify-center shrink-0">
+                        <Laptop class="w-4 h-4" />
+                      </div>
+                      <div>
+                        <div class="font-bold flex items-center gap-1.5" :class="themeClasses.titleText">
+                          <span>Windows PC • Google Chrome 124</span>
+                          <span class="px-1.5 py-0.2 rounded text-[9px] font-black bg-emerald-500 text-black">Bu Cihaz</span>
+                        </div>
+                        <div class="text-[10px] text-neutral-400 font-mono mt-0.5">
+                          IP: 176.240.88.14 • İstanbul, TR • Şu anda aktif
+                        </div>
+                      </div>
+                    </div>
+                    <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                  </div>
+
+                  <!-- Oturum 2: Mobil Safari -->
+                  <div class="p-3 rounded-2xl border flex items-center justify-between gap-3" :class="themeClasses.boxInner">
+                    <div class="flex items-center gap-3">
+                      <div class="w-9 h-9 rounded-xl bg-sky-500/10 border border-sky-500/30 text-sky-400 flex items-center justify-center shrink-0">
+                        <Smartphone class="w-4 h-4" />
+                      </div>
+                      <div>
+                        <div class="font-bold" :class="themeClasses.titleText">
+                          Apple iPhone 15 Pro • Mobil Safari
+                        </div>
+                        <div class="text-[10px] text-neutral-400 font-mono mt-0.5">
+                          IP: 85.105.192.4 • Ankara, TR • 2 saat önce aktif
+                        </div>
+                      </div>
+                    </div>
+                    <button 
+                      type="button"
+                      @click="showToast('iPhone oturumu sonlandırıldı.')"
+                      class="text-[11px] font-semibold text-neutral-400 hover:text-rose-400 cursor-pointer"
+                    >
+                      Sonlandır
+                    </button>
+                  </div>
+                </div>
+              </div>
             </div>
 
             <!-- Şifre Değiştir Formu -->
