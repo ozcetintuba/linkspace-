@@ -4,6 +4,25 @@ Tüm önemli mimari değişiklikler, özellik eklemeleri ve düzeltmeler bu dosy
 
 ---
 
+## [v0.37.1] - 2026-10-29 (Temaya Uyumlu Dinamik Buton Sistemi ve Kızıl Siber Teması)
+
+### 🎨 Temaya Duyarlı Buton Mimarisi (`ProfileView.vue`, `PhonePreview.vue`, `linkStore.js`, `AdminView.vue`)
+- **Kızıl Siber (Alev & Yakut Kırmızı) Teması Eklendi (`crimson`)**:
+  - Kullanıcının doğrudan talebi üzerine ateşli yakut kırmızısı (`#EF4444`) teması eklendi.
+  - Kırmızı tema seçildiğinde bağlantı kartları canlı kırmızı degradeli butonlara dönüşür (`bg-gradient-to-r from-red-600 via-rose-600 to-red-700 text-white font-bold shadow-red-600/30`).
+  - Sayfa başındaki *"Paylaş"* butonu, QR vizör köşelikleri ve ikon kutucukları anında kırmızı temaya uyum sağlar.
+- **Tüm Temalarda Dinamik Buton Uyumlanması**:
+  - `midnight`: İmza mat antrasit ve neon sarı kenarlık/buton stili.
+  - `emerald`: Canlı zümrüt yeşili (`#22C55E`) butonlar.
+  - `synthwave`: Elektrik neon mor ve fuşya (`#A855F7`) butonlar.
+  - `ocean`: Okyanus mavisi (`#0EA5E9`) butonlar.
+  - `sunset`: Sıcak amber ve mercan (`#F97316`) butonlar.
+  - `pure-light`: Beyaz zemin üzerinde elektrik sarısı kapsül butonlar.
+- **Genel Eylem Butonları**: Üst paylaşım butonu (`activeTheme.buttonClass`), QR vizör köşeleri (`activeTheme.viewfinderClass`), ikon kutusu (`activeTheme.iconBoxClass`) ve bağlantı kartları (`activeTheme.cardClass`) seçili tema ile tam senkronize çalışır.
+- **Örnek Link Renkleri Temizlendi**: `DEFAULT_LINKS` içerisindeki tüm bağlantılar `customColor: 'default'` yapılarak temanın doğrudan tüm butonları dönüştürmesi sağlandı.
+
+---
+
 ## [v0.37.0] - 2026-10-29 (3D Maskot & Avatar Stüdyosu: Çoklu Karakter, Chibi Kawaii ve Canlı Özelleştirme)
 
 ### 🤖 3D Karakter Stüdyosu & Kostüm Çeşitliliği (`ThreeAvatarMascot.vue`, `linkStore.js`, `AdminView.vue`)

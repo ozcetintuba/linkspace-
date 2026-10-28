@@ -579,7 +579,7 @@ const statusConfig = computed(() => {
                     'flex items-center justify-between w-full transition-all text-left shadow-xs cursor-pointer select-none',
                     activeTheme.id === 'pure-light'
                       ? 'p-2 rounded-full bg-[#FFFF00] text-black shadow-sm shadow-yellow-500/20 border border-yellow-300/50'
-                      : 'p-2.5 rounded-xl border backdrop-blur-md hover:border-l-2 hover:border-l-[#FFFF00]',
+                      : ['p-2.5 rounded-xl border backdrop-blur-md', activeTheme.hoverBorderClass || 'hover:border-l-2 hover:border-l-[#FFFF00]'],
                     activeTheme.id !== 'pure-light' ? getLinkCardClass(item.link) : (item.link.customColor && item.link.customColor !== 'default' ? getLinkCardClass(item.link) : '')
                   ]"
                 >
@@ -589,7 +589,7 @@ const statusConfig = computed(() => {
                         'flex-shrink-0 flex items-center justify-center transition-all',
                         activeTheme.id === 'pure-light' 
                           ? 'w-7 h-7 rounded-full bg-black text-[#FFFF00] shadow-xs' 
-                          : 'p-1.5 rounded-lg border bg-[#FFFF00]/10 border-[#FFFF00]/20 text-[#FFFF00]'
+                          : ['p-1.5 rounded-lg border', activeTheme.iconBoxClass || 'bg-[#FFFF00]/10 border-[#FFFF00]/20 text-[#FFFF00]']
                       ]"
                     >
                       <component 
@@ -708,7 +708,7 @@ const statusConfig = computed(() => {
                 <div 
                   v-show="isFolderOpen(item.category)"
                   class="pl-2 space-y-1.5 border-l border-dashed ml-1.5"
-                  :class="activeTheme.id === 'pure-light' ? 'border-amber-400' : 'border-[#FFFF00]/30'"
+                  :class="activeTheme.id === 'pure-light' ? 'border-amber-400' : (activeTheme.accentColor ? 'border-current opacity-30' : 'border-[#FFFF00]/30')"
                 >
                   <div v-for="subLink in item.links" :key="subLink.id" class="w-full">
                     <div 
@@ -717,7 +717,7 @@ const statusConfig = computed(() => {
                         'flex items-center justify-between w-full transition-all text-left shadow-2xs cursor-pointer select-none',
                         activeTheme.id === 'pure-light'
                           ? 'p-1.5 px-2 rounded-full bg-[#FFFF00] text-black border border-yellow-300/50'
-                          : 'p-2 rounded-lg border backdrop-blur-md',
+                          : ['p-2 rounded-lg border backdrop-blur-md', activeTheme.hoverBorderClass || 'hover:border-l-2 hover:border-l-[#FFFF00]'],
                         activeTheme.id !== 'pure-light' ? getLinkCardClass(subLink) : (subLink.customColor && subLink.customColor !== 'default' ? getLinkCardClass(subLink) : '')
                       ]"
                     >
@@ -725,7 +725,7 @@ const statusConfig = computed(() => {
                         <div 
                           :class="[
                             'flex-shrink-0 flex items-center justify-center',
-                            activeTheme.id === 'pure-light' ? 'w-5 h-5 rounded-full bg-black text-[#FFFF00]' : 'p-1 rounded bg-[#FFFF00]/10 text-[#FFFF00]'
+                            activeTheme.id === 'pure-light' ? 'w-5 h-5 rounded-full bg-black text-[#FFFF00]' : ['p-1 rounded', activeTheme.iconBoxClass || 'bg-[#FFFF00]/10 text-[#FFFF00]']
                           ]"
                         >
                           <component :is="getLinkIcon(subLink)" class="w-3 h-3" />

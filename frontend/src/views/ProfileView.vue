@@ -1038,7 +1038,7 @@ const handleDownloadVCard = async () => {
           <button 
             type="button"
             @click="showShareModal = true"
-            class="inline-flex items-center gap-1.5 px-4 sm:px-5 py-2 sm:py-2.5 rounded-full text-xs sm:text-sm font-bold bg-[#FFFF00] hover:bg-[#EEFF00] text-black shadow-md shadow-yellow-500/20 transition-all hover:scale-105 active:scale-95 cursor-pointer"
+            class="inline-flex items-center gap-1.5 px-4 sm:px-5 py-2 sm:py-2.5 rounded-full text-xs sm:text-sm font-bold transition-all hover:scale-105 active:scale-95 cursor-pointer shadow-md" :class="activeTheme.buttonClass || 'bg-[#FFFF00] hover:bg-[#EEFF00] text-black shadow-yellow-500/20'"
             title="Profili Paylaş / QR Kodu Göster"
           >
             <Share2 class="w-3.5 h-3.5 text-black stroke-[2.2]" />
@@ -1343,7 +1343,7 @@ const handleDownloadVCard = async () => {
                 'group relative flex items-center justify-between w-full transition-all duration-300 text-left cursor-pointer select-none active:scale-[0.96] active:duration-100 ease-[cubic-bezier(0.34,1.56,0.64,1)]',
                 activeTheme.id === 'pure-light'
                   ? 'p-3.5 sm:p-4 rounded-full bg-[#FFFF00] hover:bg-[#EEFF00] text-black shadow-md shadow-yellow-500/25 hover:shadow-xl hover:shadow-yellow-500/40 hover:scale-[1.01] active:scale-[0.99] border border-yellow-300/60'
-                  : 'p-4 sm:p-4.5 rounded-2xl border backdrop-blur-md hover:-translate-y-1 hover:shadow-2xl hover:border-l-4 hover:border-l-[#FFFF00]',
+                  : ['p-4 sm:p-4.5 rounded-2xl border backdrop-blur-md hover:-translate-y-1 hover:shadow-2xl', activeTheme.hoverBorderClass || 'hover:border-l-4 hover:border-l-[#FFFF00]'],
                 activeTheme.id !== 'pure-light' ? getLinkCardClass(item.link) : (item.link.customColor && item.link.customColor !== 'default' ? getLinkCardClass(item.link) : '')
               ]"
             >
@@ -1353,7 +1353,7 @@ const handleDownloadVCard = async () => {
                     'w-11 h-11 flex items-center justify-center flex-shrink-0 transition-all duration-300 shadow-xs',
                     activeTheme.id === 'pure-light' 
                       ? 'rounded-full bg-black text-[#FFFF00] group-hover:scale-110 shadow-sm' 
-                      : 'rounded-xl border bg-[#FFFF00]/10 border-[#FFFF00]/30 text-[#FFFF00] group-hover:scale-110 group-hover:bg-[#FFFF00] group-hover:text-black'
+                      : ['rounded-xl border group-hover:scale-110', activeTheme.iconBoxClass || 'bg-[#FFFF00]/10 border-[#FFFF00]/30 text-[#FFFF00] group-hover:bg-[#FFFF00] group-hover:text-black']
                   ]"
                 >
                   <component 
@@ -1363,7 +1363,7 @@ const handleDownloadVCard = async () => {
                 </div>
                 <div class="min-w-0 text-left">
                   <div class="flex items-center gap-2 flex-wrap">
-                    <div :class="['font-extrabold text-sm sm:text-base tracking-tight truncate transition-colors', activeTheme.id === 'pure-light' ? 'text-black' : 'text-white group-hover:text-[#FFFF00]']">
+                    <div :class="['font-extrabold text-sm sm:text-base tracking-tight truncate transition-colors', activeTheme.id === 'pure-light' ? 'text-black' : (item.link.customColor && item.link.customColor !== 'default' ? 'text-white' : ['text-white', activeTheme.hoverTextClass || 'group-hover:text-[#FFFF00]'])]">
                       {{ getLinkDisplayInfo(item.link).title }}
                     </div>
 
@@ -1573,7 +1573,7 @@ const handleDownloadVCard = async () => {
                     'group relative flex items-center justify-between w-full transition-all duration-300 text-left cursor-pointer select-none',
                     activeTheme.id === 'pure-light'
                       ? 'p-3 sm:p-3.5 rounded-full bg-[#FFFF00] hover:bg-[#EEFF00] text-black shadow-sm shadow-yellow-500/20 hover:scale-[1.01] active:scale-[0.99] border border-yellow-300/60'
-                      : 'p-3.5 sm:p-4 rounded-xl border backdrop-blur-md hover:-translate-y-0.5 hover:shadow-xl hover:border-l-4 hover:border-l-[#FFFF00]',
+                      : ['p-3.5 sm:p-4 rounded-xl border backdrop-blur-md hover:-translate-y-0.5 hover:shadow-xl', activeTheme.hoverBorderClass || 'hover:border-l-4 hover:border-l-[#FFFF00]'],
                     activeTheme.id !== 'pure-light' ? getLinkCardClass(subLink) : (subLink.customColor && subLink.customColor !== 'default' ? getLinkCardClass(subLink) : '')
                   ]"
                 >
@@ -1583,7 +1583,7 @@ const handleDownloadVCard = async () => {
                         'w-9 h-9 flex items-center justify-center flex-shrink-0 transition-all duration-300 shadow-xs',
                         activeTheme.id === 'pure-light' 
                           ? 'rounded-full bg-black text-[#FFFF00]' 
-                          : 'rounded-lg border bg-[#FFFF00]/10 border-[#FFFF00]/30 text-[#FFFF00] group-hover:scale-105 group-hover:bg-[#FFFF00] group-hover:text-black'
+                          : ['rounded-lg border', activeTheme.iconBoxClass || 'bg-[#FFFF00]/10 border-[#FFFF00]/30 text-[#FFFF00] group-hover:scale-105 group-hover:bg-[#FFFF00] group-hover:text-black']
                       ]"
                     >
                       <component 
@@ -1593,7 +1593,7 @@ const handleDownloadVCard = async () => {
                     </div>
                     <div class="min-w-0 text-left">
                       <div class="flex items-center gap-1.5 flex-wrap">
-                        <div :class="['font-extrabold text-xs sm:text-sm tracking-tight truncate transition-colors', activeTheme.id === 'pure-light' ? 'text-black' : 'text-white group-hover:text-[#FFFF00]']">
+                        <div :class="['font-extrabold text-xs sm:text-sm tracking-tight truncate transition-colors', activeTheme.id === 'pure-light' ? 'text-black' : (subLink.customColor && subLink.customColor !== 'default' ? 'text-white' : ['text-white', activeTheme.hoverTextClass || 'group-hover:text-[#FFFF00]'])]">
                           {{ getLinkDisplayInfo(subLink).title }}
                         </div>
 
@@ -1845,10 +1845,10 @@ const handleDownloadVCard = async () => {
         title="Büyütmek ve paylaşım seçeneklerini görmek için tıkla"
       >
         <!-- 4 Köşe Neon Vizör İşareti (HUD Viewfinder Brackets) -->
-        <div class="absolute -top-1 -left-1 w-3 h-3 border-t-2 border-l-2 border-[#FFFF00] rounded-tl-sm pointer-events-none"></div>
-        <div class="absolute -top-1 -right-1 w-3 h-3 border-t-2 border-r-2 border-[#FFFF00] rounded-tr-sm pointer-events-none"></div>
-        <div class="absolute -bottom-1 -left-1 w-3 h-3 border-b-2 border-l-2 border-[#FFFF00] rounded-bl-sm pointer-events-none"></div>
-        <div class="absolute -bottom-1 -right-1 w-3 h-3 border-b-2 border-r-2 border-[#FFFF00] rounded-br-sm pointer-events-none"></div>
+        <div class="absolute -top-1 -left-1 w-3 h-3 border-t-2 border-l-2 rounded-tl-sm pointer-events-none" :class="activeTheme.viewfinderClass || 'border-[#FFFF00]'"></div>
+        <div class="absolute -top-1 -right-1 w-3 h-3 border-t-2 border-r-2 rounded-tr-sm pointer-events-none" :class="activeTheme.viewfinderClass || 'border-[#FFFF00]'"></div>
+        <div class="absolute -bottom-1 -left-1 w-3 h-3 border-b-2 border-l-2 rounded-bl-sm pointer-events-none" :class="activeTheme.viewfinderClass || 'border-[#FFFF00]'"></div>
+        <div class="absolute -bottom-1 -right-1 w-3 h-3 border-b-2 border-r-2 rounded-br-sm pointer-events-none" :class="activeTheme.viewfinderClass || 'border-[#FFFF00]'"></div>
 
         <!-- Yüksek Kontrastlı QR Görseli -->
         <div class="w-24 h-24 sm:w-28 sm:h-28 bg-white p-1 rounded-xl shadow-inner flex items-center justify-center overflow-hidden">

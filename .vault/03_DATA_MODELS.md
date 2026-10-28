@@ -158,13 +158,19 @@ Profil sayfasının görsel atmosferini ve renk gradyanlarını belirler.
 
 ```typescript
 interface ThemeOption {
-  id: string;               // 'midnight' | 'emerald' | 'sunset' | 'ocean' | 'monochrome'
-  name: string;             // Tema adı (örn: "Gece Moru")
+  id: 'midnight' | 'crimson' | 'emerald' | 'synthwave' | 'ocean' | 'sunset' | 'pure-light' | 'monochrome';
+  name: string;             // Tema adı (örn: "Kızıl Siber (Alev & Yakut Kırmızı)")
   description: string;      // Tema açıklaması
   previewGradient: string;  // Önizleme gradyan sınıfı
   backgroundClass: string;  // Profil ana arka plan sınıfı
-  cardClass: string;        // Bağlantı kartı cam ve kenarlık stili
+  cardClass: string;        // Bağlantı kartı zemin ve kenarlık stili (temaya uyumlu canlı butonlar)
+  buttonClass: string;      // Ana eylem ve paylaşım butonu stili
+  iconBoxClass: string;     // İkon kutucuğu zemin ve hover stili
+  hoverBorderClass: string; // Hover anındaki sol kenarlık vurgusu
+  hoverTextClass?: string;  // Hover başlık rengi
   accentText: string;       // Vurgu metin rengi
+  accentColor: string;      // Hex vurgu rengi ('#EF4444', '#FFFF00', vb.)
+  viewfinderClass: string;  // QR vizör köşelikleri rengi
   avatarGlow: string;       // Avatar etrafındaki parıltı gradyanı
   badgeClass: string;       // Rozet stil sınıfı
 }
