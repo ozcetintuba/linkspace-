@@ -3222,11 +3222,11 @@ const handleChangePassword = async () => {
           <!-- ========================================== -->
           <div v-else-if="activeTab === 'analytics'" class="space-y-6">
             
-            <!-- Özet Kartları (Dribbble Sales Team CRM Stili) -->
-            <div class="grid grid-cols-1 sm:grid-cols-3 gap-5">
+            <!-- Özet Kartları (Dribbble Sales Team CRM Stili - 4 Metrik Kartı) -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5">
               
               <!-- 1. KART: Toplam Tıklanma (Dribbble İkonik Elektrik Sarı "Deals Pipeline" Kartı) -->
-              <div class="p-6 rounded-3xl bg-[#FFFF00] text-black flex flex-col justify-between relative shadow-xl shadow-yellow-500/10 min-h-[140px]">
+              <div class="p-5 sm:p-6 rounded-3xl bg-[#FFFF00] text-black flex flex-col justify-between relative shadow-xl shadow-yellow-500/10 min-h-[140px]">
                 <div class="flex items-center justify-between">
                   <p class="text-xs font-bold tracking-wide text-black/75">Toplam Tıklanma</p>
                   <div class="w-8 h-8 rounded-full bg-black/10 flex items-center justify-center text-black font-black text-sm">
@@ -3234,7 +3234,7 @@ const handleChangePassword = async () => {
                   </div>
                 </div>
                 <div class="mt-3">
-                  <h3 class="text-4xl font-extrabold text-black tracking-tight flex items-baseline gap-1.5">
+                  <h3 class="text-3xl sm:text-4xl font-extrabold text-black tracking-tight flex items-baseline gap-1.5">
                     <span>{{ totalClicks }}</span>
                     <span class="text-sm font-semibold text-black/70">tık</span>
                   </h3>
@@ -3244,33 +3244,62 @@ const handleChangePassword = async () => {
                 </div>
               </div>
 
-              <!-- 2. KART: Aktif Bağlantılar -->
+              <!-- 2. KART: Toplam Profil Görüntüleme -->
               <div 
-                class="p-6 rounded-3xl border flex flex-col justify-between relative shadow-xl min-h-[140px] transition-colors"
+                class="p-5 sm:p-6 rounded-3xl border flex flex-col justify-between relative shadow-xl min-h-[140px] transition-colors"
                 :class="adminTheme === 'light' 
                   ? 'bg-white border-slate-200 text-slate-900 shadow-slate-200/50' 
                   : 'bg-[#181818] border border-[#282828] text-white shadow-black/60'"
               >
                 <div class="flex items-center justify-between">
-                  <p class="text-xs font-semibold tracking-wide" :class="adminTheme === 'light' ? 'text-slate-600' : 'text-[#8E8E93]'">Aktif Bağlantılar</p>
-                  <div class="w-8 h-8 rounded-full bg-[#FFFF00] text-black flex items-center justify-center font-black text-sm shadow-sm">
-                    ↗
+                  <p class="text-xs font-semibold tracking-wide" :class="adminTheme === 'light' ? 'text-slate-600' : 'text-[#8E8E93]'">Profil Görüntüleme</p>
+                  <div 
+                    class="w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs border"
+                    :class="adminTheme === 'light' ? 'bg-sky-100 text-sky-800 border-sky-300' : 'bg-[#242424] text-sky-400 border-[#333333]'"
+                  >
+                    <Eye class="w-4 h-4" />
                   </div>
                 </div>
                 <div class="mt-3">
                   <h3 class="text-3xl font-extrabold tracking-tight" :class="adminTheme === 'light' ? 'text-black' : 'text-white'">
-                    <span>{{ activeCount }}</span>
-                    <span class="text-sm font-normal" :class="adminTheme === 'light' ? 'text-slate-500' : 'text-[#8E8E93]'"> / {{ links.length }} aktif</span>
+                    <span>{{ analytics?.totalVisits || 0 }}</span>
+                    <span class="text-sm font-normal" :class="adminTheme === 'light' ? 'text-slate-500' : 'text-[#8E8E93]'"> ziyaret</span>
                   </h3>
-                  <p class="text-xs font-semibold mt-1" :class="adminTheme === 'light' ? 'text-emerald-600' : 'text-emerald-400'">
-                    %{{ links.length > 0 ? Math.round((activeCount / links.length) * 100) : 0 }} yayın oranı
+                  <p class="text-xs font-semibold mt-1" :class="adminTheme === 'light' ? 'text-sky-600' : 'text-sky-400'">
+                    {{ analytics?.qrVisits || 0 }} QR • {{ analytics?.directVisits || 0 }} Doğrudan
                   </p>
                 </div>
               </div>
 
-              <!-- 3. KART: En Popüler Bağlantı -->
+              <!-- 3. KART: Tıklama Oranı (CTR - Click-Through Rate) -->
               <div 
-                class="p-6 rounded-3xl border flex flex-col justify-between relative shadow-xl min-h-[140px] transition-colors"
+                class="p-5 sm:p-6 rounded-3xl border flex flex-col justify-between relative shadow-xl min-h-[140px] transition-colors"
+                :class="adminTheme === 'light' 
+                  ? 'bg-white border-slate-200 text-slate-900 shadow-slate-200/50' 
+                  : 'bg-[#181818] border border-[#282828] text-white shadow-black/60'"
+              >
+                <div class="flex items-center justify-between">
+                  <p class="text-xs font-semibold tracking-wide" :class="adminTheme === 'light' ? 'text-slate-600' : 'text-[#8E8E93]'">Tıklama Oranı (CTR)</p>
+                  <div 
+                    class="w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs border"
+                    :class="adminTheme === 'light' ? 'bg-emerald-100 text-emerald-800 border-emerald-300' : 'bg-[#242424] text-emerald-400 border-[#333333]'"
+                  >
+                    <MousePointerClick class="w-4 h-4" />
+                  </div>
+                </div>
+                <div class="mt-3">
+                  <h3 class="text-3xl font-extrabold tracking-tight text-emerald-400">
+                    <span>%{{ (analytics?.totalVisits || 0) > 0 ? ((totalClicks / analytics.totalVisits) * 100).toFixed(1) : '0.0' }}</span>
+                  </h3>
+                  <p class="text-xs font-semibold mt-1" :class="adminTheme === 'light' ? 'text-slate-600' : 'text-neutral-400'">
+                    Ziyaretçi başına link etkileşimi
+                  </p>
+                </div>
+              </div>
+
+              <!-- 4. KART: En Popüler Bağlantı -->
+              <div 
+                class="p-5 sm:p-6 rounded-3xl border flex flex-col justify-between relative shadow-xl min-h-[140px] transition-colors"
                 :class="adminTheme === 'light' 
                   ? 'bg-white border-slate-200 text-slate-900 shadow-slate-200/50' 
                   : 'bg-[#181818] border border-[#282828] text-white shadow-black/60'"
