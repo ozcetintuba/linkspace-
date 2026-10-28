@@ -26,7 +26,7 @@ const __dirname = path.dirname(__filename)
 const docsDir = path.resolve(__dirname, '../../docs')
 
 const app = express()
-const PORT = process.env.PORT || 5000
+const PORT = process.env.PORT || 3000
 
 // Güvenlik & Başlık Sertleştirmeleri
 app.disable('x-powered-by')
@@ -194,7 +194,7 @@ const startServer = async () => {
     console.warn('⚠️ PostgreSQL servisi henüz çalışmıyor olabilir. Sunucu çalışmaya devam ediyor, veritabanı hazır olduğunda bağlantı otomatik sağlanacaktır.')
   }
 
-  app.listen(PORT, () => {
+  app.listen(PORT, '0.0.0.0', () => {
     console.log(`✨ Backend API sunucusu http://localhost:${PORT} üzerinde dinlemede.`)
     console.log(`📡 Sağlık Kontrolü: http://localhost:${PORT}/api/health`)
   })
