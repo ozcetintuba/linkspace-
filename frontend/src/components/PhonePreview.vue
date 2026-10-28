@@ -795,7 +795,8 @@ const statusConfig = computed(() => {
           <!-- Alt Linktree Rozeti -->
           <div class="pt-4 text-center">
             <span :class="['inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full border text-[9px] font-medium tracking-wider uppercase', activeTheme.id === 'pure-light' ? 'bg-white/80 border-slate-200 text-slate-500' : 'bg-[#161616]/80 border-[#262626] text-slate-400']">
-              linkspace
+              <span>linkspace</span>
+              <Zap class="w-2.5 h-2.5 text-[#FFFF00] fill-[#FFFF00]" />
             </span>
           </div>
 

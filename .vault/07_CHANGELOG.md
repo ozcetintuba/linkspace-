@@ -4,6 +4,14 @@ Tüm önemli mimari değişiklikler, özellik eklemeleri ve düzeltmeler bu dosy
 
 ---
 
+## [v0.32.4] - 2026-10-28 (Marka Logosu İyileştirmesi: Şimşek / Yıldırım Amblemi)
+
+### ⚡ Linkspace Marka Logosu & Amblemi
+- **Kare Kutu Yerine Neon Sarı Yıldırım (Zap Amblemi)**:
+  - Üst gezinme çubuğundaki (AdminView ve ProfileView) `linkspace` logosunun yanındaki sarı kare kutu kaldırıldı.
+  - Tarayıcı sekmesi ve favikondaki elektrikli neon sarı şimşek / yıldırım (`Zap` vektörü) yerleştirildi (`text-[#FFFF00] fill-[#FFFF00]` ve neon parlama efekti).
+  - Alt bilgi (footer) ve mobil önizleme rozetleri de aynı şimşek amblemi ile bütünsel olarak güncellendi.
+
 ## [v0.32.3] - 2026-10-28 (Sağ Altta Sabit ve Açık Duran Canlı QR Kod Widget'ı)
 
 ### 📱 Sabit Açık QR Kod Deneyimi

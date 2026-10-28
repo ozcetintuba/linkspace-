@@ -753,9 +753,9 @@ const getLinkSubtitle = (link) => {
         ]"
       >
         <!-- Sol: linkspace Logo -->
-        <router-link to="/" class="font-black text-lg sm:text-xl tracking-tight select-none hover:opacity-85 transition-opacity flex items-center shrink-0">
+        <router-link to="/" class="font-black text-lg sm:text-xl tracking-tight select-none hover:opacity-85 transition-opacity flex items-center shrink-0 group">
           <span>linkspace</span>
-          <span class="inline-block w-2.5 h-2.5 rounded-xs bg-[#FFFF00] ml-1.5 shadow-xs shadow-yellow-500/50"></span>
+          <Zap class="w-3.5 h-3.5 sm:w-4.5 sm:h-4.5 text-[#FFFF00] fill-[#FFFF00] ml-1 inline-block drop-shadow-[0_0_8px_rgba(255,255,0,0.6)] transition-transform group-hover:scale-110" />
         </router-link>
 
         <!-- Orta: linkspace Profil Bağlantısı (Tıklandığında Kopyalar) -->
@@ -1451,7 +1451,8 @@ const getLinkSubtitle = (link) => {
       <!-- Alt Bilgi -->
       <footer class="mt-10 text-center flex flex-col items-center gap-2 select-none">
         <span :class="['inline-flex items-center gap-1.5 px-3 py-1 rounded-full border text-[11px] font-medium tracking-wider uppercase', activeTheme.id === 'pure-light' ? 'bg-white/80 border-slate-200 text-slate-500' : 'bg-[#181818] border-[#282828] text-neutral-400']">
-          linkspace
+          <span>linkspace</span>
+          <Zap class="w-2.5 h-2.5 text-[#FFFF00] fill-[#FFFF00]" />
         </span>
         <router-link 
           to="/admin" 

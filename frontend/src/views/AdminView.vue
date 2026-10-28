@@ -1296,11 +1296,11 @@ const handleChangePassword = async () => {
         <div class="flex items-center gap-3">
           <router-link 
             to="/admin" 
-            class="font-black text-xl sm:text-2xl tracking-tight select-none hover:opacity-85 transition-opacity flex items-center"
+            class="font-black text-xl sm:text-2xl tracking-tight select-none hover:opacity-85 transition-opacity flex items-center group"
             :class="adminTheme === 'light' ? 'text-black' : 'text-white'"
           >
             <span>linkspace</span>
-            <span class="inline-block w-2.5 h-2.5 rounded-xs bg-[#FFFF00] ml-1.5 shadow-xs shadow-yellow-500/50"></span>
+            <Zap class="w-4 h-4 sm:w-5 sm:h-5 text-[#FFFF00] fill-[#FFFF00] ml-1 inline-block drop-shadow-[0_0_8px_rgba(255,255,0,0.6)] transition-transform group-hover:scale-110" />
           </router-link>
         </div>
 
