@@ -58,13 +58,14 @@ import {
   Check
 } from 'lucide-vue-next'
 
-const phoneAvatarMode = ref(profile.value.avatarMode === 'mascot' ? '3d' : '2d')
-watch(() => profile.value.avatarMode, (newMode) => {
+const linkStore = useLinkStore()
+const { profile, links, activeTheme } = storeToRefs(linkStore)
+
+const phoneAvatarMode = ref(profile.value?.avatarMode === 'mascot' ? '3d' : '2d')
+watch(() => profile.value?.avatarMode, (newMode) => {
   if (newMode === 'mascot') phoneAvatarMode.value = '3d'
   else if (newMode === 'photo') phoneAvatarMode.value = '2d'
 })
-const linkStore = useLinkStore()
-const { profile, links, activeTheme } = storeToRefs(linkStore)
 
 // Rozet İkonları Haritası
 const BADGE_ICON_MAP = {

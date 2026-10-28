@@ -4,6 +4,15 @@ Tüm önemli mimari değişiklikler, özellik eklemeleri ve düzeltmeler bu dosy
 
 ---
 
+## [v0.36.1] - 2026-10-28 (Kritik Düzeltme: TDZ ReferenceError Giderimi & WebGL Fallback)
+
+### 🛠️ Kritik Düzeltmeler & Donanım Uyumluluğu
+- **TDZ ReferenceError Giderildi**: `ProfileView.vue` ve `PhonePreview.vue` içerisinde `profile` değişkenine `storeToRefs(linkStore)` tanımlanmadan önce erişilmesi nedeniyle Vue 3'ün beyaz ekran (runtime crash) vermesine yol açan referans hatası çözüldü.
+- **WebGL Güvenli Fallback**: `ThreeAvatarMascot.vue` ve `ThreeBackground.vue` için WebGL başlatma döngülerine `try...catch` sarmalayıcıları eklendi. Donanım hızlandırması kapalı veya düşük performanslı cihazlarda sayfanın çökmesi engellendi.
+- **Frontend Derleme & Canlı Dağıtım**: Frontend başarıyla derlendi (`dist/`) ve yerel sunucu `0.0.0.0:3000` üzerinde doğrulanıp GitHub `main` dalına aktarıldı.
+
+---
+
 ## [v0.36.0] - 2026-10-28 (AI Copilot, Web Share Target, Biyometrik WebAuthn & Offline-First Sync)
 
 ### 🤖 1. Akıllı Bio Asistanı (AI Copilot) & Link Tıklama Tahmini (Smart Insights)

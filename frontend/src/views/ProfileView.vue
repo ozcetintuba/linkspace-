@@ -75,6 +75,9 @@ import {
   UserPlus
 } from 'lucide-vue-next'
 
+const linkStore = useLinkStore()
+const { profile, links, activeTheme, currentTheme, seoSettings } = storeToRefs(linkStore)
+
 // 3D WebGL Avatar ve Maskot Durumu
 const currentAvatarView = ref(
   profile.value?.avatarMode === 'mascot' ? '3d' : '2d'
@@ -89,7 +92,6 @@ const toggleAvatarMode = () => {
   currentAvatarView.value = currentAvatarView.value === '3d' ? '2d' : '3d'
 }
 
-const linkStore = useLinkStore()
 // Çevrimdışı (Offline-First) Durum Yönetimi & Background Sync
 const isOffline = ref(typeof navigator !== 'undefined' ? !navigator.onLine : false)
 
@@ -118,8 +120,6 @@ if (typeof window !== 'undefined') {
     })
   }
 }
-
-const { profile, links, activeTheme, currentTheme, seoSettings } = storeToRefs(linkStore)
 
 // Ziyaretçi Profil Teması Seçici Modalı
 const showThemeModal = ref(false)

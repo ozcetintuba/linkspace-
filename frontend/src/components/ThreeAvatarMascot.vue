@@ -380,7 +380,7 @@ const handleVisibilityChange = () => {
 }
 
 onMounted(() => {
-  initThree()
+  try { initThree() } catch (e) { console.warn("Mascot WebGL fallback:", e) }
   document.addEventListener('visibilitychange', handleVisibilityChange)
 })
 

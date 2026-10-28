@@ -248,7 +248,7 @@ watch(() => props.theme, () => {
 })
 
 onMounted(() => {
-  initThree()
+  try { initThree() } catch (e) { console.warn("Background WebGL fallback:", e) }
 })
 
 onUnmounted(() => {
