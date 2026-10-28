@@ -711,7 +711,8 @@ const DEFAULT_PROFILE = {
     shape: 'rounded-full',
     style: 'glass'
   },
-  groupByCategory: false
+  groupByCategory: false,
+  foldersDefaultExpanded: true
 }
 
 export const formatForDatetimeInput = (val) => {
@@ -1182,7 +1183,8 @@ export const useLinkStore = defineStore('links', () => {
             ...DEFAULT_PROFILE.socialLinks,
             ...(profileData.socialLinks || {})
           },
-          groupByCategory: profileData.groupByCategory !== undefined ? Boolean(profileData.groupByCategory) : false
+          groupByCategory: profileData.groupByCategory !== undefined ? Boolean(profileData.groupByCategory) : false,
+          foldersDefaultExpanded: profileData.foldersDefaultExpanded !== undefined ? Boolean(profileData.foldersDefaultExpanded) : true
         }
       }
       if (linksRes.ok) {
@@ -1278,7 +1280,8 @@ export const useLinkStore = defineStore('links', () => {
               ...DEFAULT_PROFILE.socialLinks,
               ...(data.profile.socialLinks || {})
             },
-            groupByCategory: data.profile.groupByCategory !== undefined ? Boolean(data.profile.groupByCategory) : false
+            groupByCategory: data.profile.groupByCategory !== undefined ? Boolean(data.profile.groupByCategory) : false,
+            foldersDefaultExpanded: data.profile.foldersDefaultExpanded !== undefined ? Boolean(data.profile.foldersDefaultExpanded) : true
           }
         }
         if (Array.isArray(data.links)) {

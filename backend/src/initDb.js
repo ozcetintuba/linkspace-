@@ -35,6 +35,7 @@ export const initializeDatabase = async () => {
       ALTER TABLE profiles ADD COLUMN IF NOT EXISTS status_color VARCHAR(50) DEFAULT 'emerald';
       ALTER TABLE profiles ADD COLUMN IF NOT EXISTS is_verified BOOLEAN DEFAULT TRUE;
       ALTER TABLE profiles ADD COLUMN IF NOT EXISTS group_by_category BOOLEAN DEFAULT false;
+      ALTER TABLE profiles ADD COLUMN IF NOT EXISTS folders_default_expanded BOOLEAN DEFAULT true;
     `)
 
     // 2. Bağlantılar Tablosu

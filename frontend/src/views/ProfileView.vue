@@ -658,9 +658,9 @@ const toggleFolder = (category) => {
 const isFolderOpen = (category) => {
   // Arama yapılırken eşleşen tüm klasörler otomatik açık kalır
   if (searchQuery.value && searchQuery.value.trim()) return true
-  // Varsayılan olarak açık (true), ziyaretçi dilediğinde tek tıkla kapatabilir
+  // Varsayılan açılış durumu yönetici panelinden ayarlanır
   if (expandedFolders.value[category] === undefined) {
-    return true
+    return profile.value?.foldersDefaultExpanded !== false
   }
   return expandedFolders.value[category] === true
 }
@@ -1011,31 +1011,6 @@ const getLinkSubtitle = (link) => {
               : 'bg-[#161616] border border-[#282828] text-white placeholder-neutral-500 focus:border-[#FFFF00] focus:ring-1 focus:ring-[#FFFF00]/40'
           ]"
         />
-      </div>
-
-      <!-- Klasörler Bilgi / Hızlı Kontrol Çubuğu (Varsa) -->
-      <div v-if="hasFolders && filteredLinks.length > 0" class="w-full max-w-lg mx-auto flex items-center justify-between text-[11px] mb-2 px-1">
-        <span :class="['flex items-center gap-1.5 font-medium', activeTheme.id === 'pure-light' ? 'text-slate-600' : 'text-neutral-400']">
-          <Folder class="w-3.5 h-3.5 text-amber-400" />
-          <span>Kategorilere göre gruplandı</span>
-        </span>
-        <div class="flex items-center gap-2">
-          <button
-            type="button"
-            @click="toggleAllFolders(true)"
-            :class="['hover:underline transition-colors cursor-pointer', activeTheme.id === 'pure-light' ? 'text-slate-700 hover:text-black' : 'text-neutral-400 hover:text-white']"
-          >
-            Tümünü Aç
-          </button>
-          <span :class="activeTheme.id === 'pure-light' ? 'text-slate-300' : 'text-neutral-600'">•</span>
-          <button
-            type="button"
-            @click="toggleAllFolders(false)"
-            :class="['hover:underline transition-colors cursor-pointer', activeTheme.id === 'pure-light' ? 'text-slate-700 hover:text-black' : 'text-neutral-400 hover:text-white']"
-          >
-            Daralt
-          </button>
-        </div>
       </div>
 
       <!-- Aktif Bağlantı ve Klasör Listesi -->

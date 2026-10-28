@@ -115,7 +115,9 @@ const toggleFolder = (category) => {
 }
 
 const isFolderOpen = (category) => {
-  if (expandedFolders.value[category] === undefined) return true
+  if (expandedFolders.value[category] === undefined) {
+    return profile.value?.foldersDefaultExpanded !== false
+  }
   return expandedFolders.value[category] === true
 }
 

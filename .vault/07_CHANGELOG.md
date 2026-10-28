@@ -7,14 +7,17 @@ Tüm önemli mimari değişiklikler, özellik eklemeleri ve düzeltmeler bu dosy
 ## [v0.32.1] - 2026-10-28 (Profilde İsteğe Bağlı Kategori Gruplama & Admin Kontrol Paneli)
 
 ### 🗂️ İsteğe Bağlı Klasörlü Gruplama Kontrolü (Optional Category Grouping Toggle)
-- **Kullanıcı Tercihi & Varsayılan Düz Liste**:
+- **Kullanıcı Tercihi & Ziyaretçi Ekranı Temizliği**:
+  - Profil sayfasından "Kategorilere göre gruplandı / Tümünü Aç • Daralt" kontrol çubuğu tamamen kaldırıldı; ziyaretçiler gereksiz buton kalabalığı görmez.
   - Profilde bağlantıların varsayılan olarak doğrudan klasik Linktree tarzında düz liste şeklinde sunulması sağlandı (`groupByCategory: false`).
+- **Yönetici Paneli Klasör Durum Yönetimi (`AdminView.vue`)**:
+  - Klasörleme açıldığında yöneticiye "Tümünü Açık Başlat" veya "Daraltılmış (Kapalı) Başlat" seçenekleri sunuldu (`foldersDefaultExpanded`).
 - **Veritabanı Şeması & Migration (`backend/src/initDb.js`)**:
-  - `profiles` tablosuna `group_by_category BOOLEAN DEFAULT false` sütunu eklendi (`ALTER TABLE profiles ADD COLUMN IF NOT EXISTS group_by_category BOOLEAN DEFAULT false;`).
+  - `profiles` tablosuna `folders_default_expanded BOOLEAN DEFAULT true` sütunu eklendi.
 - **REST API Katmanı (`backend/src/routes/profileRoutes.js`)**:
-  - `GET /api/profile`, `GET /api/profile/:username` ve `PUT /api/profile` rotaları `groupByCategory` desteğiyle güncellendi.
+  - `GET /api/profile`, `GET /api/profile/:username` ve `PUT /api/profile` rotaları `foldersDefaultExpanded` alanı ile senkronize edildi.
 - **Pinia Reaktif Store (`frontend/src/stores/linkStore.js`)**:
-  - `DEFAULT_PROFILE` ve `profile` reaktif durumuna `groupByCategory: false` eklendi; API senkronizasyonu ve LocalStorage kalıcılığı sağlandı.
+  - `DEFAULT_PROFILE` ve `profile` reaktif durumuna `foldersDefaultExpanded: true` eklendi.
 - **Yönetim Paneli (`frontend/src/views/AdminView.vue`)**:
   - Bağlantılar sekmesi üst kısmına şık ve interaktif bir kontrol kartı eklendi: "Profilde Kategorilere Göre Klasörle (Açık / Kapalı)".
   - Tek tıkla açılıp kapanabilen iOS stil switch ve anlık bildirim toast mesajı.

@@ -48,7 +48,8 @@ interface Profile {
     shape?: string;            // 'rounded-full' | 'rounded-xl' | 'rounded-lg'
     style?: string;            // 'glass' | 'neon' | 'solid'
   };
-  groupByCategory?: boolean;  // Profilde bağlantıları kategorilere göre klasörleme açma/kapama (varsayılan: false)
+  groupByCategory?: boolean;          // Profilde bağlantıları kategorilere göre klasörleme açma/kapama (varsayılan: false)
+  foldersDefaultExpanded?: boolean;   // Klasörler açıkken varsayılan olarak açık mı kapalı mı başlasın (varsayılan: true)
 }
 ```
 

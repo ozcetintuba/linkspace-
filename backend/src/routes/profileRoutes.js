@@ -25,7 +25,8 @@ const mockProfile = {
     linkedin: 'https://linkedin.com',
     instagram: 'https://instagram.com'
   },
-  groupByCategory: false
+  groupByCategory: false,
+  foldersDefaultExpanded: true
 }
 
 // GET /api/profile (Herkese açık, 60s TTL & ETag Önbellekli)
@@ -47,7 +48,8 @@ router.get('/', cacheMiddleware(60), async (req, res) => {
           COALESCE(banner_pattern, 'mesh') AS "bannerPattern",
           COALESCE(badges, '[]'::jsonb) AS "badges",
           COALESCE(social_links, '{}'::jsonb) AS "socialLinks",
-          COALESCE(group_by_category, false) AS "groupByCategory"
+          COALESCE(group_by_category, false) AS "groupByCategory",
+          COALESCE(folders_default_expanded, true) AS "foldersDefaultExpanded"
         FROM profiles 
         ORDER BY id ASC 
         LIMIT 1
@@ -93,7 +95,8 @@ router.get('/:username', cacheMiddleware(60), async (req, res) => {
         COALESCE(banner_pattern, 'mesh') AS "bannerPattern",
         COALESCE(badges, '[]'::jsonb) AS "badges",
         COALESCE(social_links, '{}'::jsonb) AS "socialLinks",
-        COALESCE(group_by_category, false) AS "groupByCategory"
+        COALESCE(group_by_category, false) AS "groupByCategory",
+        COALESCE(folders_default_expanded, true) AS "foldersDefaultExpanded"
       FROM profiles 
       WHERE LOWER(REPLACE(username, '@', '')) = $1
       LIMIT 1
@@ -148,7 +151,8 @@ router.get('/:username', cacheMiddleware(60), async (req, res) => {
         bannerPattern: profile.bannerPattern || 'mesh',
         badges: profile.badges || [],
         socialLinks: profile.socialLinks,
-        groupByCategory: profile.groupByCategory !== undefined ? Boolean(profile.groupByCategory) : false
+        groupByCategory: profile.groupByCategory !== undefined ? Boolean(profile.groupByCategory) : false,
+        foldersDefaultExpanded: profile.foldersDefaultExpanded !== undefined ? Boolean(profile.foldersDefaultExpanded) : true
       },
       links: linksResult.rows
     })
@@ -212,7 +216,8 @@ router.put('/', requireAuth, async (req, res) => {
       bannerPattern, 
       badges, 
       socialLinks,
-      groupByCategory
+      groupByCategory,
+      foldersDefaultExpanded
     } = req.body
 
     if (!name || !username) {
@@ -229,6 +234,7 @@ router.put('/', requireAuth, async (req, res) => {
     const safeStatusColor = statusColor || 'emerald'
     const safeIsVerified = isVerified !== undefined ? Boolean(isVerified) : true
     const safeGroupByCategory = groupByCategory !== undefined ? Boolean(groupByCategory) : false
+    const safeFoldersDefaultExpanded = foldersDefaultExpanded !== undefined ? Boolean(foldersDefaultExpanded) : true
 
     const result = await query(`
       UPDATE profiles 
@@ -247,6 +253,7 @@ router.put('/', requireAuth, async (req, res) => {
         status_color = $12,
         is_verified = $13,
         group_by_category = $14,
+        folders_default_expanded = $15,
         updated_at = CURRENT_TIMESTAMP
       WHERE id = (SELECT id FROM profiles ORDER BY id ASC LIMIT 1)
       RETURNING 
@@ -263,7 +270,8 @@ router.put('/', requireAuth, async (req, res) => {
         COALESCE(banner_pattern, 'mesh') AS "bannerPattern", 
         COALESCE(badges, '[]'::jsonb) AS "badges", 
         COALESCE(social_links, '{}'::jsonb) AS "socialLinks",
-        COALESCE(group_by_category, false) AS "groupByCategory"
+        COALESCE(group_by_category, false) AS "groupByCategory",
+        COALESCE(folders_default_expanded, true) AS "foldersDefaultExpanded"
     `, [
       name.trim(), 
       username.trim(), 
@@ -278,16 +286,17 @@ router.put('/', requireAuth, async (req, res) => {
       safeStatusText,
       safeStatusColor,
       safeIsVerified,
-      safeGroupByCategory
+      safeGroupByCategory,
+      safeFoldersDefaultExpanded
     ])
 
     if (result.rows.length === 0) {
       // Eğer profil yoksa yeni oluştur
       const insertResult = await query(`
         INSERT INTO profiles (
-          name, username, bio, avatar, banner, banner_pattern, badges, social_links, avatar_shape, avatar_glow, status_text, status_color, is_verified, group_by_category
+          name, username, bio, avatar, banner, banner_pattern, badges, social_links, avatar_shape, avatar_glow, status_text, status_color, is_verified, group_by_category, folders_default_expanded
         )
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
         RETURNING 
           name, 
           username, 
@@ -302,7 +311,8 @@ router.put('/', requireAuth, async (req, res) => {
           COALESCE(banner_pattern, 'mesh') AS "bannerPattern", 
           COALESCE(badges, '[]'::jsonb) AS "badges", 
           COALESCE(social_links, '{}'::jsonb) AS "socialLinks",
-          COALESCE(group_by_category, false) AS "groupByCategory"
+          COALESCE(group_by_category, false) AS "groupByCategory",
+          COALESCE(folders_default_expanded, true) AS "foldersDefaultExpanded"
       `, [
         name.trim(), 
         username.trim(), 
@@ -317,7 +327,8 @@ router.put('/', requireAuth, async (req, res) => {
         safeStatusText,
         safeStatusColor,
         safeIsVerified,
-        safeGroupByCategory
+        safeGroupByCategory,
+        safeFoldersDefaultExpanded
       ])
       invalidateCache('profile')
       return res.json(insertResult.rows[0])
