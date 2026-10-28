@@ -36,6 +36,7 @@ export const initializeDatabase = async () => {
       ALTER TABLE profiles ADD COLUMN IF NOT EXISTS is_verified BOOLEAN DEFAULT TRUE;
       ALTER TABLE profiles ADD COLUMN IF NOT EXISTS group_by_category BOOLEAN DEFAULT false;
       ALTER TABLE profiles ADD COLUMN IF NOT EXISTS folders_default_expanded BOOLEAN DEFAULT true;
+      ALTER TABLE profiles ADD COLUMN IF NOT EXISTS show_badges BOOLEAN DEFAULT false;
     `)
 
     // 2. Bağlantılar Tablosu

@@ -708,7 +708,8 @@ const DEFAULT_PROFILE = {
     style: 'glass'
   },
   groupByCategory: false,
-  foldersDefaultExpanded: true
+  foldersDefaultExpanded: true,
+  showBadges: false
 }
 
 export const formatForDatetimeInput = (val) => {
@@ -1180,7 +1181,8 @@ export const useLinkStore = defineStore('links', () => {
             ...(profileData.socialLinks || {})
           },
           groupByCategory: profileData.groupByCategory !== undefined ? Boolean(profileData.groupByCategory) : false,
-          foldersDefaultExpanded: profileData.foldersDefaultExpanded !== undefined ? Boolean(profileData.foldersDefaultExpanded) : true
+          foldersDefaultExpanded: profileData.foldersDefaultExpanded !== undefined ? Boolean(profileData.foldersDefaultExpanded) : true,
+          showBadges: profileData.showBadges !== undefined ? Boolean(profileData.showBadges) : false
         }
       }
       if (linksRes.ok) {
@@ -1277,7 +1279,8 @@ export const useLinkStore = defineStore('links', () => {
               ...(data.profile.socialLinks || {})
             },
             groupByCategory: data.profile.groupByCategory !== undefined ? Boolean(data.profile.groupByCategory) : false,
-            foldersDefaultExpanded: data.profile.foldersDefaultExpanded !== undefined ? Boolean(data.profile.foldersDefaultExpanded) : true
+            foldersDefaultExpanded: data.profile.foldersDefaultExpanded !== undefined ? Boolean(data.profile.foldersDefaultExpanded) : true,
+            showBadges: data.profile.showBadges !== undefined ? Boolean(data.profile.showBadges) : false
           }
         }
         if (Array.isArray(data.links)) {

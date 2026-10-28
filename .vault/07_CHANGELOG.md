@@ -4,9 +4,13 @@ Tüm önemli mimari değişiklikler, özellik eklemeleri ve düzeltmeler bu dosy
 
 ---
 
-## [v0.32.1] - 2026-10-28 (Profilde İsteğe Bağlı Kategori Gruplama & Admin Kontrol Paneli)
+## [v0.32.1] - 2026-10-28 (Profilde İsteğe Bağlı Kategori Gruplama & Rozet Kontrol Paneli)
 
-### 🗂️ İsteğe Bağlı Klasörlü Gruplama Kontrolü (Optional Category Grouping Toggle)
+### 🗂️ İsteğe Bağlı Klasörlü Gruplama & Rozet Kontrolleri
+- **Yetenek Rozetleri İsteğe Bağlı Yapıldı (`showBadges: false`)**:
+  - Profil sayfasından yetenek rozetleri varsayılan olarak tamamen gizlendi; minimalist ve temiz bir görünüm sağlandı.
+  - Yönetici Paneli -> Görünüm & Tema sekmesine "Profilde Açık / Profilde Gizli (Sade)" toggle anahtarı eklendi.
+  - Veritabanı ve API modellerine `show_badges` alanı entegre edildi.
 - **Kullanıcı Tercihi & Ziyaretçi Ekranı Temizliği**:
   - Profil sayfasından "Kategorilere göre gruplandı / Tümünü Aç • Daralt" kontrol çubuğu tamamen kaldırıldı; ziyaretçiler gereksiz buton kalabalığı görmez.
   - Profilde bağlantıların varsayılan olarak doğrudan klasik Linktree tarzında düz liste şeklinde sunulması sağlandı (`groupByCategory: false`).

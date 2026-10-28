@@ -50,6 +50,7 @@ interface Profile {
   };
   groupByCategory?: boolean;          // Profilde bağlantıları kategorilere göre klasörleme açma/kapama (varsayılan: false)
   foldersDefaultExpanded?: boolean;   // Klasörler açıkken varsayılan olarak açık mı kapalı mı başlasın (varsayılan: true)
+  showBadges?: boolean;               // Profilde yetenek/rol rozetlerini göster/gizle (varsayılan: false)
 }
 ```
 

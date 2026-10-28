@@ -886,6 +886,19 @@ const handleSetFoldersDefaultExpanded = async (state) => {
   )
 }
 
+// Profilde Yetenek & İlgi Alanı Rozetleri Görünürlük Kontrolü (Aç / Kapat)
+const handleToggleShowBadges = async () => {
+  const nextVal = !profile.value.showBadges
+  profileForm.value.showBadges = nextVal
+  await linkStore.updateProfile({ showBadges: nextVal })
+  showToast(
+    nextVal 
+      ? 'Yetenek rozetleri profilde görünür yapıldı.' 
+      : 'Yetenek rozetleri profilde gizlendi (Minimalist sade görünüm).',
+    'success'
+  )
+}
+
 // Oturumu Kapatma (Logout)
 const handleLogout = () => {
   if (confirm('Yönetim panelinden çıkış yapmak istediğinizden emin misiniz?')) {
@@ -932,7 +945,8 @@ const profileForm = ref({
     emailActive: profile.value.socialLinks?.emailActive !== false
   },
   groupByCategory: profile.value.groupByCategory !== undefined ? Boolean(profile.value.groupByCategory) : false,
-  foldersDefaultExpanded: profile.value.foldersDefaultExpanded !== false
+  foldersDefaultExpanded: profile.value.foldersDefaultExpanded !== false,
+  showBadges: profile.value.showBadges !== undefined ? Boolean(profile.value.showBadges) : false
 })
 const isSavingProfile = ref(false)
 
@@ -1170,7 +1184,8 @@ const handleSaveProfile = async () => {
       emailActive: profileForm.value.socialLinks.emailActive !== false
     },
     groupByCategory: Boolean(profileForm.value.groupByCategory),
-    foldersDefaultExpanded: profileForm.value.foldersDefaultExpanded !== false
+    foldersDefaultExpanded: profileForm.value.foldersDefaultExpanded !== false,
+    showBadges: Boolean(profileForm.value.showBadges)
   })
   isSavingProfile.value = false
   showToast('Profil ve sosyal medya ayarları kaydedildi!')
@@ -2734,7 +2749,7 @@ const handleChangePassword = async () => {
 
                 <!-- 1.5 DİNAMİK YETENEK & İLGİ ALANI ROZETLERİ (BADGES / TAGS) -->
                 <div :class="['pt-5 border-t', themeClasses.headerBorder]">
-                  <div class="flex items-center justify-between mb-3">
+                  <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-3">
                     <div>
                       <h4 class="text-xs font-bold uppercase tracking-wider flex items-center gap-1.5" :class="adminTheme === 'light' ? 'text-slate-900' : 'text-[#FFFF00]'">
                         <Sparkles class="w-3.5 h-3.5" :class="adminTheme === 'light' ? 'text-amber-600' : 'text-[#FFFF00]'" />
@@ -2744,9 +2759,30 @@ const handleChangePassword = async () => {
                         Biyografinizin hemen altında sergilenen uzmanlık, rol veya konum etiketlerini yönetin.
                       </p>
                     </div>
-                    <span class="text-[10px] font-bold px-2 py-0.5 rounded-full" :class="adminTheme === 'light' ? 'bg-amber-100 text-amber-900 border border-amber-300' : 'bg-[#FFFF00]/15 text-[#FFFF00] border border-[#FFFF00]/30'">
-                      {{ (profile.badges || []).length }} Aktif Rozet
-                    </span>
+
+                    <div class="flex items-center gap-2.5">
+                      <!-- Aç/Kapat Toggle Switch -->
+                      <label class="inline-flex items-center gap-2 cursor-pointer px-3 py-1.5 rounded-xl border transition-colors"
+                        :class="profile.showBadges 
+                          ? (adminTheme === 'light' ? 'bg-amber-50 border-amber-300 text-amber-900' : 'bg-amber-500/15 border-amber-500/30 text-amber-300')
+                          : (adminTheme === 'light' ? 'bg-slate-100 border-slate-200 text-slate-500' : 'bg-[#141414] border-[#282828] text-neutral-400')"
+                      >
+                        <input 
+                          type="checkbox" 
+                          :checked="!!profile.showBadges" 
+                          @change="handleToggleShowBadges"
+                          class="sr-only peer"
+                        />
+                        <div class="w-9 h-5 bg-neutral-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-amber-500 relative"></div>
+                        <span class="text-xs font-semibold select-none">
+                          {{ profile.showBadges ? 'Profilde Açık' : 'Profilde Gizli (Sade)' }}
+                        </span>
+                      </label>
+
+                      <span v-if="profile.showBadges" class="text-[10px] font-bold px-2 py-0.5 rounded-full" :class="adminTheme === 'light' ? 'bg-amber-100 text-amber-900 border border-amber-300' : 'bg-[#FFFF00]/15 text-[#FFFF00] border border-[#FFFF00]/30'">
+                        {{ (profile.badges || []).length }} Aktif
+                      </span>
+                    </div>
                   </div>
 
                   <!-- Mevcut Rozetlerin Canlı Listesi (Silme Butonlu) -->
