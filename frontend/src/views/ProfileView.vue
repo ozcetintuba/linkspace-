@@ -475,17 +475,67 @@ const loadProfileData = async (usernameParam) => {
   }
 }
 
-// Cihaz ve Ziyaretçi Tespiti (Mobil vs Masaüstü Tarayıcı)
+// Cihaz ve Ziyaretçi Tespiti (Mobil vs Masaüstü Tarayıcı & Ayrıntılı Cihaz Modeli)
 const isMobileDevice = () => {
   if (typeof window === 'undefined') return false
   return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) || window.innerWidth < 768
+}
+
+const detectDetailedDevice = () => {
+  if (typeof navigator === 'undefined') return { os: 'Diğer', model: 'Web Cihazı', browser: 'Tarayıcı' }
+  const ua = navigator.userAgent || ''
+  
+  let os = 'Diğer'
+  let model = 'Masaüstü Cihaz'
+  
+  if (/iPhone/i.test(ua)) {
+    os = 'iOS'
+    model = 'Apple iPhone'
+  } else if (/iPad/i.test(ua)) {
+    os = 'iPadOS'
+    model = 'Apple iPad'
+  } else if (/Android/i.test(ua)) {
+    os = 'Android'
+    if (/Samsung|SM-/i.test(ua)) model = 'Samsung Galaxy'
+    else if (/Xiaomi|Redmi|POCO/i.test(ua)) model = 'Xiaomi / Redmi'
+    else if (/Pixel/i.test(ua)) model = 'Google Pixel'
+    else if (/Huawei|Honor/i.test(ua)) model = 'Huawei'
+    else model = 'Android Akıllı Telefon'
+  } else if (/Macintosh|Mac OS X/i.test(ua)) {
+    os = 'macOS'
+    model = 'Apple Mac'
+  } else if (/Windows/i.test(ua)) {
+    os = 'Windows'
+    model = 'Windows Bilgisayar'
+  } else if (/Linux/i.test(ua)) {
+    os = 'Linux'
+    model = 'Linux Cihaz'
+  }
+
+  let browser = 'Web Tarayıcı'
+  if (/Instagram/i.test(ua)) browser = 'Instagram'
+  else if (/WhatsApp/i.test(ua)) browser = 'WhatsApp'
+  else if (/SamsungBrowser/i.test(ua)) browser = 'Samsung Internet'
+  else if (/Edg/i.test(ua)) browser = 'Microsoft Edge'
+  else if (/Chrome|CriOS/i.test(ua)) browser = 'Google Chrome'
+  else if (/Safari/i.test(ua) && !/Chrome/i.test(ua)) browser = 'Apple Safari'
+  else if (/Firefox|FxiOS/i.test(ua)) browser = 'Mozilla Firefox'
+
+  return { os, model, browser }
 }
 
 const recordCurrentVisit = () => {
   const isQr = route.query.src === 'qr' || route.query.source === 'qr' || route.query.ref === 'qr'
   const device = isMobileDevice() ? 'mobile' : 'desktop'
   const source = isQr ? 'qr' : 'direct'
-  linkStore.trackVisit({ device, source })
+  const devInfo = detectDetailedDevice()
+  linkStore.trackVisit({ 
+    device, 
+    source, 
+    os: devInfo.os, 
+    model: devInfo.model, 
+    browser: devInfo.browser 
+  })
 }
 
 onMounted(() => {

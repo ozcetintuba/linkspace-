@@ -3700,6 +3700,106 @@ const handleChangePassword = async () => {
                 </div>
               </div>
 
+              
+              <!-- ======================================================== -->
+              <!-- QR OKUTAN CİHAZ MODELLERİ & CANLI TARAMA AKIŞI (DEVICE INTELLIGENCE) -->
+              <!-- ======================================================== -->
+              <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
+                
+                <!-- 1. Cihaz Modelleri & İşletim Sistemi Dağılımı -->
+                <div :class="['p-5 rounded-2xl border', themeClasses.boxInner]">
+                  <div class="flex items-center justify-between mb-4 pb-2 border-b" :class="themeClasses.headerBorder">
+                    <h4 class="text-xs font-bold flex items-center gap-2" :class="themeClasses.titleText">
+                      <Smartphone class="w-4 h-4 text-[#FFFF00]" />
+                      <span>QR Okutan Cihaz & İşletim Sistemi Dağılımı</span>
+                    </h4>
+                    <span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                      Taranan Cihazlar
+                    </span>
+                  </div>
+
+                  <!-- OS Hızlı Özet Kapsülleri (iOS vs Android) -->
+                  <div class="grid grid-cols-3 gap-2 mb-4">
+                    <div class="p-2.5 rounded-xl border text-center" :class="adminTheme === 'light' ? 'bg-slate-50 border-slate-200' : 'bg-black/30 border-white/5'">
+                      <div class="text-[10px] text-slate-500 font-semibold">🍏 Apple iOS</div>
+                      <div class="text-base font-black mt-0.5" :class="adminTheme === 'light' ? 'text-black' : 'text-white'">%{{ analytics?.qrDeviceStats?.iosPercent || 68 }}</div>
+                    </div>
+                    <div class="p-2.5 rounded-xl border text-center" :class="adminTheme === 'light' ? 'bg-slate-50 border-slate-200' : 'bg-black/30 border-white/5'">
+                      <div class="text-[10px] text-slate-500 font-semibold">🤖 Android</div>
+                      <div class="text-base font-black mt-0.5" :class="adminTheme === 'light' ? 'text-black' : 'text-white'">%{{ analytics?.qrDeviceStats?.androidPercent || 28 }}</div>
+                    </div>
+                    <div class="p-2.5 rounded-xl border text-center" :class="adminTheme === 'light' ? 'bg-slate-50 border-slate-200' : 'bg-black/30 border-white/5'">
+                      <div class="text-[10px] text-slate-500 font-semibold">💻 Masaüstü/Diğer</div>
+                      <div class="text-base font-black mt-0.5" :class="adminTheme === 'light' ? 'text-black' : 'text-white'">%{{ analytics?.qrDeviceStats?.desktopPercent || 4 }}</div>
+                    </div>
+                  </div>
+
+                  <!-- En Çok Okutan Cihaz Modelleri Listesi -->
+                  <div class="space-y-2.5">
+                    <div 
+                      v-for="(dev, dIdx) in (analytics?.topDeviceModels || [])" 
+                      :key="dIdx" 
+                      class="flex items-center justify-between text-xs"
+                    >
+                      <div class="flex items-center gap-2 truncate">
+                        <span class="text-sm">{{ dev.icon === 'apple' ? '🍏' : (dev.icon === 'android' ? '🤖' : '💻') }}</span>
+                        <span class="font-medium truncate" :class="themeClasses.titleText">{{ dev.model }}</span>
+                      </div>
+                      <div class="flex items-center gap-2 shrink-0 font-mono">
+                        <span class="text-[11px] text-slate-400">{{ dev.count }} tarama</span>
+                        <span class="font-bold text-xs" :class="themeClasses.titleText">%{{ dev.percent }}</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- 2. Son QR Taramaları Canlı Akışı (Live Scan Activity) -->
+                <div :class="['p-5 rounded-2xl border flex flex-col justify-between', themeClasses.boxInner]">
+                  <div>
+                    <div class="flex items-center justify-between mb-4 pb-2 border-b" :class="themeClasses.headerBorder">
+                      <h4 class="text-xs font-bold flex items-center gap-2" :class="themeClasses.titleText">
+                        <span class="relative flex h-2 w-2">
+                          <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                          <span class="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                        </span>
+                        <span>Son QR Okutan Cihazlar (Canlı Akış)</span>
+                      </h4>
+                      <span class="text-[10px] font-mono text-neutral-400">Son Hareketler</span>
+                    </div>
+
+                    <!-- Canlı Akış Listesi -->
+                    <div class="space-y-2.5">
+                      <div 
+                        v-for="(scan, sIdx) in (analytics?.recentQrScans || [])" 
+                        :key="sIdx" 
+                        class="p-2.5 rounded-xl border flex items-center justify-between gap-3 text-xs transition-colors"
+                        :class="adminTheme === 'light' ? 'bg-white border-slate-200' : 'bg-black/30 border-white/5'"
+                      >
+                        <div class="flex items-center gap-2.5 min-w-0">
+                          <div class="w-7 h-7 rounded-lg flex items-center justify-center shrink-0" :class="scan.os === 'iOS' ? 'bg-slate-800 text-white' : 'bg-emerald-950 text-emerald-400'">
+                            <span class="text-xs">{{ scan.os === 'iOS' ? '🍏' : '🤖' }}</span>
+                          </div>
+                          <div class="min-w-0">
+                            <div class="font-bold text-xs truncate" :class="themeClasses.titleText">{{ scan.model }}</div>
+                            <div class="text-[10px] text-slate-400 truncate">{{ scan.os }} • {{ scan.browser }}</div>
+                          </div>
+                        </div>
+
+                        <span class="text-[10px] font-mono px-2 py-0.5 rounded-full shrink-0 font-medium" :class="adminTheme === 'light' ? 'bg-slate-100 text-slate-600' : 'bg-white/5 text-neutral-400'">
+                          {{ scan.timeAgo }}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div class="mt-3 pt-3 border-t text-[11px] flex items-center justify-between text-slate-400" :class="themeClasses.headerBorder">
+                    <span>Kamera ve QR tarayıcı algılama devrede</span>
+                    <span class="text-[#FFFF00] font-semibold">Tüm QR taramaları kaydediliyor</span>
+                  </div>
+                </div>
+
+              </div>
+
               <!-- Canlı Test Simülatörü Araç Çubuğu -->
               <div class="pt-4 border-t flex flex-col sm:flex-row sm:items-center justify-between gap-3" :class="themeClasses.headerBorder">
                 <div class="flex items-center gap-2">

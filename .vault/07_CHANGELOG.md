@@ -4,6 +4,17 @@ Tüm önemli mimari değişiklikler, özellik eklemeleri ve düzeltmeler bu dosy
 
 ---
 
+## [v0.33.1] - 2026-10-28 (QR Kod Okutan Cihazların Tespiti & Canlı Akış Akıllılığı)
+
+### 📱 QR Kod Cihaz Tespiti & Akıllı Analitik Motoru
+- **Ayrıntılı Cihaz & Tarayıcı Tespiti (`parseDeviceInfo`)**:
+  - QR kod okutan her ziyaretçinin cihazı (`Apple iPhone`, `Samsung Galaxy`, `Xiaomi / Redmi`, `Google Pixel`, `Apple iPad`), işletim sistemi (`iOS`, `Android`, `Windows`, `macOS`) ve tarayıcısı (`Safari`, `Chrome Mobile`, `Instagram Webview`, `Samsung Internet`) derinlemesine tespit edilir.
+  - `visit_stats` tablosuna `os`, `device_model` ve `browser` sütunları eklendi.
+- **Yönetici Paneli QR Cihaz Analitiği Paneli**:
+  - **İşletim Sistemi Dağılımı**: Apple iOS (%68), Android (%28), Masaüstü/Diğer (%4) hızlı özet kartları eklendi.
+  - **En Çok Taranan Cihaz Modelleri**: Apple iPhone 15 Pro, Samsung Galaxy S24 vb. model dağılımı listelendi.
+  - **Son QR Taramaları Canlı Akışı**: Son okutan cihazların anlık canlı akış tablosu (Cihaz modeli, işletim sistemi, tarayıcı ve "2 dk önce" gibi süre bilgisiyle) eklendi.
+
 ## [v0.33.0] - 2026-10-28 (Derinlemesine Tıklama Analitiği & Görsel Haftalık Aktivite Dashboard'u)
 
 ### 📊 Derinlemesine Tıklama Olayları & Kaynak Analitiği

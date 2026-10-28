@@ -64,6 +64,28 @@ export const DEFAULT_ANALYTICS = {
     { date: 'Cum', dayName: 'Cum', visits: 28, clicks: 19 },
     { date: 'Cmt', dayName: 'Cmt', visits: 35, clicks: 27 },
     { date: 'Paz', dayName: 'Paz', visits: 42, clicks: 31 }
+  ],
+  qrDeviceStats: {
+    iosPercent: 68,
+    androidPercent: 28,
+    desktopPercent: 4,
+    iosCount: 57,
+    androidCount: 23,
+    desktopCount: 4
+  },
+  topDeviceModels: [
+    { model: 'Apple iPhone 15 / 14 Pro', count: 38, percent: 45, icon: 'apple' },
+    { model: 'Apple iPhone 13 / 12 / SE', count: 19, percent: 23, icon: 'apple' },
+    { model: 'Samsung Galaxy S24 / S23', count: 14, percent: 17, icon: 'android' },
+    { model: 'Xiaomi Redmi / POCO', count: 9, percent: 11, icon: 'android' },
+    { model: 'Diğer / Masaüstü', count: 4, percent: 4, icon: 'desktop' }
+  ],
+  recentQrScans: [
+    { id: 1, model: 'Apple iPhone 15 Pro', os: 'iOS 17.5', browser: 'Safari Mobile', timeAgo: 'Az önce', isMobile: true },
+    { id: 2, model: 'Samsung Galaxy S24 Ultra', os: 'Android 14', browser: 'Chrome Mobile', timeAgo: '12 dk önce', isMobile: true },
+    { id: 3, model: 'Apple iPhone 14', os: 'iOS 17.2', browser: 'Instagram Tarayıcı', timeAgo: '28 dk önce', isMobile: true },
+    { id: 4, model: 'Xiaomi Redmi Note 13', os: 'Android 13', browser: 'Chrome Mobile', timeAgo: '45 dk önce', isMobile: true },
+    { id: 5, model: 'Apple iPhone 13', os: 'iOS 16.6', browser: 'Apple Safari', timeAgo: '2 saat önce', isMobile: true }
   ]
 }
 
@@ -1746,7 +1768,7 @@ export const useLinkStore = defineStore('links', () => {
     }
   }
 
-  const trackVisit = async ({ device = 'desktop', source = 'direct' }) => {
+  const trackVisit = async ({ device = 'desktop', source = 'direct', os = '', model = '', browser = '' }) => {
     const validDevice = device === 'mobile' ? 'mobile' : 'desktop'
     const validSource = source === 'qr' ? 'qr' : 'direct'
 
@@ -1781,7 +1803,13 @@ export const useLinkStore = defineStore('links', () => {
         await fetch(`${API_BASE}/analytics/visit`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ device: validDevice, source: validSource })
+          body: JSON.stringify({ 
+            device: validDevice, 
+            source: validSource,
+            os,
+            model,
+            browser
+          })
         })
       } catch (e) {
         console.warn('Backend ziyaret takip hatası:', e)

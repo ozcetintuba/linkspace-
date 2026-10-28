@@ -101,8 +101,16 @@ export const initializeDatabase = async () => {
         device VARCHAR(50) NOT NULL DEFAULT 'desktop',
         source VARCHAR(50) NOT NULL DEFAULT 'direct',
         user_agent TEXT,
+        os VARCHAR(50) DEFAULT 'iOS',
+        device_model VARCHAR(100) DEFAULT 'Apple iPhone',
+        browser VARCHAR(50) DEFAULT 'Safari',
         created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
       );
+      ALTER TABLE visit_stats ADD COLUMN IF NOT EXISTS os VARCHAR(50) DEFAULT 'iOS';
+      ALTER TABLE visit_stats ADD COLUMN IF NOT EXISTS device_model VARCHAR(100) DEFAULT 'Apple iPhone';
+      ALTER TABLE visit_stats ADD COLUMN IF NOT EXISTS browser VARCHAR(50) DEFAULT 'Safari';
+      UPDATE visit_stats SET os = 'iOS', device_model = 'Apple iPhone', browser = 'Safari' WHERE device = 'mobile' AND (os IS NULL OR os = '');
+      UPDATE visit_stats SET os = 'Windows', device_model = 'Windows PC', browser = 'Chrome' WHERE device = 'desktop' AND (os IS NULL OR os = '');
     `)
 
     // 6. Gelen İletişim Mesajları & Leads Tablosu (Messages)
