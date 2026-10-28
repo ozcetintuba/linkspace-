@@ -1,6 +1,6 @@
 <script setup>
-import { ref, watch, computed } from 'vue'
-import { useRouter } from 'vue-router'
+import { ref, watch, computed, onMounted } from 'vue'
+import { useRouter, useRoute } from 'vue-router'
 import { storeToRefs } from 'pinia'
 import QRCode from 'qrcode'
 import { 
@@ -178,6 +178,7 @@ const handleAdminDownloadVCard = async () => {
 }
 
 const router = useRouter()
+const route = useRoute()
 const authStore = useAuthStore()
 const linkStore = useLinkStore()
 const { 
@@ -199,6 +200,165 @@ const {
   usedCategories,
   cacheStats
 } = storeToRefs(linkStore)
+
+// ---------------------------------------------------------
+// 1. Web Share Target API Durumu
+// ---------------------------------------------------------
+const sharedTargetBanner = ref(null)
+
+// ---------------------------------------------------------
+// 2. Smart Insights (Kural Motoru) Durumu
+// ---------------------------------------------------------
+const smartInsights = ref([])
+const isLoadingInsights = ref(false)
+
+const loadSmartInsights = async () => {
+  isLoadingInsights.value = true
+  try {
+    const res = await linkStore.fetchSmartInsights()
+    smartInsights.value = Array.isArray(res) ? res : []
+  } catch (err) {
+    console.warn('Smart Insights yüklenemedi:', err)
+  } finally {
+    isLoadingInsights.value = false
+  }
+}
+
+const applyInsightAction = async (insight) => {
+  if (!insight) return
+
+  if (insight.actionType === 'reorder_top' && insight.linkId) {
+    const linkIdx = links.value.findIndex(l => l.id === insight.linkId)
+    if (linkIdx > 0) {
+      const updated = [...links.value]
+      const [item] = updated.splice(linkIdx, 1)
+      updated.unshift(item)
+      await linkStore.reorderLinks(updated)
+      showToast('⚡ Bağlantı ilk sıraya taşındı!')
+    }
+  } else if (insight.actionType === 'enable_ab_test' && insight.linkId) {
+    const link = links.value.find(l => l.id === insight.linkId)
+    if (link) {
+      await linkStore.updateLink(link.id, {
+        abTestEnabled: true,
+        abTitleB: `${link.title} (Şimdi İncele)`,
+        abUrlB: link.url
+      })
+      showToast('A/B Split Testi etkinleştirildi!')
+    }
+  } else if (insight.actionType === 'apply_winner' && insight.linkId) {
+    const link = links.value.find(l => l.id === insight.linkId)
+    if (link && link.abTitleB) {
+      await linkStore.updateLink(link.id, {
+        title: link.abTitleB,
+        abTestEnabled: false
+      })
+      showToast('Kazanan varyant kalıcı hale getirildi!')
+    }
+  } else {
+    showToast(`${insight.title} uygulandı!`)
+  }
+
+  smartInsights.value = smartInsights.value.filter(i => i.id !== insight.id)
+}
+
+// ---------------------------------------------------------
+// 3. AI Copilot (Hedefe Özel Bio & Başlık Üretici) Durumu
+// ---------------------------------------------------------
+const copilotGoal = ref('')
+const isGeneratingCopilot = ref(false)
+const copilotData = ref(null)
+
+const handleGenerateCopilot = async () => {
+  if (!copilotGoal.value.trim() || isGeneratingCopilot.value) return
+  isGeneratingCopilot.value = true
+
+  try {
+    const res = await linkStore.generateAiCopilot({
+      goal: copilotGoal.value,
+      role: profile.value?.title || '',
+      currentBio: profile.value?.bio || ''
+    })
+    copilotData.value = res
+    showToast('✨ AI Copilot önerileri hazırlandı!')
+  } catch (err) {
+    showToast('AI Copilot üretiminde bir hata oluştu.')
+  } finally {
+    isGeneratingCopilot.value = false
+  }
+}
+
+const applyCopilotBio = async (bioText) => {
+  if (!bioText) return
+  profileForm.value.bio = bioText
+  await linkStore.updateProfile({ bio: bioText })
+  showToast('✨ AI Biyografisi profilinize uygulandı!')
+}
+
+const addCopilotLink = async (btn) => {
+  if (!btn) return
+  await linkStore.addLink(btn.title, btn.url || 'https://', btn.category || 'Öne Çıkanlar')
+  showToast(`"${btn.title}" link ağacınıza eklendi!`)
+}
+
+// ---------------------------------------------------------
+// 4. Biyometrik Passkeys (WebAuthn / FIDO2) Durumu
+// ---------------------------------------------------------
+const passkeyDeviceInput = ref('')
+const isRegisteringPasskey = ref(false)
+
+const handleRegisterPasskey = async () => {
+  if (isRegisteringPasskey.value) return
+  isRegisteringPasskey.value = true
+
+  try {
+    const result = await linkStore.registerPasskey(passkeyDeviceInput.value.trim())
+    if (result.success) {
+      passkeyDeviceInput.value = ''
+      showToast('🎉 Biyometrik Passkey cihazınız başarıyla kaydedildi!')
+    } else {
+      showToast(result.error || 'Passkey kaydı tamamlanamadı.')
+    }
+  } catch (err) {
+    showToast('Biyometrik kimlik doğrulayıcı hatası.')
+  } finally {
+    isRegisteringPasskey.value = false
+  }
+}
+
+const handleDeletePasskey = async (id) => {
+  if (!confirm('Bu Passkey cihazını kaldırmak istediğinizden emin misiniz?')) return
+  const result = await linkStore.deletePasskey(id)
+  if (result.success) {
+    showToast('Passkey kaldırıldı.')
+  } else {
+    showToast(result.error || 'Silinemedi.')
+  }
+}
+
+// ---------------------------------------------------------
+// 5. Admin Yaşam Döngüsü (onMounted)
+// ---------------------------------------------------------
+onMounted(async () => {
+  // Web Share Target kontrolü (query parametreleri)
+  if (route.query.title || route.query.url || route.query.text) {
+    const sharedTitle = String(route.query.title || '').trim()
+    const sharedUrl = String(route.query.url || route.query.text || '').trim()
+    sharedTargetBanner.value = {
+      title: sharedTitle || 'Paylaşılan Bağlantı',
+      url: sharedUrl
+    }
+    newLink.value.title = sharedTitle || 'Paylaşılan Bağlantı'
+    newLink.value.url = sharedUrl
+    isAdding.value = true
+    showToast('Telefondan paylaşılan bağlantı yakalandı!')
+    router.replace({ path: '/admin', query: {} })
+  }
+
+  // İlk veri yüklemeleri
+  loadSmartInsights()
+  linkStore.fetchPasskeys()
+})
 
 // Aktif Sekme Kontrolü: Linktree Mantığı ('links' | 'appearance' | 'analytics' | 'messages' | 'settings')
 const activeTab = ref('links')

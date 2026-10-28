@@ -4,6 +4,18 @@ Tüm önemli mimari değişiklikler, özellik eklemeleri ve düzeltmeler bu dosy
 
 ---
 
+## [v0.36.2] - 2026-10-28 (Kritik Düzeltme: AdminView Reaktif Durum ve Eylemlerin Entegrasyonu)
+
+### 🛠️ Yönetici Paneli Onarımları
+- **Eksik Şablon Durumları ve İşleyicileri Eklendi (`AdminView.vue`)**:
+  - `Smart Insights` kural motoru için `smartInsights`, `isLoadingInsights`, `loadSmartInsights` ve `applyInsightAction` işleyicileri tanımlandı.
+  - `AI Copilot` için `copilotGoal`, `isGeneratingCopilot`, `copilotData`, `handleGenerateCopilot`, `applyCopilotBio` ve `addCopilotLink` reaktif durumları eklendi.
+  - `Web Share Target` için `sharedTargetBanner` ve URL parametre yakalama döngüsü `onMounted` içerisine entegre edildi.
+  - `WebAuthn Passkeys` için `passkeyDeviceInput`, `isRegisteringPasskey`, `handleRegisterPasskey` ve `handleDeletePasskey` işleyicileri bağlandı.
+- **Frontend Derleme & Dağıtım**: `AdminView` artık `smartInsights.length` veya tanımsız işleyici çökmeleri olmadan render ediliyor; frontend başarıyla derlendi (`index-M2DSBBws.js`) ve GitHub `main` dalına aktarıldı.
+
+---
+
 ## [v0.36.1] - 2026-10-28 (Kritik Düzeltme: TDZ ReferenceError Giderimi & WebGL Fallback)
 
 ### 🛠️ Kritik Düzeltmeler & Donanım Uyumluluğu
