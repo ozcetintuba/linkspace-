@@ -66,7 +66,8 @@ import {
   ArrowRight,
   Folder,
   FolderOpen,
-  ChevronDown
+  ChevronDown,
+  Maximize2
 } from 'lucide-vue-next'
 
 const linkStore = useLinkStore()
@@ -310,6 +311,7 @@ const route = useRoute()
 const showShareModal = ref(false)
 const isCopied = ref(false)
 const qrCodeDataUrl = ref('')
+const isQrMinimized = ref(false)
 const networkMode = ref('wifi') // 'wifi' | 'current'
 
 // Yerel Wi-Fi IP Algılama ve Kullanıcı Tarafından Düzenlenebilirlik
@@ -427,11 +429,11 @@ const generateQrCode = async (targetUrl) => {
   }
 }
 
-watch([showShareModal, qrTargetUrl], ([isOpen, url]) => {
-  if (isOpen && url) {
+watch(qrTargetUrl, (url) => {
+  if (url) {
     generateQrCode(url)
   }
-})
+}, { immediate: true })
 
 const isLoadingProfile = ref(false)
 const profileNotFound = ref(false)
@@ -1463,31 +1465,95 @@ const getLinkSubtitle = (link) => {
     </div>
   </main>
 
-  <!-- Sağ Altta Sabit Yüzen QR Kod Paylaşım Butonu (Floating Action Button) -->
-  <div class="fixed bottom-5 right-5 sm:bottom-6 sm:right-6 z-40 select-none">
-    <button 
-      type="button"
-      @click="showShareModal = true"
+  <!-- Sağ Altta Sürekli Açık Duran Gerçek QR Kod Kartı (Floating QR Widget) -->
+  <aside 
+    aria-label="Profil QR Kodu"
+    class="fixed bottom-4 right-4 sm:bottom-6 sm:right-6 z-40 select-none"
+  >
+    <!-- Açık QR Kartı -->
+    <div 
+      v-if="!isQrMinimized"
       :class="[
-        'flex items-center gap-2.5 px-3.5 py-2.5 sm:px-4 sm:py-3 rounded-full text-xs font-bold shadow-2xl backdrop-blur-md transition-all duration-300 hover:scale-105 active:scale-95 group border cursor-pointer',
-        activeTheme.id === 'pure-light' 
-          ? 'bg-[#FFFF00] text-black border-yellow-300 shadow-xl shadow-yellow-500/30 hover:bg-[#EEFF00]' 
-          : 'bg-[#161616]/95 text-[#FFFF00] border-[#282828] hover:border-[#FFFF00] shadow-black/90 hover:bg-[#202020] ring-1 ring-[#FFFF00]/25'
+        'rounded-2xl sm:rounded-3xl p-2.5 sm:p-3 border shadow-2xl backdrop-blur-xl transition-all duration-300 flex flex-col items-center group',
+        activeTheme.id === 'pure-light'
+          ? 'bg-white/95 border-slate-200 shadow-slate-900/10 text-slate-800'
+          : 'bg-[#141414]/95 border-[#282828] shadow-black/90 text-white ring-1 ring-[#FFFF00]/25'
       ]"
-      title="QR Kodu ve Paylaşım Seçeneklerini Göster"
     >
-      <div 
-        :class="[
-          'p-1.5 rounded-full transition-transform group-hover:rotate-12 shadow-xs',
-          activeTheme.id === 'pure-light' ? 'bg-black text-[#FFFF00]' : 'bg-[#FFFF00] text-black'
-        ]"
-      >
-        <QrCode class="w-4 h-4" />
+      <!-- Üst Mini Başlık & Eylem Butonları -->
+      <div class="w-full flex items-center justify-between gap-2 mb-2 px-0.5">
+        <span class="flex items-center gap-1.5 text-[11px] font-bold" :class="activeTheme.id === 'pure-light' ? 'text-slate-800' : 'text-white'">
+          <span class="w-1.5 h-1.5 rounded-full bg-[#FFFF00] animate-pulse"></span>
+          <span>QR Kod</span>
+        </span>
+        <div class="flex items-center gap-1">
+          <!-- Büyüt / Paylaşım Penceresi -->
+          <button 
+            type="button"
+            @click="showShareModal = true"
+            class="p-1 rounded-lg transition-colors cursor-pointer"
+            :class="activeTheme.id === 'pure-light' ? 'hover:bg-slate-100 text-slate-400 hover:text-black' : 'hover:bg-white/10 text-neutral-400 hover:text-[#FFFF00]'"
+            title="Büyüt ve Paylaşım Seçeneklerini Aç"
+          >
+            <Maximize2 class="w-3 h-3" />
+          </button>
+          <!-- Simge Durumuna Küçült -->
+          <button 
+            type="button"
+            @click="isQrMinimized = true"
+            class="p-1 rounded-lg transition-colors cursor-pointer"
+            :class="activeTheme.id === 'pure-light' ? 'hover:bg-slate-100 text-slate-400 hover:text-black' : 'hover:bg-white/10 text-neutral-400 hover:text-white'"
+            title="Simge Durumuna Küçült"
+          >
+            <ChevronDown class="w-3 h-3" />
+          </button>
+        </div>
       </div>
-      <span class="hidden sm:inline font-bold tracking-wide">QR Kodu Göster</span>
-      <span class="sm:hidden font-bold tracking-wide">QR Kod</span>
+
+      <!-- Doğrudan Taranabilir Gerçek QR Kod Görseli -->
+      <div 
+        @click="showShareModal = true"
+        class="w-24 h-24 sm:w-28 sm:h-28 bg-white p-1.5 rounded-xl sm:rounded-2xl shadow-inner border border-slate-200 flex items-center justify-center cursor-pointer transition-transform hover:scale-[1.03]"
+        title="Büyütmek ve paylaşım seçeneklerini görmek için tıkla"
+      >
+        <img 
+          v-if="qrCodeDataUrl" 
+          :src="qrCodeDataUrl" 
+          :alt="`${profile.name} QR Kodu`" 
+          class="w-full h-full object-contain"
+        />
+        <div v-else class="text-[10px] text-slate-400 animate-pulse text-center">QR yükleniyor...</div>
+      </div>
+
+      <!-- Alt Tıkla / Bilgi Yazısı -->
+      <button 
+        type="button"
+        @click="showShareModal = true"
+        class="mt-2 text-[10px] sm:text-[11px] font-semibold flex items-center gap-1 opacity-85 hover:opacity-100 transition-opacity cursor-pointer"
+        :class="activeTheme.id === 'pure-light' ? 'text-slate-600' : 'text-neutral-300'"
+      >
+        <QrCode class="w-3 h-3 text-[#FFFF00]" />
+        <span>Kamerayla Tara</span>
+      </button>
+    </div>
+
+    <!-- Küçültülmüş Hal (Simge Butonu) -->
+    <button 
+      v-else
+      type="button"
+      @click="isQrMinimized = false"
+      :class="[
+        'flex items-center gap-2 px-3 py-2.5 rounded-full text-xs font-bold shadow-2xl backdrop-blur-md transition-all duration-300 hover:scale-105 active:scale-95 border cursor-pointer',
+        activeTheme.id === 'pure-light' 
+          ? 'bg-[#FFFF00] text-black border-yellow-300 shadow-xl shadow-yellow-500/30' 
+          : 'bg-[#141414]/95 text-[#FFFF00] border-[#282828] hover:border-[#FFFF00] shadow-black/90 ring-1 ring-[#FFFF00]/25'
+      ]"
+      title="QR Kodu Aç"
+    >
+      <QrCode class="w-4 h-4" />
+      <span>QR Kod</span>
     </button>
-  </div>
+  </aside>
 
   <!-- PAYLAŞIM VE GERÇEK QR KOD MODALI (Mobil Uyumlu & Güvenilir Paylaşım Penceresi) -->
   <Teleport to="body">

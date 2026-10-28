@@ -4,6 +4,15 @@ Tüm önemli mimari değişiklikler, özellik eklemeleri ve düzeltmeler bu dosy
 
 ---
 
+## [v0.32.3] - 2026-10-28 (Sağ Altta Sabit ve Açık Duran Canlı QR Kod Widget'ı)
+
+### 📱 Sabit Açık QR Kod Deneyimi
+- **Doğrudan Taranabilir QR Kod Kartı**:
+  - Profil sayfasının sağ alt köşesinde buton yerine doğrudan gerçek ve taranabilir QR kod kutusu her zaman açık olarak konumlandırıldı (`isQrMinimized = false`).
+  - QR kod tıklandığında veya büyütme ikonuna basıldığında gelişmiş paylaşım modalı açılır.
+  - Mobil cihazlar ve küçük ekranlar için zarif simge durumuna küçültme / açma kontrolü entegre edildi.
+  - `qrTargetUrl` reaktif izleyicisi `{ immediate: true }` yapılarak sayfa yüklendiği anda QR kodun gecikmesiz oluşturulması sağlandı.
+
 ## [v0.32.1] - 2026-10-28 (Profilde İsteğe Bağlı Kategori Gruplama & Rozet Kontrol Paneli)
 
 ### 🗂️ İsteğe Bağlı Klasörlü Gruplama & Rozet Kontrolleri
