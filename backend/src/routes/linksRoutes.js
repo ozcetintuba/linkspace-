@@ -72,8 +72,7 @@ let mockLinks = [
     lockType: 'pin',
     passcode: '1234',
     gridSpan: 'full',
-    cardBadge: '🔐 VIP'
-    passcode: '1234',
+    cardBadge: '🔐 VIP',
     lockWarning: 'Bu bağlantıya sadece davetli üyeler erişebilir. Şifre: 1234'
   }
 ]
@@ -278,31 +277,20 @@ router.post('/', requireAuth, async (req, res) => {
       title: (req.body.title || '').trim(),
       url: (req.body.url || '').trim(),
       isActive: req.body.isActive !== undefined ? Boolean(req.body.isActive) : true,
-      icon: req.body.icon || null,
-      customColor: req.body.customColor || 'default',
-      clicks: 0,
-      orderIndex: 0,
-      category: req.body.category || '',
-      embedType: req.body.embedType || 'none',
-      showEmbed: Boolean(req.body.showEmbed),
-      isLocked: Boolean(req.body.isLocked),
-      gridSpan: req.body.gridSpan || 'full',
-      thumbnail: req.body.thumbnail || '',
-      cardBadge: req.body.cardBadge || ''
-    }
-      url: (req.body.url || '').trim(),
       icon: req.body.icon || 'auto',
       customColor: req.body.customColor || 'default',
       clicks: 0,
       orderIndex: 0,
-      isActive: req.body.isActive !== undefined ? Boolean(req.body.isActive) : true,
       category: (req.body.category || '').trim(),
       embedType: req.body.embedType || 'none',
       showEmbed: Boolean(req.body.showEmbed),
       isLocked: Boolean(req.body.isLocked),
       lockType: req.body.lockType || 'pin',
       passcode: (req.body.passcode || '').trim(),
-      lockWarning: (req.body.lockWarning || '').trim()
+      lockWarning: (req.body.lockWarning || '').trim(),
+      gridSpan: req.body.gridSpan || 'full',
+      thumbnail: req.body.thumbnail || '',
+      cardBadge: req.body.cardBadge || ''
     }
     mockLinks.unshift(fallbackLink)
     invalidateCache('profile')
