@@ -375,7 +375,7 @@ export const PRESET_AVATARS = [
   {
     id: 'vr-3d-character',
     name: '3D Metaverse & VR',
-    url: 'https://images.unsplash.com/photo-1622979135225-d2ba269bc1df?w=300&auto=format&fit=crop&q=80',
+    url: 'https://images.unsplash.com/photo-1593508512255-86ab42a8e620?w=300&auto=format&fit=crop&q=80',
     category: '3D'
   },
   {
@@ -395,13 +395,13 @@ export const PRESET_AVATARS = [
   {
     id: 'cyber-neon',
     name: 'Cyberpunk Neon Portre',
-    url: 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=300&auto=format&fit=crop&q=80',
+    url: 'https://images.unsplash.com/photo-1509198397868-475647b2a1e5?w=300&auto=format&fit=crop&q=80',
     category: 'Siber'
   },
   {
     id: 'synthwave-lights',
     name: 'Synthwave Mor Işık',
-    url: 'https://images.unsplash.com/photo-1579783902614-a3fb3927b675?w=300&auto=format&fit=crop&q=80',
+    url: 'https://images.unsplash.com/photo-1508739773434-c26b3d09e071?w=300&auto=format&fit=crop&q=80',
     category: 'Siber'
   },
   {

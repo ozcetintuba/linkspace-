@@ -4,6 +4,21 @@ Tüm önemli mimari değişiklikler, özellik eklemeleri ve düzeltmeler bu dosy
 
 ---
 
+## [v0.37.6] - 2026-11-05 (Düzeltme: Hazır Avatar Galerisindeki Kırık 404 Görsellerin Yenilenmesi ve Hata Telafi Mekanizması)
+
+### 🖼️ Hazır Avatar Galerisi İyileştirmeleri (`linkStore.js`, `AdminView.vue`)
+- **Kırık 404 Unsplash Görselleri Güncellendi**:
+  - `PRESET_AVATARS` listesinde Unsplash tarafından kaldırılmış / 404 hatası veren iki görsel tespit edildi ve yüksek çözünürlüklü, çalışan alternatiflerle güncellendi:
+    - `vr-3d-character` ("3D Metaverse & VR"): Çalışan neon VR portresi ile değiştirildi (`photo-1593508512255-86ab42a8e620`).
+    - `synthwave-lights` ("Synthwave Mor Işık"): Çalışan mor synthwave neon gradyan ile değiştirildi (`photo-1508739773434-c26b3d09e071`).
+    - `cyber-neon` ("Cyberpunk Neon Portre"): Robotik bot avatarı ile olan URL mükerrerliği giderilerek özgün siber oyuncu portresine geçirildi (`photo-1509198397868-475647b2a1e5`).
+  - Galerideki 18 hazır avatarın tamamı test edildi ve HTTP 200 başarılı durum kodu teyit edildi.
+- **Otomatik Hata Telafi (`@error`) Mekanizması**:
+  - `AdminView.vue` yönetim panelindeki hem avatar önizleme görseline hem de galeri liste butonlarındaki `<img>` etiketlerine `@error="handlePresetImgError"` eklendi.
+  - Olası CDN veya ağ kesintilerinde kırık resim simgesi veya metin bozulması yerine zarif bir varsayılan avatara düşüş sağlanarak kusursuz bir görsel deneyim garanti altına alındı.
+
+---
+
 ## [v0.37.5] - 2026-11-05 (Arayüz Temizliği: Avatar Üzerindeki 2D/3D Rozetinin Kaldırılması)
 
 ### 👤 Avatar & Maskot Görsel Temizliği (`ProfileView.vue`, `PhonePreview.vue`)

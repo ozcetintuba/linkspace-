@@ -1342,6 +1342,11 @@ const handleBannerFileUpload = (event) => {
   reader.readAsDataURL(file)
 }
 
+const handlePresetImgError = (event) => {
+  // Graceful fallback to verified default avatar if any remote image CDN fails
+  event.target.src = 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=300&auto=format&fit=crop&q=80'
+}
+
 const selectPresetAvatar = (url) => {
   profileForm.value.avatar = url
   showToast('Hazır avatar seçildi!')
@@ -3395,7 +3400,8 @@ const handleChangePassword = async () => {
                       <img 
                         :src="profileForm.avatar" 
                         alt="Avatar Önizleme" 
-                        class="w-full h-full object-cover transition-transform group-hover:scale-110"
+                        class="w-full h-full object-cover transition-transform group-hover:scale-110" 
+                        @error="handlePresetImgError"
                       />
                       <div class="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 flex flex-col items-center justify-center text-white transition-opacity">
                         <Upload class="w-4 h-4 text-[#FFFF00] mb-0.5" />
@@ -3531,8 +3537,9 @@ const handleChangePassword = async () => {
                         <img 
                           :src="preset.url" 
                           :alt="preset.name" 
-                          class="w-11 h-11 object-cover border border-white/20 transition-all"
-                          :class="AVATAR_SHAPES.find(s => s.id === profileForm.avatarShape)?.class || 'rounded-full'"
+                          class="w-11 h-11 object-cover border border-white/20 transition-all" 
+                          :class="AVATAR_SHAPES.find(s => s.id === profileForm.avatarShape)?.class || 'rounded-full'" 
+                          @error="handlePresetImgError"
                         />
                       </button>
                     </div>
