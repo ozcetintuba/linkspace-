@@ -1938,6 +1938,28 @@ export const useLinkStore = defineStore('links', () => {
   }
 
   // Sıralamayı Yukarı Taşı
+  
+  const isSavingAllLinks = ref(false)
+  const saveAllLinks = async () => {
+    isSavingAllLinks.value = true
+    try {
+      localStorage.setItem(STORAGE_KEYS.LINKS, JSON.stringify(links.value))
+      if (isBackendConnected.value) {
+        await fetch(`${API_BASE}/links/bulk-sync`, {
+          method: 'PUT',
+          headers: getAuthHeaders(),
+          body: JSON.stringify({ links: links.value })
+        })
+      }
+      return { success: true }
+    } catch (e) {
+      console.warn('saveAllLinks error:', e)
+      return { success: false }
+    } finally {
+      isSavingAllLinks.value = false
+    }
+  }
+
   const moveLinkUp = async (index) => {
     if (index <= 0 || index >= links.value.length) return
     const current = links.value[index]
@@ -2961,6 +2983,8 @@ export const useLinkStore = defineStore('links', () => {
     loginWithPasskey,
     deletePasskey,
     queueOfflineClick,
-    flushOfflineClicks
+    flushOfflineClicks,
+    saveAllLinks,
+    isSavingAllLinks
   }
 })

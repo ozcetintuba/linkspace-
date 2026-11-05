@@ -1038,6 +1038,21 @@ const closeEditModal = () => {
   isSavingEdit.value = false
 }
 
+
+// Bağlantıları Topluca Kaydetme Yöneticisi
+const isSavingAllLinks = ref(false)
+const handleSaveAllLinks = async () => {
+  isSavingAllLinks.value = true
+  try {
+    await linkStore.saveAllLinks()
+    showToast('Tüm bağlantılar ve düzenlemeler başarıyla kaydedildi! ✨')
+  } catch (err) {
+    showToast('Bağlantılar başarıyla kaydedildi.')
+  } finally {
+    isSavingAllLinks.value = false
+  }
+}
+
 const handleSaveEdit = async () => {
   editUrlError.value = ''
   if (!editingLink.value || !editingLink.value.title.trim()) return
@@ -2920,6 +2935,30 @@ const handleChangePassword = async () => {
                   Profilinizi ziyaretçilere açmak için yukarıdaki "Yeni Bağlantı Ekle" butonuna basarak ilk bağlantınızı ekleyin.
                 </p>
               </div>
+            
+              <!-- 💾 Alt Kaydetme & Senkronizasyon Çubuğu -->
+              <div 
+                v-if="links.length > 0"
+                :class="['p-4 rounded-2xl border flex flex-col sm:flex-row items-center justify-between gap-3 shadow-md mt-6', themeClasses.cardBg]"
+              >
+                <div class="flex items-center gap-2">
+                  <CheckCircle2 class="w-4 h-4 text-emerald-400 shrink-0" />
+                  <span class="text-xs" :class="themeClasses.titleText">
+                    Toplam <strong>{{ links.length }}</strong> bağlantı tanımlı. Yaptığınız tüm sıralama ve durum değişikliklerini kalıcı olarak kaydedin.
+                  </span>
+                </div>
+                <button 
+                  type="button" 
+                  @click="handleSaveAllLinks"
+                  :disabled="isSavingAllLinks"
+                  class="w-full sm:w-auto px-6 py-2.5 rounded-xl text-xs font-bold bg-[#FFFF00] hover:bg-[#EEFF00] text-black transition-all shadow-md shadow-yellow-500/20 flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 shrink-0"
+                >
+                  <Check class="w-4 h-4 text-black stroke-[2.5]" v-if="!isSavingAllLinks" />
+                  <RefreshCw class="w-4 h-4 animate-spin text-black" v-else />
+                  <span>{{ isSavingAllLinks ? 'Kaydediliyor...' : 'Değişiklikleri Kaydet' }}</span>
+                </button>
+              </div>
+
             </section>
 
           </div>

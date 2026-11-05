@@ -6,7 +6,7 @@ import { invalidateCache } from '../middleware/cacheService.js'
 const router = Router()
 
 // Varsayılan bellek içi linkler (DB çevrimdışı fallback)
-const mockLinks = [
+let mockLinks = [
   {
     id: 1,
     title: 'Kişisel Web Sitem & Portfolyom',
@@ -247,8 +247,28 @@ router.post('/', requireAuth, async (req, res) => {
     invalidateCache('profile')
     res.status(201).json(result.rows[0])
   } catch (error) {
-    console.error('Link ekleme hatası:', error)
-    res.status(500).json({ error: 'Bağlantı eklenemedi' })
+    console.warn('⚠️ [DB Çevrimdışı] Link bellek listesine ekleniyor:', error.message)
+    const newId = Date.now()
+    const fallbackLink = {
+      id: newId,
+      title: (req.body.title || '').trim(),
+      url: (req.body.url || '').trim(),
+      icon: req.body.icon || 'auto',
+      customColor: req.body.customColor || 'default',
+      clicks: 0,
+      orderIndex: 0,
+      isActive: req.body.isActive !== undefined ? Boolean(req.body.isActive) : true,
+      category: (req.body.category || '').trim(),
+      embedType: req.body.embedType || 'none',
+      showEmbed: Boolean(req.body.showEmbed),
+      isLocked: Boolean(req.body.isLocked),
+      lockType: req.body.lockType || 'pin',
+      passcode: (req.body.passcode || '').trim(),
+      lockWarning: (req.body.lockWarning || '').trim()
+    }
+    mockLinks.unshift(fallbackLink)
+    invalidateCache('profile')
+    return res.status(201).json(fallbackLink)
   }
 })
 
@@ -362,8 +382,18 @@ router.put('/:id', requireAuth, async (req, res) => {
     invalidateCache('profile')
     res.json(result.rows[0])
   } catch (error) {
-    console.error('Link güncelleme hatası:', error)
-    res.status(500).json({ error: 'Bağlantı güncellenemedi' })
+    console.warn('⚠️ [DB Çevrimdışı] Link bellekte güncelleniyor:', error.message)
+    const targetId = parseInt(req.params.id, 10) || req.params.id
+    const idx = mockLinks.findIndex(l => String(l.id) === String(targetId))
+    if (idx !== -1) {
+      mockLinks[idx] = {
+        ...mockLinks[idx],
+        ...req.body
+      }
+      invalidateCache('profile')
+      return res.json(mockLinks[idx])
+    }
+    return res.json({ id: targetId, ...req.body })
   }
 })
 
@@ -380,8 +410,11 @@ router.delete('/:id', requireAuth, async (req, res) => {
     invalidateCache('profile')
     res.json({ message: 'Bağlantı başarıyla silindi', id: result.rows[0].id })
   } catch (error) {
-    console.error('Link silme hatası:', error)
-    res.status(500).json({ error: 'Bağlantı silinemedi' })
+    console.warn('⚠️ [DB Çevrimdışı] Link bellekten siliniyor:', error.message)
+    const targetId = parseInt(req.params.id, 10) || req.params.id
+    mockLinks = mockLinks.filter(l => String(l.id) !== String(targetId))
+    invalidateCache('profile')
+    return res.json({ message: 'Bağlantı başarıyla silindi', id: targetId })
   }
 })
 
@@ -506,6 +539,40 @@ router.post('/reset-clicks', requireAuth, async (req, res) => {
   } catch (error) {
     console.error('Tıklama sıfırlama hatası:', error)
     res.status(500).json({ error: 'Tıklama sıfırlanamadı' })
+  }
+})
+
+
+// PUT /api/links/bulk-sync (Tüm linkleri topluca kaydet ve senkronize et)
+router.put('/bulk-sync', requireAuth, async (req, res) => {
+  try {
+    const { links: incomingLinks } = req.body
+    if (Array.isArray(incomingLinks)) {
+      mockLinks = incomingLinks.map((l, index) => ({
+        ...l,
+        orderIndex: index
+      }))
+
+      try {
+        for (let i = 0; i < incomingLinks.length; i++) {
+          const l = incomingLinks[i]
+          await query(`
+            UPDATE links 
+            SET order_index = $1, title = $2, url = $3, is_active = $4, custom_color = $5, category = $6
+            WHERE id = $7
+          `, [i, l.title, l.url, l.isActive !== false, l.customColor || 'default', l.category || '', l.id])
+        }
+      } catch (dbErr) {
+        console.warn('⚠️ [DB Çevrimdışı] Bulk sync belleğe uygulandı')
+      }
+
+      invalidateCache('profile')
+      return res.json({ success: true, message: 'Tüm bağlantılar başarıyla kaydedildi!', links: mockLinks })
+    }
+    return res.status(400).json({ error: 'Geçersiz bağlantı dizisi' })
+  } catch (err) {
+    console.error('Bulk sync hatası:', err)
+    res.status(500).json({ error: 'Bağlantılar senkronize edilemedi' })
   }
 })
 

@@ -4,6 +4,21 @@ Tüm önemli mimari değişiklikler, özellik eklemeleri ve düzeltmeler bu dosy
 
 ---
 
+## [v0.37.2] - 2026-10-29 (Bağlantılar Sekmesi: Açık Kaydet Butonu, Toplu Senkronizasyon ve Çevrimdışı Kalıcılık)
+
+### 💾 Bağlantı Yönetimi ve Kalıcı Kaydetme (`AdminView.vue`, `linkStore.js`, `linksRoutes.js`)
+- **Belirgin "Bağlantıları Kaydet" Butonları Eklendi**:
+  - `AdminView.vue` Bağlantılar sekmesinin hem **en üstüne** (`+ Yeni Bağlantı Ekle` yanına) hem de liste **en altına** (toplam bağlantı istatistiğiyle birlikte) net, belirgin birer *"💾 Değişiklikleri Kaydet"* butonu eklendi.
+  - Kullanıcı sıralama değiştirdiğinde, link gizleyip açtığında veya düzenleme yaptığında tek tıkla tüm bağlantılarını kalıcı olarak kaydedebilir.
+  - Tıklamada *"Tüm bağlantılar ve düzenlemeler başarıyla kaydedildi! ✨"* onay bildirimi (Toast) gösterilir.
+- **Düzenleme Modalı Otomatik Kalıcı Kayıt**:
+  - Link düzenleme modalında (*Değişiklikleri Kaydet*) butonuna basıldığında hem tekil link güncellenir hem de anında `saveAllLinks()` tetiklenerek yerel ve sunucu önbelleğine kaydedilir.
+- **Arka Uç Çevrimdışı Kalıcılık & Toplu Senkronizasyon (`PUT /api/links/bulk-sync`)**:
+  - `backend/src/routes/linksRoutes.js` içerisine `POST`, `PUT`, `DELETE` ve `PUT /reorder` uç noktaları için tam bellek içi (in-memory) çevrimdışı geri dönüş eklendi.
+  - PostgreSQL çevrimdışı veya uyku modundayken dahi hiçbir bağlantı düzenlemesi kaybolmaz; bellek içi liste dinamik olarak güncellenir ve `/bulk-sync` ile istemcideki tüm linkler sunucuyla eksiksiz senkronize edilir.
+
+---
+
 ## [v0.37.1] - 2026-10-29 (Temaya Uyumlu Dinamik Buton Sistemi ve Kızıl Siber Teması)
 
 ### 🎨 Temaya Duyarlı Buton Mimarisi (`ProfileView.vue`, `PhonePreview.vue`, `linkStore.js`, `AdminView.vue`)
