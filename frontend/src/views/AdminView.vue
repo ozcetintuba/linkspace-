@@ -28,7 +28,6 @@ import {
   MASCOT_SKINS,
   MASCOT_ACCESSORIES,
   MASCOT_EYE_COLORS,
-  MASCOT_MOODS,
   DEFAULT_MASCOT_CONFIG,
   LAYOUT_STYLES,
   BENTO_SPAN_OPTIONS,
@@ -1543,13 +1542,6 @@ const selectMascotEyeColor = (hex) => {
   }
 }
 
-const selectMascotMood = (moodId) => {
-  profileForm.value.mascotConfig.mood = moodId
-  if (profile.value) {
-    if (!profile.value.mascotConfig) profile.value.mascotConfig = {}
-    profile.value.mascotConfig = { ...profileForm.value.mascotConfig }
-  }
-}
 
 
 // Sayfa Düzeni Seçimi (Bento Grid vs Liste)
@@ -3523,28 +3515,6 @@ const handleChangePassword = async () => {
                       </div>
                     </div>
 
-                    <!-- 4. Karakter İfadesi (Mood) -->
-                    <div class="pt-2 border-t" :class="adminTheme === 'dark' ? 'border-neutral-800' : 'border-slate-200'">
-                      <label :class="['block text-[11px] font-bold mb-2', themeClasses.titleText]">
-                        Yüz İfadesi & Mimik (Mood):
-                      </label>
-                      <div class="grid grid-cols-3 gap-2">
-                        <button
-                          v-for="mood in MASCOT_MOODS"
-                          :key="mood.id"
-                          type="button"
-                          @click="selectMascotMood(mood.id)"
-                          class="p-2 rounded-lg border text-center transition-all cursor-pointer flex flex-col items-center gap-0.5"
-                          :class="profileForm.mascotConfig?.mood === mood.id
-                            ? (adminTheme === 'light' ? 'border-yellow-500 bg-yellow-100 text-black font-bold' : 'border-[#FFFF00] bg-[#FFFF00]/15 text-[#FFFF00] font-bold')
-                            : (adminTheme === 'dark' ? 'border-[#282828] bg-[#141414] text-neutral-300 hover:border-neutral-600' : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300')"
-                        >
-                          <span class="text-base">{{ mood.emoji }}</span>
-                          <span class="text-[10px] font-bold">{{ mood.name }}</span>
-                          <span class="text-[8.5px] opacity-70 leading-none">{{ mood.description }}</span>
-                        </button>
-                      </div>
-                    </div>
                   </div>
 
 

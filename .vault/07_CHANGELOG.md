@@ -4,6 +4,16 @@ Tüm önemli mimari değişiklikler, özellik eklemeleri ve düzeltmeler bu dosy
 
 ---
 
+## [v0.38.1] - 2026-11-05 (Arayüz Temizliği: Yönetim Panelinden 'Yüz İfadesi & Mimik (Mood)' Seçicisinin Kaldırılması)
+
+### 🧹 Maskot Özelleştirme Sadeleştirmesi (`AdminView.vue`)
+- **Mimik / Mood Seçim Alanı Kaldırıldı**:
+  - `AdminView.vue` Görünüm & Tema sekmesinde yer alan ve kullanıcı isteği üzerine gereksiz kalabalık oluşturan **"Yüz İfadesi & Mimik (Mood)"** buton grubu (`Neşeli`, `Göz Kırpan`, `Havalı`) panelden tamamen temizlendi.
+  - İlgili `selectMascotMood` metodu ve kullanılmayan `MASCOT_MOODS` importu arayüzden çıkarıldı.
+  - 3D siber maskot varsayılan pürüzsüz ve sempatik neşeli (`happy`) ifadesiyle kesintisiz çalışmaya devam eder.
+
+---
+
 ## [v0.38.0] - 2026-11-05 (Faz 25: Bento Grid Vitrin Mimarisi, Kompakt Kutular ve Hero Showcase Kartları)
 
 ### 🍱 Bento Grid Sayfa Düzeni ve Kart Mimarisi (`ProfileView.vue`, `PhonePreview.vue`, `AdminView.vue`, `linkStore.js`, `linksRoutes.js`, `profileRoutes.js`, `initDb.js`)
