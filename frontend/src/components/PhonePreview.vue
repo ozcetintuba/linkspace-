@@ -486,17 +486,7 @@ const statusConfig = computed(() => {
                 />
               </div>
 
-              <!-- Mini 3D / 2D Çevirici Buton -->
-              <button 
-                v-if="profile.avatarMode === 'switchable' || !profile.avatarMode"
-                type="button"
-                @click="phoneAvatarMode = phoneAvatarMode === '3d' ? '2d' : '3d'"
-                class="absolute -bottom-1 -right-1 z-20 px-1.5 py-0.2 rounded-full text-[7.5px] font-mono font-bold tracking-wider uppercase border shadow-sm flex items-center gap-0.5 cursor-pointer backdrop-blur-md"
-                :class="activeTheme.id === 'pure-light' ? 'bg-white text-slate-800 border-slate-300' : 'bg-black text-[#FFFF00] border-[#FFFF00]/50'"
-                :title="phoneAvatarMode === '3d' ? '2D Fotoğrafa Dön' : '3D Maskota Geç'"
-              >
-                <span>{{ phoneAvatarMode === '3d' ? '2D' : '3D' }}</span>
-              </button>
+              
             </div>
 
             <!-- Canlı Müsaitlik / Durum Rozeti -->

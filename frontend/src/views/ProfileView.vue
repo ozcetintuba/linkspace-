@@ -1173,20 +1173,7 @@ const handleDownloadVCard = async () => {
           />
         </div>
 
-        <!-- 2D / 3D Geçiş Rozeti / Düğmesi -->
-        <button 
-          v-if="profile.avatarMode === 'switchable' || !profile.avatarMode"
-          type="button"
-          @click="toggleAvatarMode"
-          class="absolute -bottom-2 right-0 z-20 px-2.5 py-0.5 rounded-full text-[10px] font-mono font-extrabold tracking-wider uppercase border shadow-lg flex items-center gap-1.5 transition-all hover:scale-105 active:scale-95 cursor-pointer backdrop-blur-md"
-          :class="activeTheme.id === 'pure-light'
-            ? 'bg-white/95 text-slate-900 border-slate-300 hover:border-yellow-500 shadow-slate-900/10'
-            : 'bg-black/90 text-[#FFFF00] border-[#FFFF00]/50 hover:bg-[#FFFF00]/10 shadow-yellow-500/20'"
-          :title="currentAvatarView === '3d' ? '2D Profil Fotoğrafına Dön' : '3D Siber Maskota Geç'"
-        >
-          <Zap class="w-2.5 h-2.5 text-[#FFFF00] fill-[#FFFF00]" />
-          <span>{{ currentAvatarView === '3d' ? '2D Foto' : '3D Maskot' }}</span>
-        </button>
+        
       </div>
 
       <!-- Canlı Çalışma / Fırsat Durum Rozeti -->

@@ -4,6 +4,15 @@ Tüm önemli mimari değişiklikler, özellik eklemeleri ve düzeltmeler bu dosy
 
 ---
 
+## [v0.37.5] - 2026-11-05 (Arayüz Temizliği: Avatar Üzerindeki 2D/3D Rozetinin Kaldırılması)
+
+### 👤 Avatar & Maskot Görsel Temizliği (`ProfileView.vue`, `PhonePreview.vue`)
+- **2D/3D Rozet Düğmesi Kaldırıldı**:
+  - Profil ekranında ve canlı cep telefonu önizlemesinde avatar/maskotun sağ alt köşesinde yer alan *"2D / 3D"* geçiş simgesi ve butonu tamamen kaldırıldı.
+  - Avatar ve 3D maskot artık üzerinde hiçbir engelleyici simge olmadan net, temiz ve pürüzsüz bir şekilde görüntülenir.
+
+---
+
 ## [v0.37.4] - 2026-11-05 (Düzeltme: Örnek Linklerdeki Özel Renklerin Sıfırlanması ve Tema Uyumunun Sağlanması)
 
 ### 🎨 Buton Renkleri & Tema Senkronizasyonu (`linksRoutes.js`, `linkStore.js`)
