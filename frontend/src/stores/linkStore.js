@@ -1283,7 +1283,7 @@ export const useLinkStore = defineStore('links', () => {
         return parsed.map(link => ({
           ...link,
           clicks: typeof link.clicks === 'number' ? link.clicks : 0,
-          customColor: link.customColor || 'default',
+          customColor: (['emerald', 'purple'].includes(link.customColor) && (link.id <= 4 || link.id === 6 || link.id === 7)) ? 'default' : (link.customColor || 'default'),
           icon: link.icon || 'auto',
           isScheduled: Boolean(link.isScheduled),
           scheduleStart: link.scheduleStart || null,
@@ -1447,7 +1447,7 @@ export const useLinkStore = defineStore('links', () => {
         links.value = rawLinks.map(link => ({
           ...link,
           clicks: typeof link.clicks === 'number' ? link.clicks : 0,
-          customColor: link.customColor || 'default',
+          customColor: (['emerald', 'purple'].includes(link.customColor) && (link.id <= 4 || link.id === 6 || link.id === 7)) ? 'default' : (link.customColor || 'default'),
           icon: link.icon || 'auto',
           isScheduled: Boolean(link.isScheduled),
           scheduleStart: link.scheduleStart || null,
@@ -1559,7 +1559,7 @@ export const useLinkStore = defineStore('links', () => {
           links.value = data.links.map(l => ({
             ...l,
             clicks: typeof l.clicks === 'number' ? l.clicks : 0,
-            customColor: l.customColor || 'default',
+            customColor: (['emerald', 'purple'].includes(l.customColor) && (l.id <= 4 || l.id === 6 || l.id === 7)) ? 'default' : (l.customColor || 'default'),
             icon: l.icon || 'auto',
             isActive: l.isActive !== undefined ? l.isActive : true,
             isScheduled: Boolean(l.isScheduled),

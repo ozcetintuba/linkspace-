@@ -4,6 +4,17 @@ Tüm önemli mimari değişiklikler, özellik eklemeleri ve düzeltmeler bu dosy
 
 ---
 
+## [v0.37.4] - 2026-11-05 (Düzeltme: Örnek Linklerdeki Özel Renklerin Sıfırlanması ve Tema Uyumunun Sağlanması)
+
+### 🎨 Buton Renkleri & Tema Senkronizasyonu (`linksRoutes.js`, `linkStore.js`)
+- **Örnek Linklerdeki Zorunlu Renkler Kaldırıldı**:
+  - Başlangıç şablonundaki *"GitHub Projelerim"* ve *"Lo-Fi Beats"* linklerine daha önce özellik tanıtımı için atanmış olan `customColor: 'emerald'` (Neon Zümrüt Yeşili) ve `customColor: 'purple'` (Synthwave Mor) değerleri temizlendi.
+  - Tüm linkler `customColor: 'default'` (Tema Varsayılanı) olarak ayarlandı.
+  - `loadStoredData` ve `fetchFromApi` fonksiyonlarında otomatik temizleme eklenerek kullanıcının tarayıcısında kalan eski yeşil ve mor renkli demo linkler de temiz standart temaya çekildi.
+  - Artık tüm butonlar kullanıcının seçtiği genel profile temasına (Karanlık Mod antrasit/sarı veya Kızıl Siber kırmızı) eksiksiz uyum sağlar.
+
+---
+
 ## [v0.37.3] - 2026-11-05 (UI İyileştirme: PWA 'Telefona Yükle' Bildiriminin Kaldırılması)
 
 ### 🧹 Kullanıcı Deneyimi & Arayüz Sadeleştirme (`App.vue`)
