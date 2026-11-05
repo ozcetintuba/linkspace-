@@ -27,7 +27,8 @@ const mockProfile = {
   },
   groupByCategory: false,
   foldersDefaultExpanded: true,
-  showBadges: false
+  showBadges: false,
+  layoutStyle: 'list'
 }
 
 // GET /api/profile (Herkese açık, 60s TTL & ETag Önbellekli)
@@ -54,7 +55,8 @@ router.get('/', cacheMiddleware(60), async (req, res) => {
           COALESCE(folders_default_expanded, true) AS "foldersDefaultExpanded",
           COALESCE(show_badges, false) AS "showBadges",
           COALESCE(custom_domain, '') AS "customDomain",
-          COALESCE(subdomain, '') AS "subdomain"
+          COALESCE(subdomain, '') AS "subdomain",
+          COALESCE(layout_style, 'list') AS "layoutStyle"
         FROM profiles 
         ORDER BY id ASC 
         LIMIT 1
@@ -105,7 +107,8 @@ router.get('/:username', cacheMiddleware(60), async (req, res) => {
         COALESCE(folders_default_expanded, true) AS "foldersDefaultExpanded",
         COALESCE(show_badges, false) AS "showBadges",
         COALESCE(custom_domain, '') AS "customDomain",
-        COALESCE(subdomain, '') AS "subdomain"
+        COALESCE(subdomain, '') AS "subdomain",
+        COALESCE(layout_style, 'list') AS "layoutStyle"
       FROM profiles 
       WHERE LOWER(REPLACE(username, '@', '')) = $1
       LIMIT 1
@@ -125,7 +128,7 @@ router.get('/:username', cacheMiddleware(60), async (req, res) => {
         url, 
         is_active AS "isActive", 
         icon, 
-        custom_color AS "customColor",
+        custom_color AS "customColor", 
         clicks, 
         order_index AS "orderIndex",
         COALESCE(is_scheduled, false) AS "isScheduled",
@@ -146,7 +149,10 @@ router.get('/:username', cacheMiddleware(60), async (req, res) => {
         COALESCE(clicks_a, 0) AS "clicksA",
         COALESCE(clicks_b, 0) AS "clicksB",
         COALESCE(views_a, 0) AS "viewsA",
-        COALESCE(views_b, 0) AS "viewsB"
+        COALESCE(views_b, 0) AS "viewsB",
+        COALESCE(grid_span, 'full') AS "gridSpan",
+        COALESCE(thumbnail, '') AS "thumbnail",
+        COALESCE(card_badge, '') AS "cardBadge"
       FROM links 
       WHERE is_active = true
         AND (is_scheduled = false OR schedule_end IS NULL OR schedule_end >= CURRENT_TIMESTAMP)
@@ -173,7 +179,8 @@ router.get('/:username', cacheMiddleware(60), async (req, res) => {
         foldersDefaultExpanded: profile.foldersDefaultExpanded !== undefined ? Boolean(profile.foldersDefaultExpanded) : true,
         showBadges: profile.showBadges !== undefined ? Boolean(profile.showBadges) : false,
         customDomain: profile.customDomain || '',
-        subdomain: profile.subdomain || ''
+        subdomain: profile.subdomain || '',
+        layoutStyle: profile.layoutStyle || 'list'
       },
       links: linksResult.rows
     })
@@ -241,7 +248,8 @@ router.put('/', requireAuth, async (req, res) => {
       foldersDefaultExpanded,
       showBadges,
       customDomain,
-      subdomain
+      subdomain,
+      layoutStyle
     } = req.body
 
     if (!name || !username) {
@@ -263,6 +271,7 @@ router.put('/', requireAuth, async (req, res) => {
     const safeShowBadges = showBadges !== undefined ? Boolean(showBadges) : false
     const safeCustomDomain = customDomain !== undefined ? String(customDomain).trim() : ''
     const safeSubdomain = subdomain !== undefined ? String(subdomain).trim() : ''
+    const safeLayoutStyle = layoutStyle || 'list'
 
     const result = await query(`
       UPDATE profiles 
@@ -286,6 +295,7 @@ router.put('/', requireAuth, async (req, res) => {
         group_style = $17,
         custom_domain = $18,
         subdomain = $19,
+        layout_style = $20,
         updated_at = CURRENT_TIMESTAMP
       WHERE id = (SELECT id FROM profiles ORDER BY id ASC LIMIT 1)
       RETURNING 
@@ -307,7 +317,8 @@ router.put('/', requireAuth, async (req, res) => {
         COALESCE(folders_default_expanded, true) AS "foldersDefaultExpanded",
         COALESCE(show_badges, false) AS "showBadges",
         COALESCE(custom_domain, '') AS "customDomain",
-        COALESCE(subdomain, '') AS "subdomain"
+        COALESCE(subdomain, '') AS "subdomain",
+        COALESCE(layout_style, 'list') AS "layoutStyle"
     `, [
       name.trim(), 
       username.trim(), 
@@ -327,7 +338,8 @@ router.put('/', requireAuth, async (req, res) => {
       safeShowBadges,
       safeGroupStyle,
       safeCustomDomain,
-      safeSubdomain
+      safeSubdomain,
+      safeLayoutStyle
     ])
 
     if (result.rows.length === 0) {
@@ -379,8 +391,13 @@ router.put('/', requireAuth, async (req, res) => {
     invalidateCache('profile')
     res.json(result.rows[0])
   } catch (error) {
-    console.error('Profil güncelleme hatası:', error)
-    res.status(500).json({ error: 'Profil güncellenemedi' })
+    console.warn('⚠️ [DB Çevrimdışı] Profil bellekte güncelleniyor:', error.message)
+    mockProfile = {
+      ...mockProfile,
+      ...req.body
+    }
+    invalidateCache('profile')
+    return res.json(mockProfile)
   }
 })
 
@@ -517,7 +534,8 @@ router.get('/export', requireAuth, async (req, res) => {
         foldersDefaultExpanded: profile.folders_default_expanded,
         showBadges: profile.show_badges,
         customDomain: profile.custom_domain,
-        subdomain: profile.subdomain
+        subdomain: profile.subdomain,
+        layoutStyle: profile.layout_style || 'list'
       },
       links: links.map(l => ({
         id: l.id,
@@ -546,7 +564,10 @@ router.get('/export', requireAuth, async (req, res) => {
         clicksA: l.clicks_a,
         clicksB: l.clicks_b,
         viewsA: l.views_a,
-        viewsB: l.views_b
+        viewsB: l.views_b,
+        gridSpan: l.grid_span || 'full',
+        thumbnail: l.thumbnail || '',
+        cardBadge: l.card_badge || ''
       })),
       settings: settingsRes.rows
     }

@@ -19,7 +19,10 @@ let mockLinks = [
     category: '🌐 Web & Portfolyo',
     embedType: 'none',
     showEmbed: false,
-    isLocked: false
+    isLocked: false,
+    gridSpan: 'featured',
+    thumbnail: 'https://images.unsplash.com/photo-1498050108023-c5249f4df085?w=600&auto=format&fit=crop&q=80',
+    cardBadge: '🚀 Portfolyo'
   },
   {
     id: 2,
@@ -33,7 +36,9 @@ let mockLinks = [
     category: '🚀 Projeler & Kod',
     embedType: 'none',
     showEmbed: false,
-    isLocked: false
+    isLocked: false,
+    gridSpan: 'half',
+    cardBadge: '⭐ Kodlar'
   },
   {
     id: 3,
@@ -47,7 +52,9 @@ let mockLinks = [
     category: '📚 Kaynaklar & Yayınlar',
     embedType: 'spotify',
     showEmbed: true,
-    isLocked: false
+    isLocked: false,
+    gridSpan: 'half',
+    cardBadge: '🎵 Müzik'
   },
   {
     id: 4,
@@ -63,6 +70,9 @@ let mockLinks = [
     showEmbed: false,
     isLocked: true,
     lockType: 'pin',
+    passcode: '1234',
+    gridSpan: 'full',
+    cardBadge: '🔐 VIP'
     passcode: '1234',
     lockWarning: 'Bu bağlantıya sadece davetli üyeler erişebilir. Şifre: 1234'
   }
@@ -100,7 +110,10 @@ router.get('/', async (req, res) => {
           COALESCE(clicks_a, 0) AS "clicksA",
           COALESCE(clicks_b, 0) AS "clicksB",
           COALESCE(views_a, 0) AS "viewsA",
-          COALESCE(views_b, 0) AS "viewsB"
+          COALESCE(views_b, 0) AS "viewsB",
+          COALESCE(grid_span, 'full') AS "gridSpan",
+          COALESCE(thumbnail, '') AS "thumbnail",
+          COALESCE(card_badge, '') AS "cardBadge"
         FROM links 
         ORDER BY order_index ASC, id DESC
       `)
@@ -163,7 +176,10 @@ router.post('/', requireAuth, async (req, res) => {
       isHeader,
       abTestEnabled,
       titleB,
-      urlB
+      urlB,
+      gridSpan,
+      thumbnail,
+      cardBadge
     } = req.body
 
     const finalIsHeader = Boolean(isHeader)
@@ -211,6 +227,9 @@ router.post('/', requireAuth, async (req, res) => {
     const finalLockType = lockType || 'pin'
     const finalPasscode = passcode !== undefined ? String(passcode).trim() : ''
     const finalLockWarning = lockWarning !== undefined ? String(lockWarning).trim() : ''
+    const finalGridSpan = gridSpan || 'full'
+    const finalThumbnail = thumbnail ? String(thumbnail).trim() : ''
+    const finalCardBadge = cardBadge ? String(cardBadge).trim() : ''
     const newId = Date.now()
 
     const result = await query(`
@@ -218,9 +237,10 @@ router.post('/', requireAuth, async (req, res) => {
         id, title, url, is_active, icon, custom_color, clicks, order_index, 
         is_scheduled, schedule_start, schedule_end, show_countdown, category,
         embed_type, show_embed, is_locked, lock_type, passcode, lock_warning,
-        is_header, ab_test_enabled, title_b, url_b, clicks_a, clicks_b, views_a, views_b
+        is_header, ab_test_enabled, title_b, url_b, clicks_a, clicks_b, views_a, views_b,
+        grid_span, thumbnail, card_badge
       )
-      VALUES ($1, $2, $3, $4, $5, $6, 0, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, 0, 0, 0, 0)
+      VALUES ($1, $2, $3, $4, $5, $6, 0, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, 0, 0, 0, 0, $23, $24, $25)
       RETURNING 
         id, title, url, is_active AS "isActive", icon, custom_color AS "customColor", 
         clicks, order_index AS "orderIndex", is_scheduled AS "isScheduled", 
@@ -236,12 +256,16 @@ router.post('/', requireAuth, async (req, res) => {
         COALESCE(clicks_a, 0) AS "clicksA",
         COALESCE(clicks_b, 0) AS "clicksB",
         COALESCE(views_a, 0) AS "viewsA",
-        COALESCE(views_b, 0) AS "viewsB"
+        COALESCE(views_b, 0) AS "viewsB",
+        COALESCE(grid_span, 'full') AS "gridSpan",
+        COALESCE(thumbnail, '') AS "thumbnail",
+        COALESCE(card_badge, '') AS "cardBadge"
     `, [
       newId, title.trim(), formattedUrl.trim(), finalIsActive, icon || null, customColor || 'default', 
       nextOrder, finalIsScheduled, finalScheduleStart, finalScheduleEnd, finalShowCountdown, finalCategory,
       finalEmbedType, finalShowEmbed, finalIsLocked, finalLockType, finalPasscode, finalLockWarning,
-      finalIsHeader, finalAbTestEnabled, finalTitleB, finalUrlB
+      finalIsHeader, finalAbTestEnabled, finalTitleB, finalUrlB,
+      finalGridSpan, finalThumbnail, finalCardBadge
     ])
 
     invalidateCache('profile')
@@ -252,6 +276,20 @@ router.post('/', requireAuth, async (req, res) => {
     const fallbackLink = {
       id: newId,
       title: (req.body.title || '').trim(),
+      url: (req.body.url || '').trim(),
+      isActive: req.body.isActive !== undefined ? Boolean(req.body.isActive) : true,
+      icon: req.body.icon || null,
+      customColor: req.body.customColor || 'default',
+      clicks: 0,
+      orderIndex: 0,
+      category: req.body.category || '',
+      embedType: req.body.embedType || 'none',
+      showEmbed: Boolean(req.body.showEmbed),
+      isLocked: Boolean(req.body.isLocked),
+      gridSpan: req.body.gridSpan || 'full',
+      thumbnail: req.body.thumbnail || '',
+      cardBadge: req.body.cardBadge || ''
+    }
       url: (req.body.url || '').trim(),
       icon: req.body.icon || 'auto',
       customColor: req.body.customColor || 'default',
@@ -296,7 +334,10 @@ router.put('/:id', requireAuth, async (req, res) => {
       isHeader,
       abTestEnabled,
       titleB,
-      urlB
+      urlB,
+      gridSpan,
+      thumbnail,
+      cardBadge
     } = req.body
 
     const existing = await query('SELECT * FROM links WHERE id = $1', [id])
@@ -344,6 +385,9 @@ router.put('/:id', requireAuth, async (req, res) => {
     const updatedLockType = lockType !== undefined ? lockType : (current.lock_type || 'pin')
     const updatedPasscode = passcode !== undefined ? String(passcode).trim() : (current.passcode || '')
     const updatedLockWarning = lockWarning !== undefined ? String(lockWarning).trim() : (current.lock_warning || '')
+    const updatedGridSpan = gridSpan !== undefined ? gridSpan : (current.grid_span || 'full')
+    const updatedThumbnail = thumbnail !== undefined ? String(thumbnail).trim() : (current.thumbnail || '')
+    const updatedCardBadge = cardBadge !== undefined ? String(cardBadge).trim() : (current.card_badge || '')
 
     const result = await query(`
       UPDATE links
@@ -353,8 +397,9 @@ router.put('/:id', requireAuth, async (req, res) => {
         category = $10, embed_type = $11, show_embed = $12, is_locked = $13, 
         lock_type = $14, passcode = $15, lock_warning = $16,
         is_header = $17, ab_test_enabled = $18, title_b = $19, url_b = $20,
+        grid_span = $21, thumbnail = $22, card_badge = $23,
         updated_at = CURRENT_TIMESTAMP
-      WHERE id = $21
+      WHERE id = $24
       RETURNING 
         id, title, url, is_active AS "isActive", icon, custom_color AS "customColor", 
         clicks, order_index AS "orderIndex", is_scheduled AS "isScheduled", 
@@ -370,13 +415,17 @@ router.put('/:id', requireAuth, async (req, res) => {
         COALESCE(clicks_a, 0) AS "clicksA",
         COALESCE(clicks_b, 0) AS "clicksB",
         COALESCE(views_a, 0) AS "viewsA",
-        COALESCE(views_b, 0) AS "viewsB"
+        COALESCE(views_b, 0) AS "viewsB",
+        COALESCE(grid_span, 'full') AS "gridSpan",
+        COALESCE(thumbnail, '') AS "thumbnail",
+        COALESCE(card_badge, '') AS "cardBadge"
     `, [
       updatedTitle, updatedUrl, updatedIsActive, updatedIcon, updatedCustomColor, 
       updatedIsScheduled, updatedScheduleStart, updatedScheduleEnd, updatedShowCountdown, 
       updatedCategory, updatedEmbedType, updatedShowEmbed, updatedIsLocked, 
       updatedLockType, updatedPasscode, updatedLockWarning,
-      updatedIsHeader, updatedAbTestEnabled, updatedTitleB, updatedUrlB, id
+      updatedIsHeader, updatedAbTestEnabled, updatedTitleB, updatedUrlB,
+      updatedGridSpan, updatedThumbnail, updatedCardBadge, id
     ])
 
     invalidateCache('profile')
@@ -558,9 +607,13 @@ router.put('/bulk-sync', requireAuth, async (req, res) => {
           const l = incomingLinks[i]
           await query(`
             UPDATE links 
-            SET order_index = $1, title = $2, url = $3, is_active = $4, custom_color = $5, category = $6
-            WHERE id = $7
-          `, [i, l.title, l.url, l.isActive !== false, l.customColor || 'default', l.category || '', l.id])
+            SET order_index = $1, title = $2, url = $3, is_active = $4, custom_color = $5, category = $6,
+                grid_span = COALESCE($7, 'full'), thumbnail = COALESCE($8, ''), card_badge = COALESCE($9, '')
+            WHERE id = $10
+          `, [
+            i, l.title, l.url, l.isActive !== false, l.customColor || 'default', l.category || '',
+            l.gridSpan || 'full', l.thumbnail || '', l.cardBadge || '', l.id
+          ])
         }
       } catch (dbErr) {
         console.warn('⚠️ [DB Çevrimdışı] Bulk sync belleğe uygulandı')

@@ -1300,11 +1300,18 @@ const handleDownloadVCard = async () => {
       </div>
 
       <!-- Aktif Bağlantı ve Klasör Listesi -->
-      <div class="w-full space-y-3.5 max-w-lg mx-auto">
+      <div :class="['w-full max-w-lg mx-auto transition-all duration-300', profile.layoutStyle === 'bento' ? 'grid grid-cols-2 gap-3 sm:gap-3.5' : 'space-y-3.5']">
         <template v-for="item in groupedFilteredItems" :key="item.id">
           
           <!-- DURUM A: Bağımsız Bağlantı (Klasörsüz) veya Başlık Ayracı -->
-          <div v-if="item.type === 'link'" class="w-full">
+          <div 
+            v-if="item.type === 'link'" 
+            :class="[
+              profile.layoutStyle === 'bento' 
+                ? (item.link.isHeader ? 'col-span-2 w-full' : (item.link.gridSpan === 'half' ? 'col-span-1 h-full' : 'col-span-2 w-full'))
+                : 'w-full'
+            ]"
+          >
             <!-- Başlık / Kategori Ayracı (Section Header) -->
             <div 
               v-if="item.link.isHeader"
@@ -1322,6 +1329,137 @@ const handleDownloadVCard = async () => {
             </div>
 
             <!-- Normal Tıklanabilir Bağlantı Kartı -->
+            <!-- 1. BENTO KOMPAKT KARE (1 Sütun) -->
+            <button 
+              v-else-if="profile.layoutStyle === 'bento' && item.link.gridSpan === 'half'"
+              type="button"
+              @click="handleLinkAction(item.link)"
+              :class="[
+                'group relative flex flex-col justify-between w-full h-full min-h-[135px] sm:min-h-[145px] p-3.5 sm:p-4 rounded-2xl border transition-all duration-300 text-left cursor-pointer select-none active:scale-[0.96] active:duration-100 ease-[cubic-bezier(0.34,1.56,0.64,1)] backdrop-blur-md hover:-translate-y-1 hover:shadow-2xl overflow-hidden',
+                activeTheme.id === 'pure-light'
+                  ? 'bg-[#FFFF00] hover:bg-[#EEFF00] text-black shadow-md shadow-yellow-500/20 border-yellow-300/60'
+                  : ['border-white/10 hover:border-white/30', getLinkCardClass(item.link)]
+              ]"
+            >
+              <div class="absolute -top-10 -right-10 w-24 h-24 bg-[#FFFF00]/10 rounded-full blur-xl pointer-events-none group-hover:bg-[#FFFF00]/25 transition-all"></div>
+              <div class="flex items-start justify-between gap-2 w-full relative z-10">
+                <div v-if="item.link.thumbnail" class="w-10 h-10 rounded-xl overflow-hidden border border-white/20 shadow-xs flex-shrink-0 bg-black/40">
+                  <img :src="item.link.thumbnail" :alt="item.link.title" class="w-full h-full object-cover transition-transform group-hover:scale-110" />
+                </div>
+                <div 
+                  v-else
+                  :class="[
+                    'w-10 h-10 flex items-center justify-center flex-shrink-0 rounded-xl transition-all duration-300 shadow-xs',
+                    activeTheme.id === 'pure-light' 
+                      ? 'bg-black text-[#FFFF00] group-hover:scale-110 shadow-sm' 
+                      : ['border', activeTheme.iconBoxClass || 'bg-[#FFFF00]/10 border-[#FFFF00]/30 text-[#FFFF00] group-hover:bg-[#FFFF00] group-hover:text-black']
+                  ]"
+                >
+                  <component :is="getLinkIcon(item.link)" class="w-5 h-5 transition-transform group-hover:rotate-6" />
+                </div>
+                <div class="flex items-center gap-1 flex-shrink-0">
+                  <span 
+                    v-if="item.link.cardBadge"
+                    class="text-[9px] font-black px-2 py-0.5 rounded-full border shadow-xs tracking-wider uppercase truncate max-w-[85px]"
+                    :class="activeTheme.id === 'pure-light' ? 'bg-black text-[#FFFF00] border-black/20' : 'bg-black/50 text-[#FFFF00] border-[#FFFF00]/30 backdrop-blur-xs'"
+                  >
+                    {{ item.link.cardBadge }}
+                  </span>
+                  <div 
+                    v-else
+                    :class="[
+                      'w-7 h-7 rounded-full flex items-center justify-center transition-all',
+                      activeTheme.id === 'pure-light' ? 'bg-black text-[#FFFF00]' : 'bg-white/5 text-neutral-400 group-hover:bg-[#FFFF00] group-hover:text-black'
+                    ]"
+                  >
+                    <Lock v-if="isLinkLocked(item.link)" class="w-3 h-3 stroke-[2.2]" />
+                    <Play v-else-if="item.link.showEmbed && item.link.embedType && item.link.embedType !== 'none'" class="w-2.5 h-2.5 fill-current" />
+                    <ArrowUpRight v-else class="w-3.5 h-3.5 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
+                  </div>
+                </div>
+              </div>
+              <div class="mt-2.5 relative z-10 w-full min-w-0">
+                <div 
+                  :class="[
+                    'font-black text-xs sm:text-sm tracking-tight line-clamp-2 leading-snug transition-colors',
+                    activeTheme.id === 'pure-light' ? 'text-black' : 'text-white group-hover:text-[#FFFF00]'
+                  ]"
+                >
+                  {{ getLinkDisplayInfo(item.link).title }}
+                </div>
+                <div class="flex items-center justify-between gap-1 mt-1 text-[10px] font-mono text-neutral-400">
+                  <span class="truncate">{{ getLinkSubtitle(item.link).split('•')[0] }}</span>
+                  <span v-if="item.link.clicks > 0" class="shrink-0 text-[9px] opacity-80">{{ item.link.clicks }} tık</span>
+                </div>
+              </div>
+            </button>
+
+            <!-- 2. BENTO HERO VİTRİN KARTI (2 Sütun, Kapak Görselli) -->
+            <div 
+              v-else-if="profile.layoutStyle === 'bento' && item.link.gridSpan === 'featured'"
+              @click="handleLinkAction(item.link)"
+              :class="[
+                'group relative w-full rounded-2xl border transition-all duration-300 cursor-pointer select-none active:scale-[0.98] active:duration-100 ease-[cubic-bezier(0.34,1.56,0.64,1)] backdrop-blur-md hover:-translate-y-1 hover:shadow-2xl overflow-hidden',
+                activeTheme.id === 'pure-light' 
+                  ? 'bg-white border-amber-300/80 shadow-md shadow-yellow-500/10' 
+                  : ['border-white/10 hover:border-[#FFFF00]/40', getLinkCardClass(item.link)]
+              ]"
+            >
+              <div class="relative h-32 sm:h-36 w-full overflow-hidden bg-gradient-to-br from-neutral-900 to-black">
+                <img 
+                  v-if="item.link.thumbnail" 
+                  :src="item.link.thumbnail" 
+                  :alt="item.link.title" 
+                  class="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" 
+                />
+                <div v-else class="w-full h-full bg-gradient-to-r from-amber-500/20 via-yellow-500/10 to-purple-500/20 flex items-center justify-center">
+                  <component :is="getLinkIcon(item.link)" class="w-16 h-16 text-white/15" />
+                </div>
+                <div class="absolute inset-0 bg-gradient-to-t from-black via-black/40 to-transparent"></div>
+                <div class="absolute top-3 left-3 flex items-center gap-1.5">
+                  <span class="px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider bg-black/70 backdrop-blur-md text-[#FFFF00] border border-[#FFFF00]/40 flex items-center gap-1 shadow-lg">
+                    <Sparkles class="w-3 h-3 text-[#FFFF00] animate-pulse" />
+                    <span>{{ item.link.cardBadge || 'Öne Çıkan Vitrin' }}</span>
+                  </span>
+                  <span v-if="isLinkLocked(item.link)" class="px-2 py-0.5 rounded-full text-[9px] font-bold bg-rose-500/80 text-white backdrop-blur-sm">
+                    🔒 {{ item.link.lockType === 'age' ? '18+' : 'PIN' }}
+                  </span>
+                </div>
+                <div class="absolute top-3 right-3 w-8 h-8 rounded-full bg-black/60 backdrop-blur-md text-white border border-white/20 flex items-center justify-center group-hover:bg-[#FFFF00] group-hover:text-black group-hover:border-[#FFFF00] transition-colors shadow-lg">
+                  <ArrowUpRight class="w-4 h-4 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
+                </div>
+                <div class="absolute bottom-2.5 left-3.5 right-3.5">
+                  <h3 class="text-base sm:text-lg font-black text-white tracking-tight truncate drop-shadow-md">
+                    {{ getLinkDisplayInfo(item.link).title }}
+                  </h3>
+                  <p class="text-[11px] font-mono text-neutral-300 truncate drop-shadow-sm">
+                    {{ getLinkSubtitle(item.link) }}
+                  </p>
+                </div>
+              </div>
+              <div 
+                :class="[
+                  'px-4 py-2.5 flex items-center justify-between text-xs font-bold border-t transition-colors',
+                  activeTheme.id === 'pure-light' 
+                    ? 'bg-amber-50/70 border-slate-200 text-black' 
+                    : 'bg-[#151515] border-white/5 text-neutral-300 group-hover:text-white'
+                ]"
+              >
+                <div class="flex items-center gap-1.5 text-[11px] font-mono text-neutral-400">
+                  <span class="w-1.5 h-1.5 rounded-full bg-[#FFFF00] animate-ping"></span>
+                  <span>Hemen İncele & Keşfet</span>
+                  <span v-if="item.link.clicks > 0" class="ml-2 px-2 py-0.2 rounded-full text-[9px] bg-white/5 text-neutral-300">
+                    {{ item.link.clicks }} tık
+                  </span>
+                </div>
+                <div class="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-[#FFFF00] text-black text-[11px] font-extrabold group-hover:bg-[#EEFF00] shadow-sm transition-transform group-hover:translate-x-0.5">
+                  <span>Görüntüle</span>
+                  <ArrowRight class="w-3 h-3 stroke-[2.5]" />
+                </div>
+              </div>
+            </div>
+
+            <!-- 3. GENİŞ KART (2 Sütun / Klasik Yatay Kart) -->
             <button 
               v-else
               type="button"
@@ -1335,7 +1473,12 @@ const handleDownloadVCard = async () => {
               ]"
             >
               <div class="flex items-center gap-3.5 min-w-0">
+                <!-- Thumbnail veya İkon -->
+                <div v-if="item.link.thumbnail" class="w-11 h-11 rounded-xl overflow-hidden border border-white/20 shadow-xs flex-shrink-0 bg-black/40">
+                  <img :src="item.link.thumbnail" :alt="item.link.title" class="w-full h-full object-cover transition-transform group-hover:scale-110" />
+                </div>
                 <div 
+                  v-else
                   :class="[
                     'w-11 h-11 flex items-center justify-center flex-shrink-0 transition-all duration-300 shadow-xs',
                     activeTheme.id === 'pure-light' 
@@ -1353,6 +1496,15 @@ const handleDownloadVCard = async () => {
                     <div :class="['font-extrabold text-sm sm:text-base tracking-tight truncate transition-colors', activeTheme.id === 'pure-light' ? 'text-black' : (item.link.customColor && item.link.customColor !== 'default' ? 'text-white' : ['text-white', activeTheme.hoverTextClass || 'group-hover:text-[#FFFF00]'])]">
                       {{ getLinkDisplayInfo(item.link).title }}
                     </div>
+
+                    <!-- Kart Özel Rozeti -->
+                    <span 
+                      v-if="item.link.cardBadge"
+                      class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-extrabold border shadow-xs"
+                      :class="activeTheme.id === 'pure-light' ? 'bg-black text-[#FFFF00] border-black/20' : 'bg-[#FFFF00]/15 text-[#FFFF00] border-[#FFFF00]/30'"
+                    >
+                      <span>{{ item.link.cardBadge }}</span>
+                    </span>
 
                     <!-- Kilitli Rozeti -->
                     <span 
@@ -1478,7 +1630,7 @@ const handleDownloadVCard = async () => {
           </div>
 
           <!-- DURUM B: Akordeon Klasör Kartı (Gruplanmış Bağlantılar) -->
-          <div v-else-if="item.type === 'folder'" class="w-full space-y-2">
+          <div v-else-if="item.type === 'folder'" :class="[profile.layoutStyle === 'bento' ? 'col-span-2 w-full space-y-2' : 'w-full space-y-2']">
             <!-- Klasör Başlık Butonu -->
             <button
               type="button"
@@ -1538,10 +1690,13 @@ const handleDownloadVCard = async () => {
             <!-- Klasör İçeriği (Akordeon Gövdesi) -->
             <div 
               v-show="isFolderOpen(item.category)"
-              class="pl-3 sm:pl-4 space-y-2.5 border-l-2 border-dashed transition-all duration-300 pt-1"
-              :class="activeTheme.id === 'pure-light' ? 'border-amber-400/70' : 'border-[#FFFF00]/35'"
+              :class="[
+                'pl-3 sm:pl-4 border-l-2 border-dashed transition-all duration-300 pt-1',
+                activeTheme.id === 'pure-light' ? 'border-amber-400/70' : 'border-[#FFFF00]/35',
+                profile.layoutStyle === 'bento' ? 'grid grid-cols-2 gap-2.5 sm:gap-3' : 'space-y-2.5'
+              ]"
             >
-              <div v-for="subLink in item.links" :key="subLink.id" class="w-full">
+              <div v-for="subLink in item.links" :key="subLink.id" :class="[profile.layoutStyle === 'bento' ? (subLink.isHeader ? 'col-span-2 w-full' : (subLink.gridSpan === 'half' ? 'col-span-1 h-full' : 'col-span-2 w-full')) : 'w-full']">
                 <!-- Klasör İçi Başlık Ayracı -->
                 <div 
                   v-if="subLink.isHeader"

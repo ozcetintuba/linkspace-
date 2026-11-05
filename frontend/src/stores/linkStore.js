@@ -531,6 +531,27 @@ export const BANNER_PATTERNS = [
   }
 ]
 
+export const LAYOUT_STYLES = [
+  { id: 'list', name: 'Klasik Liste', desc: 'Klasik dikey sıra düzeni', icon: 'List' },
+  { id: 'bento', name: 'Bento Grid Vitrini', desc: 'Dinamik 2 sütunlu asimetrik kutular ve hero kartlar', icon: 'LayoutGrid' }
+]
+
+export const BENTO_SPAN_OPTIONS = [
+  { id: 'full', name: 'Geniş Kart (2 Sütun)', desc: '2 Sütun kaplar (Standart Yatay)', icon: 'Columns' },
+  { id: 'half', name: 'Kompakt Kutu (1 Sütun)', desc: '1 Sütun kaplar (Yan Yana Kare)', icon: 'Square' },
+  { id: 'featured', name: 'Öne Çıkan Vitrin (Hero)', desc: '2 Sütun (Görselli Hero Kartı)', icon: 'Sparkles' }
+]
+
+export const SUGGESTED_CARD_BADGES = [
+  '🔥 Trend',
+  '⭐ Öne Çıkan',
+  '🚀 Yeni',
+  '✨ Portfolyo',
+  '💡 Tavsiye',
+  '🔒 VIP / Özel',
+  'PRO'
+]
+
 export const AVATAR_SHAPES = [
   { id: 'circle', name: 'Tam Yuvarlak', class: 'rounded-full', desc: 'Klasik dairesel profil' },
   { id: 'squircle', name: 'Modern Squircle', class: 'rounded-2xl', desc: 'iOS ikon stili yumuşak kare' },
@@ -943,6 +964,7 @@ const DEFAULT_PROFILE = {
   groupStyle: 'accordion',
   foldersDefaultExpanded: true,
   showBadges: false,
+  layoutStyle: 'list',
   customDomain: '',
   subdomain: '',
   enable3dBackground: true,
@@ -1150,7 +1172,10 @@ const DEFAULT_LINKS = [
     isLocked: false,
     lockType: 'pin',
     passcode: '',
-    lockWarning: ''
+    lockWarning: '',
+    gridSpan: 'featured',
+    thumbnail: 'https://images.unsplash.com/photo-1498050108023-c5249f4df085?w=600&auto=format&fit=crop&q=80',
+    cardBadge: '🚀 Portfolyo'
   },
   { 
     id: 6, 
@@ -1170,7 +1195,9 @@ const DEFAULT_LINKS = [
     isLocked: false,
     lockType: 'pin',
     passcode: '',
-    lockWarning: ''
+    lockWarning: '',
+    gridSpan: 'half',
+    cardBadge: '🎵 Müzik'
   },
   { 
     id: 5, 
@@ -1190,7 +1217,9 @@ const DEFAULT_LINKS = [
     isLocked: false,
     lockType: 'pin',
     passcode: '',
-    lockWarning: ''
+    lockWarning: '',
+    gridSpan: 'half',
+    cardBadge: '🔥 Kontenjan'
   },
   { 
     id: 7, 
@@ -1210,7 +1239,9 @@ const DEFAULT_LINKS = [
     isLocked: true,
     lockType: 'pin',
     passcode: '1234',
-    lockWarning: 'Bu arşive erişmek için lütfen 4 haneli PIN kodunu giriniz (Varsayılan PIN: 1234)'
+    lockWarning: 'Bu arşive erişmek için lütfen 4 haneli PIN kodunu giriniz (Varsayılan PIN: 1234)',
+    gridSpan: 'full',
+    cardBadge: '🔒 PIN Korumalı'
   },
   { 
     id: 2, 
@@ -1229,7 +1260,9 @@ const DEFAULT_LINKS = [
     isLocked: false,
     lockType: 'pin',
     passcode: '',
-    lockWarning: ''
+    lockWarning: '',
+    gridSpan: 'half',
+    cardBadge: '⭐ Kodlar'
   },
   { 
     id: 3, 
@@ -1248,7 +1281,9 @@ const DEFAULT_LINKS = [
     isLocked: false,
     lockType: 'pin',
     passcode: '',
-    lockWarning: ''
+    lockWarning: '',
+    gridSpan: 'half',
+    cardBadge: '💼 Kariyer'
   },
   { 
     id: 4, 
@@ -1267,7 +1302,9 @@ const DEFAULT_LINKS = [
     isLocked: false,
     lockType: 'pin',
     passcode: '',
-    lockWarning: ''
+    lockWarning: '',
+    gridSpan: 'full',
+    cardBadge: '📸 Sosyal'
   }
 ]
 
@@ -1303,7 +1340,10 @@ export const useLinkStore = defineStore('links', () => {
           clicksA: typeof link.clicksA === 'number' ? link.clicksA : 0,
           clicksB: typeof link.clicksB === 'number' ? link.clicksB : 0,
           viewsA: typeof link.viewsA === 'number' ? link.viewsA : 0,
-          viewsB: typeof link.viewsB === 'number' ? link.viewsB : 0
+          viewsB: typeof link.viewsB === 'number' ? link.viewsB : 0,
+          gridSpan: link.gridSpan || 'full',
+          thumbnail: link.thumbnail || '',
+          cardBadge: link.cardBadge || ''
         }))
       }
 
@@ -1311,6 +1351,7 @@ export const useLinkStore = defineStore('links', () => {
         return {
           ...DEFAULT_PROFILE,
           ...parsed,
+          layoutStyle: parsed.layoutStyle || DEFAULT_PROFILE.layoutStyle,
           avatarShape: parsed.avatarShape || DEFAULT_PROFILE.avatarShape,
           avatarGlow: parsed.avatarGlow || DEFAULT_PROFILE.avatarGlow,
           statusText: parsed.statusText !== undefined ? parsed.statusText : DEFAULT_PROFILE.statusText,
@@ -1434,8 +1475,10 @@ export const useLinkStore = defineStore('links', () => {
             ...(profileData.socialLinks || {})
           },
           groupByCategory: profileData.groupByCategory !== undefined ? Boolean(profileData.groupByCategory) : false,
+          groupStyle: profileData.groupStyle || 'accordion',
           foldersDefaultExpanded: profileData.foldersDefaultExpanded !== undefined ? Boolean(profileData.foldersDefaultExpanded) : true,
           showBadges: profileData.showBadges !== undefined ? Boolean(profileData.showBadges) : false,
+          layoutStyle: profileData.layoutStyle || profile.value?.layoutStyle || 'list',
           mascotConfig: {
             ...DEFAULT_MASCOT_CONFIG,
             ...(profileData.mascotConfig || profile.value?.mascotConfig || {})
@@ -1467,7 +1510,10 @@ export const useLinkStore = defineStore('links', () => {
           clicksA: typeof link.clicksA === 'number' ? link.clicksA : 0,
           clicksB: typeof link.clicksB === 'number' ? link.clicksB : 0,
           viewsA: typeof link.viewsA === 'number' ? link.viewsA : 0,
-          viewsB: typeof link.viewsB === 'number' ? link.viewsB : 0
+          viewsB: typeof link.viewsB === 'number' ? link.viewsB : 0,
+          gridSpan: link.gridSpan || 'full',
+          thumbnail: link.thumbnail || '',
+          cardBadge: link.cardBadge || ''
         }))
       }
       if (themeRes.ok) {
@@ -1546,6 +1592,7 @@ export const useLinkStore = defineStore('links', () => {
             groupByCategory: data.profile.groupByCategory !== undefined ? Boolean(data.profile.groupByCategory) : false,
             foldersDefaultExpanded: data.profile.foldersDefaultExpanded !== undefined ? Boolean(data.profile.foldersDefaultExpanded) : true,
             showBadges: data.profile.showBadges !== undefined ? Boolean(data.profile.showBadges) : false,
+            layoutStyle: data.profile.layoutStyle || 'list',
             enable3dBackground: data.profile.enable3dBackground !== undefined ? Boolean(data.profile.enable3dBackground) : true,
             avatarMode: data.profile.avatarMode || 'switchable',
             enableSpringPhysics: data.profile.enableSpringPhysics !== undefined ? Boolean(data.profile.enableSpringPhysics) : true,
@@ -1580,7 +1627,10 @@ export const useLinkStore = defineStore('links', () => {
             clicksA: typeof l.clicksA === 'number' ? l.clicksA : 0,
             clicksB: typeof l.clicksB === 'number' ? l.clicksB : 0,
             viewsA: typeof l.viewsA === 'number' ? l.viewsA : 0,
-            viewsB: typeof l.viewsB === 'number' ? l.viewsB : 0
+            viewsB: typeof l.viewsB === 'number' ? l.viewsB : 0,
+            gridSpan: l.gridSpan || 'full',
+            thumbnail: l.thumbnail || '',
+            cardBadge: l.cardBadge || ''
           }))
         }
         return { success: true, profile: data.profile, links: data.links }
@@ -1793,6 +1843,9 @@ export const useLinkStore = defineStore('links', () => {
     const finalLockType = scheduleOptions.lockType || 'pin'
     const finalPasscode = scheduleOptions.passcode !== undefined ? String(scheduleOptions.passcode).trim() : ''
     const finalLockWarning = scheduleOptions.lockWarning !== undefined ? String(scheduleOptions.lockWarning).trim() : ''
+    const finalGridSpan = scheduleOptions.gridSpan || 'full'
+    const finalThumbnail = scheduleOptions.thumbnail ? String(scheduleOptions.thumbnail).trim() : ''
+    const finalCardBadge = scheduleOptions.cardBadge ? String(scheduleOptions.cardBadge).trim() : ''
 
     const newLinkObj = {
       id: newId,
@@ -1812,7 +1865,10 @@ export const useLinkStore = defineStore('links', () => {
       isLocked: finalIsLocked,
       lockType: finalLockType,
       passcode: finalPasscode,
-      lockWarning: finalLockWarning
+      lockWarning: finalLockWarning,
+      gridSpan: finalGridSpan,
+      thumbnail: finalThumbnail,
+      cardBadge: finalCardBadge
     }
 
     links.value.unshift(newLinkObj)
@@ -1837,7 +1893,10 @@ export const useLinkStore = defineStore('links', () => {
             isLocked: finalIsLocked,
             lockType: finalLockType,
             passcode: finalPasscode,
-            lockWarning: finalLockWarning
+            lockWarning: finalLockWarning,
+            gridSpan: finalGridSpan,
+            thumbnail: finalThumbnail,
+            cardBadge: finalCardBadge
           })
         })
         if (res.ok) {
@@ -2913,6 +2972,9 @@ export const useLinkStore = defineStore('links', () => {
     AVATAR_SHAPES,
     AVATAR_GLOW_STYLES,
     STATUS_PRESETS,
+    LAYOUT_STYLES,
+    BENTO_SPAN_OPTIONS,
+    SUGGESTED_CARD_BADGES,
     AVAILABLE_BADGE_ICONS,
     BADGE_COLOR_STYLES,
     isBackendConnected,

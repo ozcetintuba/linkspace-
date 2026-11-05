@@ -440,9 +440,30 @@ Bu liste, projenin geliştirme fazlarını ve önceliklendirilmiş iş paketleri
 
 ---
 
+## 📌 Faz 25: Bento Grid Vitrin Mimarisi, Kompakt Kutular ve Hero Showcase Kartları (TAMAMLANDI ✅)
+- [x] **Görev 25.1: Veritabanı ve REST API Genişletmesi (`initDb.js`, `linksRoutes.js`, `profileRoutes.js`)**:
+  - `profiles` tablosuna `layout_style VARCHAR(20) DEFAULT 'list'`, `links` tablosuna `grid_span`, `thumbnail`, `card_badge` sütunları eklendi.
+  - CRUD rotaları ve toplu senkronizasyon (`PUT /api/links/bulk-sync`) yeni alanları destekleyecek şekilde güncellendi.
+- [x] **Görev 25.2: Pinia Store ve Tip Tanımlamaları (`linkStore.js`)**:
+  - `LAYOUT_STYLES`, `BENTO_SPAN_OPTIONS`, `SUGGESTED_CARD_BADGES` sabitleri eklendi.
+  - Zengin Bento Grid demo şablonları hazırlandı.
+- [x] **Görev 25.3: Ziyaretçi Ekranı Bento Izgarası (`ProfileView.vue`)**:
+  - 2 sütunlu Bento Grid ızgara mimarisi.
+  - `featured` Hero Vitrin Kartı (kapak görseli, gradyan, parlayan rozet, keşfet barı).
+  - `half` Kompakt Bento Kutusu (asimetrik 1 sütun kare kutular).
+  - `full` Geniş Yatay Kart (küçük resim & rozet çipli).
+  - Klasörlerin ve başlıkların Bento Grid uyumluluğu.
+- [x] **Görev 25.4: Canlı Cep Telefonu Önizlemesi (`PhonePreview.vue`)**:
+  - iPhone 16 Pro mockup ekranında Bento Grid asimetrik kart render'ı.
+- [x] **Görev 25.5: Yönetici Paneli Görünüm & Kart Editörü (`AdminView.vue`)**:
+  - Görünüm & Tema sekmesine "Sayfa Düzeni & Kart Mimarisi" paneli (Klasik Liste vs Bento Grid seçicisi).
+  - Yeni bağlantı ve düzenleme modalında Bento kart boyutu, thumbnail URL ve rozet çipi kontrolleri.
+
+---
+
 ## 📌 Sıradaki Aday Fazlar (Gelecek Yol Haritası)
-- **Faz 25**: Çoklu Profil / Sayfa Yönetimi (Multi-Tenant Profile Switching).
-- **Faz 26**: Canlı Entegrasyonlar ve Webhook'lar (Discord / Telegram / Slack anlık bildirimleri).
+- **Faz 26**: Çoklu Profil / Sayfa Yönetimi (Multi-Tenant Profile Switching).
+- **Faz 27**: Canlı Entegrasyonlar ve Webhook'lar (Discord / Telegram / Slack anlık bildirimleri).
 
 
 

@@ -4,6 +4,37 @@ Tüm önemli mimari değişiklikler, özellik eklemeleri ve düzeltmeler bu dosy
 
 ---
 
+## [v0.38.0] - 2026-11-05 (Faz 25: Bento Grid Vitrin Mimarisi, Kompakt Kutular ve Hero Showcase Kartları)
+
+### 🍱 Bento Grid Sayfa Düzeni ve Kart Mimarisi (`ProfileView.vue`, `PhonePreview.vue`, `AdminView.vue`, `linkStore.js`, `linksRoutes.js`, `profileRoutes.js`, `initDb.js`)
+- **Dinamik Bento Grid & Klasik Liste Düzeni Seçimi**:
+  - Profil seviyesinde `layoutStyle: 'list' | 'bento'` ayarı eklendi.
+  - `AdminView.vue` Görünüm & Tema sekmesine **"Sayfa Düzeni & Kart Mimarisi"** paneli eklendi; kullanıcılar tek tıkla "Klasik Dikey Liste" (`list`) veya "Bento Grid Vitrini" (`bento`) arasında geçiş yapabilir.
+  - Canlı mobil önizleme (`PhonePreview.vue`) ve ziyaretçi profil sayfası (`ProfileView.vue`), seçilen düzene anında senkronize olur.
+- **3 Farklı Bento Kart Formatı**:
+  1. **Hero Vitrin Kartı (`featured` - 2 Sütun)**:
+     - Üstte yüksek kaliteli kapak görseli/banner (`thumbnail`), gradyan katmanı, parlayan rozet çipi (`cardBadge` / `⭐ Vitrin`), dışa açılma ikonu, büyük başlık, alt başlık ve altta *"Hemen İncele & Keşfet ↗"* aksiyon barı.
+  2. **Kompakt Bento Kutusu (`half` - 1 Sütun)**:
+     - Yan yana 2 kutu şeklinde asimetrik düzen; sol üstte görsel/ikon, sağ üstte mikro rozet / ok butonu, altta 2 satır başlık, alan adı ve tıklama sayacı.
+  3. **Tam Genişlik Kartı (`full` - 2 Sütun)**:
+     - Standart geniş kart yapısı; opsiyonel sol görsel/küçük resim (`thumbnail`) ve özel rozet çipi (`cardBadge`) desteğiyle zenginleştirilmiş.
+- **Klasör ve Başlık Uyumluluğu**:
+  - Bölüm başlıkları (`isHeader`) ve akordeon klasörleri Bento modunda daima `col-span-2` olarak tam satırı kaplar.
+  - Klasör açıldığında içindeki alt bağlantılar da Bento Grid ızgara düzeninde sergilenir.
+- **Yönetici Paneli Kart Özelleştirme Arayüzü (`AdminView.vue`)**:
+  - Hem "Yeni Bağlantı Ekle" formuna hem de "Bağlantı Düzenleme" modalına **"Bento Grid Vitrin Özelleştirmesi"** kutusu eklendi:
+    - **Bento Kart Boyutu Seçici**: 3 seçenekli buton grubu (`full` - Geniş Kart, `half` - Kompakt Kutu, `featured` - Öne Çıkan Vitrin).
+    - **Küçük Resim / Kapak URL (`thumbnail`)**: URL girişi, görsel temizleme butonu ve hızlı hazır örnekler (💻 Laptop/Kod, 🎨 3D Soyut, 🎵 Müzik).
+    - **Kart Rozet Çipi (`cardBadge`)**: Serbest metin girişi ve hızlı çip önerileri (`🔥 Trend`, `⭐ Öne Çıkan`, `🚀 Yeni`, `✨ Portfolyo`, `PRO`, `İndirim`).
+  - Bağlantılar sekmesindeki admin kart listesinde `⭐ VİTRİN KARTI (HERO)`, `🍱 KOMPAKT KUTU` ve `🏷️ Rozet` rozetleri canlı olarak görüntülenir.
+- **Arka Uç ve Veritabanı Kalıcılığı (`backend/src/initDb.js`, `linksRoutes.js`, `profileRoutes.js`)**:
+  - `profiles` tablosuna `layout_style VARCHAR(20) DEFAULT 'list'` sütunu eklendi.
+  - `links` tablosuna `grid_span VARCHAR(20) DEFAULT 'full'`, `thumbnail TEXT DEFAULT ''`, `card_badge VARCHAR(50) DEFAULT ''` sütunları eklendi.
+  - REST API rotaları (`GET /`, `POST /`, `PUT /:id`, `PUT /bulk-sync`, `PUT /api/profile`, JSON/CSV yedek dışa/içe aktarma) yeni alanlarla güncellendi.
+  - Başlangıç şablonuna zengin Bento örnekleri (Laptop görselli Vitrin kartı, 1 sütunluk kompakt kutular) eklendi.
+
+---
+
 ## [v0.37.6] - 2026-11-05 (Düzeltme: Hazır Avatar Galerisindeki Kırık 404 Görsellerin Yenilenmesi ve Hata Telafi Mekanizması)
 
 ### 🖼️ Hazır Avatar Galerisi İyileştirmeleri (`linkStore.js`, `AdminView.vue`)

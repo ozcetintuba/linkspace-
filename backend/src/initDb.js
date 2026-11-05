@@ -41,6 +41,7 @@ export const initializeDatabase = async () => {
       ALTER TABLE profiles ADD COLUMN IF NOT EXISTS show_badges BOOLEAN DEFAULT false;
       ALTER TABLE profiles ADD COLUMN IF NOT EXISTS custom_domain VARCHAR(255) DEFAULT '';
       ALTER TABLE profiles ADD COLUMN IF NOT EXISTS subdomain VARCHAR(100) DEFAULT '';
+      ALTER TABLE profiles ADD COLUMN IF NOT EXISTS layout_style VARCHAR(20) DEFAULT 'list';
       UPDATE profiles SET status_color = 'none' WHERE status_color = 'emerald';
       UPDATE profiles SET show_badges = false WHERE show_badges IS NULL;
       UPDATE profiles SET group_by_category = false WHERE group_by_category IS NULL;
@@ -80,6 +81,9 @@ export const initializeDatabase = async () => {
       ALTER TABLE links ADD COLUMN IF NOT EXISTS clicks_b INTEGER DEFAULT 0;
       ALTER TABLE links ADD COLUMN IF NOT EXISTS views_a INTEGER DEFAULT 0;
       ALTER TABLE links ADD COLUMN IF NOT EXISTS views_b INTEGER DEFAULT 0;
+      ALTER TABLE links ADD COLUMN IF NOT EXISTS grid_span VARCHAR(20) DEFAULT 'full';
+      ALTER TABLE links ADD COLUMN IF NOT EXISTS thumbnail TEXT DEFAULT '';
+      ALTER TABLE links ADD COLUMN IF NOT EXISTS card_badge VARCHAR(50) DEFAULT '';
     `)
 
     // 3. Ayarlar & Tema Tablosu

@@ -29,7 +29,10 @@ import {
   MASCOT_ACCESSORIES,
   MASCOT_EYE_COLORS,
   MASCOT_MOODS,
-  DEFAULT_MASCOT_CONFIG
+  DEFAULT_MASCOT_CONFIG,
+  LAYOUT_STYLES,
+  BENTO_SPAN_OPTIONS,
+  SUGGESTED_CARD_BADGES
 } from '../stores/linkStore'
 import { useAuthStore } from '../stores/authStore'
 import PhonePreview from '../components/PhonePreview.vue'
@@ -119,7 +122,10 @@ import {
   Lightbulb,
   Bot,
   Trophy,
-  Compass
+  Compass,
+  LayoutGrid,
+  Columns,
+  Square
 } from 'lucide-vue-next'
 
 
@@ -733,7 +739,10 @@ const newLink = ref({
   isHeader: false,
   abTestEnabled: false,
   titleB: '',
-  urlB: ''
+  urlB: '',
+  gridSpan: 'full',
+  thumbnail: '',
+  cardBadge: ''
 })
 
 // Akıllı Medya Embed Algılama Hesaplayıcıları
@@ -960,7 +969,10 @@ const handleAddLink = () => {
       isHeader: Boolean(newLink.value.isHeader),
       abTestEnabled: Boolean(newLink.value.abTestEnabled),
       titleB: (newLink.value.titleB || '').trim(),
-      urlB: (newLink.value.urlB || '').trim()
+      urlB: (newLink.value.urlB || '').trim(),
+      gridSpan: newLink.value.gridSpan || 'full',
+      thumbnail: (newLink.value.thumbnail || '').trim(),
+      cardBadge: (newLink.value.cardBadge || '').trim()
     },
     (newLink.value.category || '').trim()
   )
@@ -985,6 +997,9 @@ const handleAddLink = () => {
   newLink.value.lockType = 'pin'
   newLink.value.passcode = ''
   newLink.value.lockWarning = ''
+  newLink.value.gridSpan = 'full'
+  newLink.value.thumbnail = ''
+  newLink.value.cardBadge = ''
   isAdding.value = false
   urlError.value = ''
   showToast('Yeni bağlantı başarıyla eklendi!')
@@ -1028,7 +1043,10 @@ const openEditModal = (link) => {
     clicksA: link.clicksA || 0,
     clicksB: link.clicksB || 0,
     viewsA: link.viewsA || 0,
-    viewsB: link.viewsB || 0
+    viewsB: link.viewsB || 0,
+    gridSpan: link.gridSpan || 'full',
+    thumbnail: link.thumbnail || '',
+    cardBadge: link.cardBadge || ''
   }
 }
 
@@ -1088,7 +1106,10 @@ const handleSaveEdit = async () => {
     isLocked: Boolean(editingLink.value.isLocked),
     lockType: editingLink.value.lockType || 'pin',
     passcode: (editingLink.value.passcode || '').trim(),
-    lockWarning: (editingLink.value.lockWarning || '').trim()
+    lockWarning: (editingLink.value.lockWarning || '').trim(),
+    gridSpan: editingLink.value.gridSpan || 'full',
+    thumbnail: (editingLink.value.thumbnail || '').trim(),
+    cardBadge: (editingLink.value.cardBadge || '').trim()
   })
 
   isSavingEdit.value = false
@@ -1268,6 +1289,7 @@ const profileForm = ref({
   groupByCategory: profile.value.groupByCategory !== undefined ? Boolean(profile.value.groupByCategory) : false,
   foldersDefaultExpanded: profile.value.foldersDefaultExpanded !== false,
   showBadges: profile.value.showBadges !== undefined ? Boolean(profile.value.showBadges) : false,
+  layoutStyle: profile.value.layoutStyle || 'list',
   enable3dBackground: profile.value.enable3dBackground !== false,
   avatarMode: profile.value.avatarMode || 'switchable',
   enableSpringPhysics: profile.value.enableSpringPhysics !== false,
@@ -1468,6 +1490,7 @@ watch(() => profile.value?.id, () => {
       emailActive: profile.value.socialLinks?.emailActive !== false
     }
     profileForm.value.enable3dBackground = profile.value.enable3dBackground !== false
+    profileForm.value.layoutStyle = profile.value.layoutStyle || 'list'
     profileForm.value.avatarMode = profile.value.avatarMode || 'switchable'
     profileForm.value.enableSpringPhysics = profile.value.enableSpringPhysics !== false
     profileForm.value.mascotConfig = {
@@ -1528,6 +1551,14 @@ const selectMascotMood = (moodId) => {
   }
 }
 
+
+// Sayfa Düzeni Seçimi (Bento Grid vs Liste)
+const handleSelectLayoutStyle = async (styleId) => {
+  profileForm.value.layoutStyle = styleId
+  await linkStore.updateProfile({ layoutStyle: styleId })
+  showToast(styleId === 'bento' ? 'Bento Grid Vitrin Düzeni Aktifleştirildi! 🍱' : 'Klasik Dikey Liste Düzenine Geçildi! 📋')
+}
+
 const handleSaveProfile = async () => {
   isSavingProfile.value = true
   await linkStore.updateProfile({
@@ -1562,6 +1593,7 @@ const handleSaveProfile = async () => {
     },
     groupByCategory: Boolean(profileForm.value.groupByCategory),
     foldersDefaultExpanded: profileForm.value.foldersDefaultExpanded !== false,
+    layoutStyle: profileForm.value.layoutStyle || 'list',
     showBadges: Boolean(profileForm.value.showBadges),
     enable3dBackground: profileForm.value.enable3dBackground !== false,
     avatarMode: profileForm.value.avatarMode || 'switchable',
@@ -2497,6 +2529,127 @@ const handleChangePassword = async () => {
                       </div>
                     </div>
                   </div>
+                
+
+                  <!-- Bento Grid Vitrin Özelleştirmesi (Kart Boyutu, Rozet & Küçük Resim) -->
+                  <div :class="['p-3.5 rounded-xl border space-y-3 transition-colors', themeClasses.boxInner]">
+                    <div class="flex items-center justify-between">
+                      <div class="flex items-center gap-2">
+                        <LayoutGrid class="w-4 h-4" :class="adminTheme === 'light' ? 'text-amber-600' : 'text-[#FFFF00]'" />
+                        <div>
+                          <label :class="['text-xs font-semibold block cursor-pointer select-none', themeClasses.titleText]">
+                            Bento Grid Vitrin Özelleştirmesi
+                          </label>
+                          <p :class="['text-[10px]', themeClasses.subText]">
+                            Bento düzeninde kart boyutu, kapak görseli ve dikkat çekici rozet çipi.
+                          </p>
+                        </div>
+                      </div>
+                      <span class="text-[10px] font-mono px-2 py-0.5 rounded-full" :class="adminTheme === 'light' ? 'bg-amber-100 text-amber-800 border border-amber-300' : 'bg-[#FFFF00]/10 text-[#FFFF00] border border-[#FFFF00]/20'">
+                        Bento Pro 🍱
+                      </span>
+                    </div>
+
+                    <!-- Bento Kart Boyutu Seçimi -->
+                    <div>
+                      <label :class="['block text-[11px] font-medium mb-1.5', themeClasses.inputLabel]">Bento Kart Boyutu</label>
+                      <div class="grid grid-cols-3 gap-2">
+                        <button 
+                          v-for="opt in BENTO_SPAN_OPTIONS"
+                          :key="opt.id"
+                          type="button"
+                          @click="newLink.gridSpan = opt.id"
+                          class="p-2.5 rounded-xl border text-left transition-all flex flex-col justify-between"
+                          :class="newLink.gridSpan === opt.id 
+                            ? (adminTheme === 'light' ? 'bg-amber-100/90 border-amber-500 text-black font-bold shadow-xs' : 'bg-[#FFFF00]/15 border-[#FFFF00] text-white shadow-xs') 
+                            : (adminTheme === 'dark' ? 'bg-[#181818] border-[#333] text-neutral-400 hover:text-white' : 'bg-white border-slate-200 text-slate-600 hover:text-slate-900')"
+                        >
+                          <div class="text-[11px] font-bold">{{ opt.name }}</div>
+                          <div class="text-[9px] opacity-75 mt-0.5 leading-snug">{{ opt.description }}</div>
+                        </button>
+                      </div>
+                    </div>
+
+                    <!-- Küçük Resim / Kapak Görseli URL (Thumbnail) -->
+                    <div>
+                      <label :class="['block text-[11px] font-medium mb-1', themeClasses.inputLabel]">Kart Küçük Resmi / Kapak URL (Thumbnail)</label>
+                      <div class="flex gap-2">
+                        <input 
+                          v-model="newLink.thumbnail" 
+                          type="text" 
+                          placeholder="https://images.unsplash.com/... (Görsel URL)"
+                          :class="['w-full px-3 py-2 rounded-xl border text-xs focus:outline-none transition-colors', themeClasses.inputBg]"
+                        />
+                        <button 
+                          v-if="newLink.thumbnail"
+                          type="button"
+                          @click="newLink.thumbnail = ''"
+                          class="px-2.5 py-1 text-xs text-rose-400 hover:bg-rose-500/10 rounded-xl border border-rose-500/20"
+                          title="Görseli kaldır"
+                        >
+                          <X class="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                      <div class="flex items-center gap-1.5 mt-1.5 flex-wrap">
+                        <span :class="['text-[10px]', themeClasses.subText]">Örnekler:</span>
+                        <button 
+                          type="button" 
+                          @click="newLink.thumbnail = 'https://images.unsplash.com/photo-1517694712202-14dd9538aa97?w=600&auto=format&fit=crop&q=80'"
+                          class="text-[9px] px-2 py-0.5 rounded-md border text-neutral-300 hover:text-[#FFFF00] border-white/10 bg-white/5"
+                        >
+                          💻 Laptop/Kod
+                        </button>
+                        <button 
+                          type="button" 
+                          @click="newLink.thumbnail = 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=600&auto=format&fit=crop&q=80'"
+                          class="text-[9px] px-2 py-0.5 rounded-md border text-neutral-300 hover:text-[#FFFF00] border-white/10 bg-white/5"
+                        >
+                          🎨 3D Soyut
+                        </button>
+                        <button 
+                          type="button" 
+                          @click="newLink.thumbnail = 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=600&auto=format&fit=crop&q=80'"
+                          class="text-[9px] px-2 py-0.5 rounded-md border text-neutral-300 hover:text-[#FFFF00] border-white/10 bg-white/5"
+                        >
+                          🎵 Müzik & Ses
+                        </button>
+                      </div>
+                    </div>
+
+                    <!-- Kart Rozeti (Badge Chip) -->
+                    <div>
+                      <label :class="['block text-[11px] font-medium mb-1', themeClasses.inputLabel]">Kart Rozet Çipi (Opsiyonel Metin)</label>
+                      <input 
+                        v-model="newLink.cardBadge" 
+                        type="text" 
+                        placeholder="Örn: 🔥 Trend, ⭐ Öne Çıkan, 🚀 Yeni, PRO, İndirim"
+                        :class="['w-full px-3 py-2 rounded-xl border text-xs focus:outline-none transition-colors mb-1.5', themeClasses.inputBg]"
+                      />
+                      <div class="flex items-center gap-1.5 flex-wrap">
+                        <span :class="['text-[10px]', themeClasses.subText]">Hızlı Çipler:</span>
+                        <button 
+                          v-for="badgeText in SUGGESTED_CARD_BADGES"
+                          :key="badgeText"
+                          type="button"
+                          @click="newLink.cardBadge = badgeText"
+                          class="text-[9px] px-2 py-0.5 rounded-full border transition-all"
+                          :class="newLink.cardBadge === badgeText 
+                            ? (adminTheme === 'light' ? 'bg-amber-500 text-black border-amber-600 font-bold' : 'bg-[#FFFF00] text-black border-[#FFFF00] font-bold') 
+                            : 'bg-white/5 border-white/10 text-neutral-300 hover:text-white'"
+                        >
+                          {{ badgeText }}
+                        </button>
+                        <button 
+                          v-if="newLink.cardBadge"
+                          type="button" 
+                          @click="newLink.cardBadge = ''"
+                          class="text-[9px] px-1.5 py-0.5 rounded-full text-rose-400 hover:bg-rose-500/10"
+                        >
+                          Temizle
+                        </button>
+                      </div>
+                    </div>
+                  </div>
                 </div>
 
                 <div class="flex justify-end gap-2 pt-3">
@@ -2766,6 +2919,26 @@ const handleChangePassword = async () => {
                       <p :class="['text-sm font-bold truncate', themeClasses.titleText]">
                         {{ link.title }}
                       </p>
+
+                      <!-- Bento Boyut & Vitrin Rozetleri -->
+                      <span 
+                        v-if="link.gridSpan === 'featured'"
+                        class="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-[10px] font-black border bg-amber-500/20 text-amber-300 border-amber-500/40 uppercase"
+                      >
+                        ⭐ VİTRİN KARTI (HERO)
+                      </span>
+                      <span 
+                        v-else-if="link.gridSpan === 'half'"
+                        class="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-[10px] font-bold border bg-purple-500/15 text-purple-300 border-purple-500/30"
+                      >
+                        🍱 KOMPAKT KUTU
+                      </span>
+                      <span 
+                        v-if="link.cardBadge"
+                        class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[9px] font-black border bg-[#FFFF00]/15 text-[#FFFF00] border-[#FFFF00]/30"
+                      >
+                        🏷️ {{ link.cardBadge }}
+                      </span>
 
                       <!-- Başlık Ayracı Rozeti -->
                       <span 
@@ -4042,6 +4215,142 @@ const handleChangePassword = async () => {
                   </button>
                 </div>
               </form>
+            </div>
+
+            <!-- 2.5 SAYFA DÜZENİ & KART MİMARİSİ (BENTO GRID VS KLASİK LİSTE) -->
+            <div :class="['border rounded-2xl p-6 transition-colors', themeClasses.cardBg]">
+              <div :class="['flex flex-col sm:flex-row sm:items-center justify-between pb-4 border-b gap-2 mb-5', themeClasses.headerBorder]">
+                <div>
+                  <h3 :class="['text-base font-semibold flex items-center gap-2', themeClasses.titleText]">
+                    <LayoutGrid class="w-4 h-4" :class="adminTheme === 'light' ? 'text-amber-600' : 'text-[#FFFF00]'" />
+                    <span>Sayfa Düzeni & Kart Mimarisi</span>
+                  </h3>
+                  <p :class="['text-xs mt-0.5', themeClasses.subText]">
+                    Bağlantılarınızın ziyaretçilere nasıl sunulacağını seçin: Dikey standart liste veya 2 sütunlu Bento Grid vitrini.
+                  </p>
+                </div>
+                <span class="text-xs font-semibold px-3 py-1 rounded-full w-fit" :class="adminTheme === 'light' ? 'bg-amber-100 text-amber-900 border border-amber-300' : 'bg-[#FFFF00]/15 text-[#FFFF00] border border-[#FFFF00]/30'">
+                  Düzen: {{ profileForm.layoutStyle === 'bento' ? 'Bento Grid Vitrini 🍱' : 'Klasik Dikey Liste 📋' }}
+                </span>
+              </div>
+
+              <!-- Düzen Seçici Kartlar -->
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <!-- 1. Klasik Dikey Liste -->
+                <div 
+                  @click="handleSelectLayoutStyle('list')"
+                  class="group relative rounded-2xl border p-4.5 cursor-pointer transition-all duration-300 text-left select-none flex flex-col justify-between"
+                  :class="profileForm.layoutStyle !== 'bento'
+                    ? (adminTheme === 'light' ? 'bg-amber-50/70 border-amber-500 shadow-md ring-2 ring-amber-500/30' : 'bg-[#181818] border-[#FFFF00] shadow-lg shadow-yellow-500/10 ring-2 ring-[#FFFF00]/40')
+                    : (adminTheme === 'light' ? 'bg-white hover:bg-slate-50 border-slate-200' : 'bg-[#141414] hover:bg-[#1a1a1a] border-[#252525]')
+                  "
+                >
+                  <div class="space-y-3">
+                    <div class="flex items-center justify-between">
+                      <div class="w-10 h-10 rounded-xl flex items-center justify-center border"
+                        :class="profileForm.layoutStyle !== 'bento'
+                          ? (adminTheme === 'light' ? 'bg-black text-[#FFFF00] border-black' : 'bg-[#FFFF00] text-black border-[#FFFF00]')
+                          : (adminTheme === 'light' ? 'bg-slate-100 text-slate-700 border-slate-200' : 'bg-white/10 text-white border-white/10')">
+                        <Columns class="w-5 h-5" />
+                      </div>
+                      <span v-if="profileForm.layoutStyle !== 'bento'" class="text-[11px] font-bold px-2.5 py-0.5 rounded-full flex items-center gap-1 shadow-xs"
+                        :class="adminTheme === 'light' ? 'bg-black text-[#FFFF00]' : 'bg-[#FFFF00] text-black'">
+                        <Check class="w-3 h-3 stroke-[3]" />
+                        <span>Seçili</span>
+                      </span>
+                    </div>
+
+                    <div>
+                      <h4 :class="['text-sm font-bold flex items-center gap-1.5', themeClasses.titleText]">
+                        <span>Klasik Dikey Liste</span>
+                      </h4>
+                      <p :class="['text-xs mt-1 leading-relaxed', themeClasses.subText]">
+                        Geleneksel Linktree stili. Tüm bağlantı butonları alt alta tek sütunda geniş olarak dizilir, temiz ve sadedir.
+                      </p>
+                    </div>
+
+                    <!-- Mini Şematik Önizleme -->
+                    <div class="p-2.5 rounded-xl border bg-black/40 border-white/5 space-y-1.5 pointer-events-none">
+                      <div class="h-3 rounded-full bg-white/20 w-full"></div>
+                      <div class="h-3 rounded-full bg-white/20 w-full"></div>
+                      <div class="h-3 rounded-full bg-white/20 w-full"></div>
+                    </div>
+                  </div>
+
+                  <button 
+                    type="button"
+                    @click.stop="handleSelectLayoutStyle('list')"
+                    class="mt-4 w-full py-2 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+                    :class="profileForm.layoutStyle !== 'bento'
+                      ? (adminTheme === 'light' ? 'bg-black text-[#FFFF00]' : 'bg-[#FFFF00] text-black shadow-md shadow-yellow-500/20')
+                      : (adminTheme === 'light' ? 'bg-slate-100 hover:bg-slate-200 text-slate-800 border border-slate-300' : 'bg-white/10 hover:bg-white/15 text-white border border-white/10')"
+                  >
+                    <span>{{ profileForm.layoutStyle !== 'bento' ? 'Aktif Düzen' : 'Bu Düzeni Seç' }}</span>
+                  </button>
+                </div>
+
+                <!-- 2. Bento Grid Vitrini -->
+                <div 
+                  @click="handleSelectLayoutStyle('bento')"
+                  class="group relative rounded-2xl border p-4.5 cursor-pointer transition-all duration-300 text-left select-none flex flex-col justify-between"
+                  :class="profileForm.layoutStyle === 'bento'
+                    ? (adminTheme === 'light' ? 'bg-amber-50/70 border-amber-500 shadow-md ring-2 ring-amber-500/30' : 'bg-[#181818] border-[#FFFF00] shadow-lg shadow-yellow-500/10 ring-2 ring-[#FFFF00]/40')
+                    : (adminTheme === 'light' ? 'bg-white hover:bg-slate-50 border-slate-200' : 'bg-[#141414] hover:bg-[#1a1a1a] border-[#252525]')
+                  "
+                >
+                  <div class="space-y-3">
+                    <div class="flex items-center justify-between">
+                      <div class="w-10 h-10 rounded-xl flex items-center justify-center border"
+                        :class="profileForm.layoutStyle === 'bento'
+                          ? (adminTheme === 'light' ? 'bg-black text-[#FFFF00] border-black' : 'bg-[#FFFF00] text-black border-[#FFFF00]')
+                          : (adminTheme === 'light' ? 'bg-slate-100 text-slate-700 border-slate-200' : 'bg-white/10 text-white border-white/10')">
+                        <LayoutGrid class="w-5 h-5" />
+                      </div>
+                      <div class="flex items-center gap-1.5">
+                        <span class="text-[10px] font-black px-2 py-0.5 rounded-full uppercase tracking-wider bg-purple-500/20 text-purple-400 border border-purple-500/30">
+                          Önerilen
+                        </span>
+                        <span v-if="profileForm.layoutStyle === 'bento'" class="text-[11px] font-bold px-2.5 py-0.5 rounded-full flex items-center gap-1 shadow-xs"
+                          :class="adminTheme === 'light' ? 'bg-black text-[#FFFF00]' : 'bg-[#FFFF00] text-black'">
+                          <Check class="w-3 h-3 stroke-[3]" />
+                          <span>Seçili</span>
+                        </span>
+                      </div>
+                    </div>
+
+                    <div>
+                      <h4 :class="['text-sm font-bold flex items-center gap-1.5', themeClasses.titleText]">
+                        <span>Bento Grid Vitrini</span>
+                      </h4>
+                      <p :class="['text-xs mt-1 leading-relaxed', themeClasses.subText]">
+                        Apple & Dribbble tarzı 2 sütunlu asimetrik mozaik grid. Kompakt kutular ve görsel kapaklı vitrin kartları.
+                      </p>
+                    </div>
+
+                    <!-- Mini Şematik Bento Önizleme -->
+                    <div class="p-2.5 rounded-xl border bg-black/40 border-white/5 space-y-1.5 pointer-events-none">
+                      <div class="h-5 rounded-lg bg-gradient-to-r from-amber-500/30 to-purple-500/30 border border-white/10 w-full flex items-center px-2">
+                        <span class="text-[8px] font-bold text-white/60">★ Vitrin</span>
+                      </div>
+                      <div class="grid grid-cols-2 gap-1.5">
+                        <div class="h-6 rounded-lg bg-white/15"></div>
+                        <div class="h-6 rounded-lg bg-white/15"></div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <button 
+                    type="button"
+                    @click.stop="handleSelectLayoutStyle('bento')"
+                    class="mt-4 w-full py-2 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+                    :class="profileForm.layoutStyle === 'bento'
+                      ? (adminTheme === 'light' ? 'bg-black text-[#FFFF00]' : 'bg-[#FFFF00] text-black shadow-md shadow-yellow-500/20')
+                      : (adminTheme === 'light' ? 'bg-slate-100 hover:bg-slate-200 text-slate-800 border border-slate-300' : 'bg-white/10 hover:bg-white/15 text-white border border-white/10')"
+                  >
+                    <span>{{ profileForm.layoutStyle === 'bento' ? 'Aktif Düzen' : 'Bu Düzeni Seç' }}</span>
+                  </button>
+                </div>
+              </div>
             </div>
 
             <!-- 3. ZİYARETÇİ PROFİL TEMALARI (Themes Grid) -->
@@ -6731,6 +7040,126 @@ const handleChangePassword = async () => {
                 </div>
               </div>
             </div>
+
+              <!-- Bento Grid Vitrin Özelleştirmesi (Düzenleme Modalı) -->
+              <div :class="['p-3.5 rounded-xl border space-y-3 transition-colors', themeClasses.boxInner]">
+                <div class="flex items-center justify-between">
+                  <div class="flex items-center gap-2">
+                    <LayoutGrid class="w-4 h-4" :class="adminTheme === 'light' ? 'text-amber-600' : 'text-[#FFFF00]'" />
+                    <div>
+                      <label :class="['text-xs font-semibold block cursor-pointer select-none', themeClasses.titleText]">
+                        Bento Grid Vitrin Özelleştirmesi
+                      </label>
+                      <p :class="['text-[10px]', themeClasses.subText]">
+                        Bento düzeninde kart boyutu, kapak görseli ve dikkat çekici rozet çipi.
+                      </p>
+                    </div>
+                  </div>
+                  <span class="text-[10px] font-mono px-2 py-0.5 rounded-full" :class="adminTheme === 'light' ? 'bg-amber-100 text-amber-800 border border-amber-300' : 'bg-[#FFFF00]/10 text-[#FFFF00] border border-[#FFFF00]/20'">
+                    Bento Pro 🍱
+                  </span>
+                </div>
+
+                <!-- Bento Kart Boyutu Seçimi -->
+                <div>
+                  <label :class="['block text-[11px] font-medium mb-1.5', themeClasses.inputLabel]">Bento Kart Boyutu</label>
+                  <div class="grid grid-cols-3 gap-2">
+                    <button 
+                      v-for="opt in BENTO_SPAN_OPTIONS"
+                      :key="opt.id"
+                      type="button"
+                      @click="editingLink.gridSpan = opt.id"
+                      class="p-2.5 rounded-xl border text-left transition-all flex flex-col justify-between"
+                      :class="editingLink.gridSpan === opt.id 
+                        ? (adminTheme === 'light' ? 'bg-amber-100/90 border-amber-500 text-black font-bold shadow-xs' : 'bg-[#FFFF00]/15 border-[#FFFF00] text-white shadow-xs') 
+                        : (adminTheme === 'dark' ? 'bg-[#181818] border-[#333] text-neutral-400 hover:text-white' : 'bg-white border-slate-200 text-slate-600 hover:text-slate-900')"
+                    >
+                      <div class="text-[11px] font-bold">{{ opt.name }}</div>
+                      <div class="text-[9px] opacity-75 mt-0.5 leading-snug">{{ opt.description }}</div>
+                    </button>
+                  </div>
+                </div>
+
+                <!-- Küçük Resim / Kapak Görseli URL (Thumbnail) -->
+                <div>
+                  <label :class="['block text-[11px] font-medium mb-1', themeClasses.inputLabel]">Kart Küçük Resmi / Kapak URL (Thumbnail)</label>
+                  <div class="flex gap-2">
+                    <input 
+                      v-model="editingLink.thumbnail" 
+                      type="text" 
+                      placeholder="https://images.unsplash.com/... (Görsel URL)"
+                      :class="['w-full px-3 py-2 rounded-xl border text-xs focus:outline-none transition-colors', themeClasses.inputBg]"
+                    />
+                    <button 
+                      v-if="editingLink.thumbnail"
+                      type="button"
+                      @click="editingLink.thumbnail = ''"
+                      class="px-2.5 py-1 text-xs text-rose-400 hover:bg-rose-500/10 rounded-xl border border-rose-500/20"
+                      title="Görseli kaldır"
+                    >
+                      <X class="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                  <div class="flex items-center gap-1.5 mt-1.5 flex-wrap">
+                    <span :class="['text-[10px]', themeClasses.subText]">Örnekler:</span>
+                    <button 
+                      type="button" 
+                      @click="editingLink.thumbnail = 'https://images.unsplash.com/photo-1517694712202-14dd9538aa97?w=600&auto=format&fit=crop&q=80'"
+                      class="text-[9px] px-2 py-0.5 rounded-md border text-neutral-300 hover:text-[#FFFF00] border-white/10 bg-white/5"
+                    >
+                      💻 Laptop/Kod
+                    </button>
+                    <button 
+                      type="button" 
+                      @click="editingLink.thumbnail = 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=600&auto=format&fit=crop&q=80'"
+                      class="text-[9px] px-2 py-0.5 rounded-md border text-neutral-300 hover:text-[#FFFF00] border-white/10 bg-white/5"
+                    >
+                      🎨 3D Soyut
+                    </button>
+                    <button 
+                      type="button" 
+                      @click="editingLink.thumbnail = 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=600&auto=format&fit=crop&q=80'"
+                      class="text-[9px] px-2 py-0.5 rounded-md border text-neutral-300 hover:text-[#FFFF00] border-white/10 bg-white/5"
+                    >
+                      🎵 Müzik & Ses
+                    </button>
+                  </div>
+                </div>
+
+                <!-- Kart Rozeti (Badge Chip) -->
+                <div>
+                  <label :class="['block text-[11px] font-medium mb-1', themeClasses.inputLabel]">Kart Rozet Çipi (Opsiyonel Metin)</label>
+                  <input 
+                    v-model="editingLink.cardBadge" 
+                    type="text" 
+                    placeholder="Örn: 🔥 Trend, ⭐ Öne Çıkan, 🚀 Yeni, PRO, İndirim"
+                    :class="['w-full px-3 py-2 rounded-xl border text-xs focus:outline-none transition-colors mb-1.5', themeClasses.inputBg]"
+                  />
+                  <div class="flex items-center gap-1.5 flex-wrap">
+                    <span :class="['text-[10px]', themeClasses.subText]">Hızlı Çipler:</span>
+                    <button 
+                      v-for="badgeText in SUGGESTED_CARD_BADGES"
+                      :key="badgeText"
+                      type="button"
+                      @click="editingLink.cardBadge = badgeText"
+                      class="text-[9px] px-2 py-0.5 rounded-full border transition-all"
+                      :class="editingLink.cardBadge === badgeText 
+                        ? (adminTheme === 'light' ? 'bg-amber-500 text-black border-amber-600 font-bold' : 'bg-[#FFFF00] text-black border-[#FFFF00] font-bold') 
+                        : 'bg-white/5 border-white/10 text-neutral-300 hover:text-white'"
+                    >
+                      {{ badgeText }}
+                    </button>
+                    <button 
+                      v-if="editingLink.cardBadge"
+                      type="button" 
+                      @click="editingLink.cardBadge = ''"
+                      class="text-[9px] px-1.5 py-0.5 rounded-full text-rose-400 hover:bg-rose-500/10"
+                    >
+                      Temizle
+                    </button>
+                  </div>
+                </div>
+              </div>
 
             <div :class="['pt-4 border-t flex items-center justify-end gap-2.5', themeClasses.headerBorder]">
               <button 
