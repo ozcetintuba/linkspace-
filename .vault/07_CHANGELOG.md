@@ -4,6 +4,15 @@ Tüm önemli mimari değişiklikler, özellik eklemeleri ve düzeltmeler bu dosy
 
 ---
 
+## [v0.37.3] - 2026-11-05 (UI İyileştirme: PWA 'Telefona Yükle' Bildiriminin Kaldırılması)
+
+### 🧹 Kullanıcı Deneyimi & Arayüz Sadeleştirme (`App.vue`)
+- **PWA Yükleme Bildirimi Kaldırıldı**:
+  - Ekranın sağ alt köşesinde beliren *"Linkspace'i Telefona Yükle"* PWA banner bildirimi (`PwaInstallPrompt.vue`) ana uygulama kök bileşeninden (`App.vue`) kaldırıldı.
+  - Ziyaretçilerin ve yöneticilerin arayüzde odaklanmasını engelleyen açılır bildirim temizlenerek daha sade bir deneyim sağlandı.
+
+---
+
 ## [v0.37.2] - 2026-10-29 (Bağlantılar Sekmesi: Açık Kaydet Butonu, Toplu Senkronizasyon ve Çevrimdışı Kalıcılık)
 
 ### 💾 Bağlantı Yönetimi ve Kalıcı Kaydetme (`AdminView.vue`, `linkStore.js`, `linksRoutes.js`)
