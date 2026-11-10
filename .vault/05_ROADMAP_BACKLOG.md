@@ -476,6 +476,13 @@ Bu liste, projenin geliştirme fazlarını ve önceliklendirilmiş iş paketleri
   - Canlı arama, segment çipleri ve 4 farklı sıralama modu.
 - [x] **Görev 26.5: Zengin Kullanıcı Kartları ve Hızlı Aksiyonlar**:
   - Profil ziyareti (`/@username`), link kopyalama, kullanıcı silme ve yeni üye ekleme modalları.
+- [x] **Görev 26.6: Gelişmiş Kullanıcı Ekranı Zenginleştirmesi**:
+  - Çift görünüm modu: `userViewMode` (Bento Kart Izgarası vs. SaaS Detaylı Veri Tablosu).
+  - 3 görsel oran progress barı (Rol Dağılımı, Düzen Tercihi, Doğrulama & Sağlık).
+  - Toplu işlemler çubuğu (Çoklu seçim, toplu doğrulama, toplu askıya alma, toplu silme).
+  - Kullanıcı inceleme & düzenleme modalı (`showEditUserModal`), dinamik QR kod modalı (`showUserQrModal`).
+  - UTF-8 BOM destekli CSV / Excel dışa aktarma (`exportUsersAsCsv`) ve vCard indirme.
+  - Ziyaretçi profilinde (`ProfileView.vue`) `👑 Platform Yöneticisi` ve `✨ Topluluk Üyesi` prestij çipleri.
 
 ---
 

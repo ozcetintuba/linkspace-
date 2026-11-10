@@ -488,11 +488,14 @@ const getInitials = (name) => {
 // KULLANICI & TOPLULUK YÖNETİMİ (Faz 26 - User Management)
 // ========================================================
 const searchUserQuery = ref('')
-const selectedUserFilter = ref('all') // 'all' | 'verified' | 'admin' | 'has_links'
+const selectedUserFilter = ref('all') // 'all' | 'verified' | 'admin' | 'has_links' | 'suspended'
 const selectedUserSort = ref('newest') // 'newest' | 'oldest' | 'links_desc' | 'name_asc'
 const userFeedback = ref('')
 const isUserActionLoading = ref(false)
+const userViewMode = ref('grid') // 'grid' | 'table'
+const selectedUserIds = ref([])
 
+// Modallar
 const showCreateUserModal = ref(false)
 const createUserError = ref('')
 const newUserForm = ref({
@@ -505,9 +508,18 @@ const newUserForm = ref({
   layoutStyle: 'bento'
 })
 
+const showEditUserModal = ref(false)
+const editUserError = ref('')
+const editingUserData = ref(null)
+
+const showUserQrModal = ref(false)
+const qrModalUser = ref(null)
+const userQrDataUrl = ref('')
+
 const showDeleteUserModal = ref(false)
 const userToDelete = ref(null)
 
+// Filtrelenmiş Kullanıcı Listesi
 const filteredUsers = computed(() => {
   let list = [...(users.value || [])]
 
@@ -529,6 +541,8 @@ const filteredUsers = computed(() => {
     list = list.filter(u => u.role === 'admin')
   } else if (selectedUserFilter.value === 'has_links') {
     list = list.filter(u => (u.linksCount ?? (u.links?.length || 0)) > 0)
+  } else if (selectedUserFilter.value === 'suspended') {
+    list = list.filter(u => u.status === 'suspended')
   }
 
   // Sıralama
@@ -545,6 +559,7 @@ const filteredUsers = computed(() => {
   return list
 })
 
+// KPI ve Demografi Hesaplamaları
 const activeProfilesCount = computed(() => {
   return (users.value || []).filter(u => (u.linksCount ?? (u.links?.length || 0)) > 0).length
 })
@@ -561,6 +576,49 @@ const adminMembersCount = computed(() => {
   return (users.value || []).filter(u => u.role === 'admin').length
 })
 
+const suspendedMembersCount = computed(() => {
+  return (users.value || []).filter(u => u.status === 'suspended').length
+})
+
+const adminPercentage = computed(() => {
+  const total = users.value?.length || 1
+  return Math.round((adminMembersCount.value / total) * 100)
+})
+
+const bentoPercentage = computed(() => {
+  const total = users.value?.length || 1
+  const bentoCount = (users.value || []).filter(u => u.layoutStyle === 'bento').length
+  return Math.round((bentoCount / total) * 100)
+})
+
+const verifiedPercentage = computed(() => {
+  const total = users.value?.length || 1
+  return Math.round((verifiedMembersCount.value / total) * 100)
+})
+
+// Çoklu Seçim
+const isAllUsersSelected = computed(() => {
+  return filteredUsers.value.length > 0 && filteredUsers.value.every(u => selectedUserIds.value.includes(u.id))
+})
+
+const toggleSelectAllUsers = () => {
+  if (isAllUsersSelected.value) {
+    selectedUserIds.value = []
+  } else {
+    selectedUserIds.value = filteredUsers.value.map(u => u.id)
+  }
+}
+
+const toggleSelectUser = (id) => {
+  const idx = selectedUserIds.value.indexOf(id)
+  if (idx === -1) {
+    selectedUserIds.value.push(id)
+  } else {
+    selectedUserIds.value.splice(idx, 1)
+  }
+}
+
+// Aksiyonlar
 const handleRefreshUsers = async () => {
   isUserActionLoading.value = true
   await Promise.all([linkStore.fetchUsers(), linkStore.fetchUserStats()])
@@ -571,11 +629,17 @@ const handleRefreshUsers = async () => {
   }, 350)
 }
 
+const handleExportUsersCsv = () => {
+  linkStore.exportUsersAsCsv()
+  userFeedback.value = 'Tüm kullanıcı listesi CSV formatında başarıyla dışa aktarıldı!'
+  setTimeout(() => { userFeedback.value = '' }, 3500)
+}
+
 const handleCopyUserUrl = async (username) => {
   try {
-    const url = `${window.location.origin}/@${username}`
+    const url = `${window.location.origin}/@${username.replace(/^@/, '')}`
     await navigator.clipboard.writeText(url)
-    userFeedback.value = `@${username} profil bağlantısı panoya kopyalandı!`
+    userFeedback.value = `@${username.replace(/^@/, '')} profil bağlantısı panoya kopyalandı!`
     setTimeout(() => { userFeedback.value = '' }, 3000)
   } catch (e) {
     userFeedback.value = 'URL kopyalanamadı.'
@@ -621,13 +685,148 @@ const handleCreateUserSubmit = async () => {
 
   if (res.success) {
     showCreateUserModal.value = false
-    userFeedback.value = `"${res.data.name}" kullanıcısı başarıyla oluşturuldu!`
+    userFeedback.value = `"${res.data?.name || newUserForm.value.name}" kullanıcısı başarıyla oluşturuldu!`
     setTimeout(() => { userFeedback.value = '' }, 3500)
   } else {
     createUserError.value = res.error || 'Kullanıcı oluşturulurken bir hata oluştu.'
   }
 }
 
+// Kullanıcı Düzenleme
+const openEditUserModal = async (u) => {
+  editingUserData.value = { 
+    ...u,
+    status: u.status || 'active',
+    layoutStyle: u.layoutStyle || 'bento'
+  }
+  editUserError.value = ''
+  try {
+    const profileUrl = `${window.location.origin}/@${u.username.replace(/^@/, '')}`
+    userQrDataUrl.value = await QRCode.toDataURL(profileUrl, { width: 300, margin: 2, color: { dark: '#000000', light: '#FFFF00' } })
+  } catch (e) {
+    userQrDataUrl.value = ''
+  }
+  showEditUserModal.value = true
+}
+
+const handleSaveEditUser = async () => {
+  if (!editingUserData.value) return
+  editUserError.value = ''
+
+  if (!editingUserData.value.name.trim()) {
+    editUserError.value = 'Ad Soyad boş bırakılamaz.'
+    return
+  }
+  if (!editingUserData.value.username.trim()) {
+    editUserError.value = 'Kullanıcı adı boş bırakılamaz.'
+    return
+  }
+
+  isUserActionLoading.value = true
+  const res = await linkStore.updateUser(editingUserData.value.id, editingUserData.value)
+  isUserActionLoading.value = false
+
+  if (res.success) {
+    showEditUserModal.value = false
+    userFeedback.value = `@${editingUserData.value.username} profil bilgileri başarıyla güncellendi!`
+    setTimeout(() => { userFeedback.value = '' }, 3500)
+    editingUserData.value = null
+  } else {
+    editUserError.value = res.error || 'Güncelleme sırasında hata oluştu.'
+  }
+}
+
+// Hızlı Toggle İşlemleri
+const handleQuickToggleVerify = async (u) => {
+  await linkStore.toggleUserVerification(u.id)
+  userFeedback.value = u.isVerified ? `@${u.username} hesabı doğrulandı! ✓` : `@${u.username} doğrulama rozeti kaldırıldı.`
+  setTimeout(() => { userFeedback.value = '' }, 3000)
+}
+
+const handleQuickToggleStatus = async (u) => {
+  if (u.id === 1) {
+    alert('Ana yönetici hesabı askıya alınamaz.')
+    return
+  }
+  const res = await linkStore.toggleUserStatus(u.id)
+  if (res.success) {
+    userFeedback.value = res.status === 'suspended' ? `@${u.username} hesabı askıya alındı.` : `@${u.username} hesabı yeniden aktifleştirildi.`
+    setTimeout(() => { userFeedback.value = '' }, 3000)
+  }
+}
+
+// Toplu İşlemler
+const handleBatchAction = async (action) => {
+  if (selectedUserIds.value.length === 0) return
+  
+  if (action === 'delete') {
+    if (!confirm(`Seçili ${selectedUserIds.value.length} kullanıcıyı kalıcı olarak silmek istediğinize emin misiniz?`)) {
+      return
+    }
+  }
+
+  isUserActionLoading.value = true
+  await linkStore.batchUpdateUsers(selectedUserIds.value, action)
+  isUserActionLoading.value = false
+
+  const count = selectedUserIds.value.length
+  selectedUserIds.value = []
+
+  let actionText = 'güncellendi'
+  if (action === 'verify') actionText = 'doğrulandı'
+  if (action === 'unverify') actionText = 'doğrulaması kaldırıldı'
+  if (action === 'suspend') actionText = 'askıya alındı'
+  if (action === 'activate') actionText = 'aktifleştirildi'
+  if (action === 'delete') actionText = 'silindi'
+
+  userFeedback.value = `Seçilen ${count} kullanıcı başarıyla ${actionText}.`
+  setTimeout(() => { userFeedback.value = '' }, 3500)
+}
+
+// QR Kod Modal
+const openUserQrModal = async (u) => {
+  qrModalUser.value = u
+  try {
+    const profileUrl = `${window.location.origin}/@${u.username.replace(/^@/, '')}`
+    userQrDataUrl.value = await QRCode.toDataURL(profileUrl, { width: 380, margin: 2, color: { dark: '#000000', light: '#FFFF00' } })
+    showUserQrModal.value = true
+  } catch (e) {
+    alert('QR kod oluşturulamadı.')
+  }
+}
+
+const downloadUserQr = () => {
+  if (!userQrDataUrl.value || !qrModalUser.value) return
+  const a = document.createElement('a')
+  a.href = userQrDataUrl.value
+  a.download = `${qrModalUser.value.username}_qrcode.png`
+  a.click()
+}
+
+const downloadUserVCard = (u) => {
+  const vcardText = [
+    'BEGIN:VCARD',
+    'VERSION:3.0',
+    `FN:${u.name || 'Linkspace Üyesi'}`,
+    `N:${u.name || ''};;;;`,
+    `EMAIL;TYPE=INTERNET:${u.email || ''}`,
+    `URL:${window.location.origin}/@${u.username.replace(/^@/, '')}`,
+    `NOTE:${u.bio || 'Linkspace Dijital Profil'}`,
+    'END:VCARD'
+  ].join('\r\n')
+
+  const blob = new Blob([vcardText], { type: 'text/vcard;charset=utf-8;' })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = `${u.username.replace(/^@/, '')}.vcf`
+  a.click()
+  URL.revokeObjectURL(url)
+  userFeedback.value = `@${u.username} dijital kartviziti (.vcf) indirildi!`
+  setTimeout(() => { userFeedback.value = '' }, 3000)
+}
+
+// Silme
 const handleDeleteUserClick = (u) => {
   if (u.id === 1 || u.username === 'tubagul') {
     alert('Ana yönetici hesabı sistem güvenliği nedeniyle silinemez.')
@@ -684,6 +883,7 @@ const formatRelativeTime = (dateStr) => {
     return ''
   }
 }
+
 
 // ========================================================
 // SEÇENEK B: SOSYAL PAYLAŞIM & SEO KARTLARI (FAZ 16)
@@ -5666,7 +5866,7 @@ const handleChangePassword = async () => {
 
             <!-- ÜST BİLGİ & AKSİYON BARI -->
             <div :class="['border rounded-3xl p-6 transition-colors', themeClasses.cardBg]">
-              <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+              <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
                 <div>
                   <div class="flex items-center gap-2.5">
                     <div class="w-10 h-10 rounded-2xl bg-[#FFFF00]/10 border border-[#FFFF00]/30 flex items-center justify-center text-[#FFFF00]">
@@ -5680,13 +5880,26 @@ const handleChangePassword = async () => {
                         </span>
                       </h2>
                       <p :class="['text-xs mt-0.5', themeClasses.subText]">
-                        Sisteme kayıtlı üyeleri görüntüleyin, profillerini ziyaret edin ve yeni kullanıcı hesapları yönetin.
+                        Sisteme kayıtlı üyeleri görüntüleyin, profillerini ziyaret edin, düzenleyin ve topluluk verilerini yönetin.
                       </p>
                     </div>
                   </div>
                 </div>
 
-                <div class="flex items-center gap-2 self-start sm:self-auto">
+                <div class="flex items-center gap-2 flex-wrap self-start md:self-auto">
+                  <!-- CSV Dışa Aktar -->
+                  <button 
+                    type="button"
+                    @click="handleExportUsersCsv"
+                    title="Kullanıcı Listesini CSV (Excel) Olarak İndir"
+                    class="px-3.5 py-2.5 rounded-xl border transition-all cursor-pointer flex items-center gap-2 text-xs font-semibold"
+                    :class="adminTheme === 'light' ? 'bg-white border-slate-200 hover:bg-slate-50 text-slate-700' : 'bg-[#121212] border-[#282828] hover:border-[#444] text-zinc-300'"
+                  >
+                    <Download class="w-3.5 h-3.5 text-emerald-400" />
+                    <span>CSV Dışa Aktar</span>
+                  </button>
+
+                  <!-- Yenile -->
                   <button 
                     type="button"
                     @click="handleRefreshUsers"
@@ -5699,6 +5912,7 @@ const handleChangePassword = async () => {
                     <span class="hidden sm:inline">Yenile</span>
                   </button>
 
+                  <!-- Yeni Üye Tanımla -->
                   <button 
                     type="button"
                     @click="openCreateUserModal"
@@ -5717,6 +5931,96 @@ const handleChangePassword = async () => {
               >
                 <CheckCircle2 class="w-4 h-4 shrink-0" />
                 <span>{{ userFeedback }}</span>
+              </div>
+            </div>
+
+            <!-- TOPLULUK DEMOGRAFİSİ & ORAN GÖSTERGELERİ (3 GÖRSEL BAR KARTI) -->
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <!-- Bar 1: Rol Dağılımı -->
+              <div :class="['border rounded-2xl p-4 transition-all', themeClasses.cardBg]">
+                <div class="flex items-center justify-between text-xs font-medium mb-1.5">
+                  <span class="text-[#8E8E93] flex items-center gap-1.5">
+                    <Shield class="w-3.5 h-3.5 text-[#FFFF00]" />
+                    <span>Rol Dağılımı</span>
+                  </span>
+                  <span class="font-bold text-xs" :class="themeClasses.titleText">
+                    {{ adminPercentage }}% Yönetici • {{ 100 - adminPercentage }}% Üye
+                  </span>
+                </div>
+                <div class="w-full h-2.5 rounded-full bg-zinc-800 overflow-hidden flex">
+                  <div 
+                    class="h-full bg-[#FFFF00] transition-all duration-500" 
+                    :style="{ width: adminPercentage + '%' }"
+                    title="Yöneticiler"
+                  ></div>
+                  <div 
+                    class="h-full bg-zinc-600 transition-all duration-500" 
+                    :style="{ width: (100 - adminPercentage) + '%' }"
+                    title="Standart Üyeler"
+                  ></div>
+                </div>
+                <div class="flex items-center justify-between text-[11px] text-[#8E8E93] mt-2">
+                  <span>{{ adminMembersCount }} Yönetici</span>
+                  <span>{{ users.length - adminMembersCount }} Standart Üye</span>
+                </div>
+              </div>
+
+              <!-- Bar 2: Tasarım Tercihi (Bento Grid vs Klasik Liste) -->
+              <div :class="['border rounded-2xl p-4 transition-all', themeClasses.cardBg]">
+                <div class="flex items-center justify-between text-xs font-medium mb-1.5">
+                  <span class="text-[#8E8E93] flex items-center gap-1.5">
+                    <LayoutGrid class="w-3.5 h-3.5 text-cyan-400" />
+                    <span>Sayfa Düzeni</span>
+                  </span>
+                  <span class="font-bold text-xs" :class="themeClasses.titleText">
+                    {{ bentoPercentage }}% Bento • {{ 100 - bentoPercentage }}% Liste
+                  </span>
+                </div>
+                <div class="w-full h-2.5 rounded-full bg-zinc-800 overflow-hidden flex">
+                  <div 
+                    class="h-full bg-cyan-400 transition-all duration-500" 
+                    :style="{ width: bentoPercentage + '%' }"
+                    title="Bento Grid"
+                  ></div>
+                  <div 
+                    class="h-full bg-purple-500 transition-all duration-500" 
+                    :style="{ width: (100 - bentoPercentage) + '%' }"
+                    title="Klasik Liste"
+                  ></div>
+                </div>
+                <div class="flex items-center justify-between text-[11px] text-[#8E8E93] mt-2">
+                  <span>🍱 Bento Grid</span>
+                  <span>📋 Klasik Liste</span>
+                </div>
+              </div>
+
+              <!-- Bar 3: Doğrulanmış Rozet & Sağlık -->
+              <div :class="['border rounded-2xl p-4 transition-all', themeClasses.cardBg]">
+                <div class="flex items-center justify-between text-xs font-medium mb-1.5">
+                  <span class="text-[#8E8E93] flex items-center gap-1.5">
+                    <Award class="w-3.5 h-3.5 text-amber-400" />
+                    <span>Doğrulama Oranı</span>
+                  </span>
+                  <span class="font-bold text-xs text-amber-400">
+                    {{ verifiedPercentage }}% Doğrulanmış
+                  </span>
+                </div>
+                <div class="w-full h-2.5 rounded-full bg-zinc-800 overflow-hidden flex">
+                  <div 
+                    class="h-full bg-amber-400 transition-all duration-500" 
+                    :style="{ width: verifiedPercentage + '%' }"
+                  ></div>
+                  <div 
+                    class="h-full bg-zinc-700 transition-all duration-500" 
+                    :style="{ width: (100 - verifiedPercentage) + '%' }"
+                  ></div>
+                </div>
+                <div class="flex items-center justify-between text-[11px] text-[#8E8E93] mt-2">
+                  <span>{{ verifiedMembersCount }} Onaylı Hesap</span>
+                  <span :class="suspendedMembersCount > 0 ? 'text-rose-400 font-bold' : ''">
+                    {{ suspendedMembersCount > 0 ? `${suspendedMembersCount} Askıda` : '0 Askıda' }}
+                  </span>
+                </div>
               </div>
             </div>
 
@@ -5787,7 +6091,7 @@ const handleChangePassword = async () => {
               </div>
             </div>
 
-            <!-- ARAMA, FİLTRE & SIRALAMA BARI -->
+            <!-- ARAMA, FİLTRE, SIRALAMA & GÖRÜNÜM SEÇİCİ BARI -->
             <div :class="['border rounded-2xl p-4 transition-colors space-y-3', themeClasses.cardBg]">
               <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
                 <!-- Arama Kutusu -->
@@ -5810,19 +6114,45 @@ const handleChangePassword = async () => {
                   </button>
                 </div>
 
-                <!-- Sıralama Seçimi -->
-                <div class="flex items-center gap-2 shrink-0">
-                  <span class="text-xs text-[#8E8E93] hidden sm:inline">Sırala:</span>
-                  <select 
-                    v-model="selectedUserSort"
-                    class="px-3 py-2.5 rounded-xl text-xs font-medium border cursor-pointer"
-                    :class="themeClasses.inputBg"
-                  >
-                    <option value="newest">En Yeni Katılanlar</option>
-                    <option value="oldest">En Eski Katılanlar</option>
-                    <option value="links_desc">En Çok Linki Olanlar</option>
-                    <option value="name_asc">İsme Göre (A-Z)</option>
-                  </select>
+                <!-- Sıralama ve Görünüm Seçimi (Grid / Tablo) -->
+                <div class="flex items-center gap-2.5 shrink-0">
+                  <div class="flex items-center gap-1.5">
+                    <span class="text-xs text-[#8E8E93] hidden sm:inline">Sırala:</span>
+                    <select 
+                      v-model="selectedUserSort"
+                      class="px-3 py-2 rounded-xl text-xs font-medium border cursor-pointer"
+                      :class="themeClasses.inputBg"
+                    >
+                      <option value="newest">En Yeni Katılanlar</option>
+                      <option value="oldest">En Eski Katılanlar</option>
+                      <option value="links_desc">En Çok Linki Olanlar</option>
+                      <option value="name_asc">İsme Göre (A-Z)</option>
+                    </select>
+                  </div>
+
+                  <!-- Görünüm Değiştirici Buton Grubu -->
+                  <div class="flex items-center p-1 rounded-xl border" :class="themeClasses.boxInner">
+                    <button 
+                      type="button"
+                      @click="userViewMode = 'grid'"
+                      title="Bento Kart Izgarası Görünümü"
+                      class="px-2.5 py-1 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer"
+                      :class="userViewMode === 'grid' ? 'bg-[#FFFF00] text-black shadow-xs' : 'text-[#8E8E93] hover:text-white'"
+                    >
+                      <LayoutGrid class="w-3.5 h-3.5" />
+                      <span class="hidden sm:inline">Kart</span>
+                    </button>
+                    <button 
+                      type="button"
+                      @click="userViewMode = 'table'"
+                      title="Detaylı Veri Tablosu Görünümü"
+                      class="px-2.5 py-1 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer"
+                      :class="userViewMode === 'table' ? 'bg-[#FFFF00] text-black shadow-xs' : 'text-[#8E8E93] hover:text-white'"
+                    >
+                      <Table class="w-3.5 h-3.5" />
+                      <span class="hidden sm:inline">Tablo</span>
+                    </button>
+                  </div>
                 </div>
               </div>
 
@@ -5871,21 +6201,337 @@ const handleChangePassword = async () => {
                   <Globe class="w-3 h-3 text-emerald-400" />
                   <span>Aktif Linki Olanlar ({{ activeProfilesCount }})</span>
                 </button>
+                <button 
+                  v-if="suspendedMembersCount > 0"
+                  type="button"
+                  @click="selectedUserFilter = 'suspended'"
+                  class="px-3 py-1.5 rounded-lg font-semibold transition-all shrink-0 flex items-center gap-1.5 cursor-pointer"
+                  :class="selectedUserFilter === 'suspended' 
+                    ? 'bg-rose-500 text-white font-bold shadow-xs' 
+                    : (adminTheme === 'light' ? 'bg-rose-50 text-rose-700 border border-rose-200' : 'bg-[#121212] text-rose-400 hover:text-rose-300 border border-rose-900/50')"
+                >
+                  <Ban class="w-3 h-3 text-rose-400" />
+                  <span>Askıdaki Hesaplar ({{ suspendedMembersCount }})</span>
+                </button>
               </div>
             </div>
 
-            <!-- KULLANICI KARTLARI GRİDİ -->
-            <div v-if="filteredUsers.length > 0" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+            <!-- TOPLU İŞLEMLER ÇUBUĞU (BULK ACTIONS TOOLBAR) -->
+            <div 
+              v-if="selectedUserIds.length > 0"
+              class="p-4 rounded-2xl bg-gradient-to-r from-zinc-900 to-black border-2 border-[#FFFF00] shadow-xl flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 animate-in fade-in slide-in-from-top-2"
+            >
+              <div class="flex items-center gap-3">
+                <div class="w-8 h-8 rounded-xl bg-[#FFFF00] text-black flex items-center justify-center font-black text-xs">
+                  {{ selectedUserIds.length }}
+                </div>
+                <div>
+                  <h4 class="text-xs font-bold text-white">kullanıcı seçildi</h4>
+                  <p class="text-[11px] text-[#8E8E93]">Seçili hesaplar üzerinde toplu işlem uygulayın:</p>
+                </div>
+              </div>
+
+              <div class="flex items-center gap-1.5 flex-wrap">
+                <button 
+                  type="button"
+                  @click="handleBatchAction('verify')"
+                  class="px-3 py-1.5 rounded-xl bg-amber-400/10 hover:bg-amber-400/20 text-amber-300 border border-amber-400/30 text-xs font-semibold cursor-pointer"
+                >
+                  ✓ Rozet Ver
+                </button>
+                <button 
+                  type="button"
+                  @click="handleBatchAction('unverify')"
+                  class="px-3 py-1.5 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-zinc-300 text-xs font-semibold cursor-pointer"
+                >
+                  ✕ Rozeti Kaldır
+                </button>
+                <button 
+                  type="button"
+                  @click="handleBatchAction('activate')"
+                  class="px-3 py-1.5 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 text-xs font-semibold cursor-pointer"
+                >
+                  🟢 Aktifleştir
+                </button>
+                <button 
+                  type="button"
+                  @click="handleBatchAction('suspend')"
+                  class="px-3 py-1.5 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/30 text-xs font-semibold cursor-pointer"
+                >
+                  🚫 Askıya Al
+                </button>
+                <button 
+                  type="button"
+                  @click="handleBatchAction('delete')"
+                  class="px-3 py-1.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold cursor-pointer"
+                >
+                  Sil
+                </button>
+                <button 
+                  type="button"
+                  @click="selectedUserIds = []"
+                  class="px-3 py-1.5 rounded-xl text-xs text-[#8E8E93] hover:text-white cursor-pointer"
+                >
+                  Vazgeç
+                </button>
+              </div>
+            </div>
+
+            <!-- ======================================================== -->
+            <!-- GÖRÜNÜM 1: DETAYLI VERİ TABLOSU (TABLE VIEW) -->
+            <!-- ======================================================== -->
+            <div 
+              v-if="userViewMode === 'table' && filteredUsers.length > 0"
+              :class="['border rounded-3xl overflow-hidden shadow-xl transition-all', themeClasses.cardBg]"
+            >
+              <div class="overflow-x-auto">
+                <table class="w-full text-left text-xs border-collapse">
+                  <thead>
+                    <tr class="border-b" :class="[adminTheme === 'light' ? 'bg-slate-50 border-slate-200 text-slate-700' : 'bg-[#141414] border-[#242424] text-zinc-400']">
+                      <th class="p-4 w-12 text-center">
+                        <input 
+                          type="checkbox" 
+                          :checked="isAllUsersSelected" 
+                          @change="toggleSelectAllUsers"
+                          class="w-4 h-4 accent-[#FFFF00] rounded cursor-pointer"
+                          title="Tümünü Seç / Kaldır"
+                        />
+                      </th>
+                      <th class="p-4 font-bold">Kullanıcı & Profil</th>
+                      <th class="p-4 font-bold">E-Posta & İletişim</th>
+                      <th class="p-4 font-bold">Rol</th>
+                      <th class="p-4 font-bold">Düzen</th>
+                      <th class="p-4 font-bold">Bağlantılar</th>
+                      <th class="p-4 font-bold">Durum</th>
+                      <th class="p-4 font-bold">Rozet</th>
+                      <th class="p-4 font-bold">Katılım</th>
+                      <th class="p-4 font-bold text-right pr-6">İşlemler</th>
+                    </tr>
+                  </thead>
+                  <tbody class="divide-y" :class="adminTheme === 'light' ? 'divide-slate-200' : 'divide-[#202020]'">
+                    <tr 
+                      v-for="u in filteredUsers" 
+                      :key="u.id"
+                      class="transition-colors hover:bg-white/[0.02]"
+                      :class="[
+                        selectedUserIds.includes(u.id) ? (adminTheme === 'light' ? 'bg-yellow-50/50' : 'bg-[#FFFF00]/5') : '',
+                        u.status === 'suspended' ? 'opacity-60' : ''
+                      ]"
+                    >
+                      <!-- Seçim Checkbox -->
+                      <td class="p-4 text-center">
+                        <input 
+                          type="checkbox" 
+                          :checked="selectedUserIds.includes(u.id)"
+                          @change="toggleSelectUser(u.id)"
+                          class="w-4 h-4 accent-[#FFFF00] rounded cursor-pointer"
+                        />
+                      </td>
+
+                      <!-- Kullanıcı & Avatar -->
+                      <td class="p-4">
+                        <div class="flex items-center gap-3">
+                          <div class="relative shrink-0">
+                            <img 
+                              v-if="u.avatar" 
+                              :src="u.avatar" 
+                              :alt="u.name"
+                              class="w-9 h-9 rounded-full object-cover border"
+                              :class="u.role === 'admin' ? 'border-[#FFFF00]' : 'border-zinc-700'"
+                              @error="(e) => { e.target.style.display = 'none'; if (e.target.nextElementSibling) e.target.nextElementSibling.style.display = 'flex'; }"
+                            />
+                            <div 
+                              class="w-9 h-9 rounded-full items-center justify-center font-bold text-xs border text-white bg-gradient-to-br from-zinc-700 to-zinc-900"
+                              :class="[u.avatar ? 'hidden' : 'flex', u.role === 'admin' ? 'border-[#FFFF00]' : 'border-zinc-700']"
+                            >
+                              {{ getInitials(u.name) }}
+                            </div>
+                            <span 
+                              v-if="u.isVerified" 
+                              class="absolute -bottom-1 -right-1 w-3.5 h-3.5 rounded-full bg-[#FFFF00] text-black flex items-center justify-center text-[9px] font-bold"
+                            >
+                              ✓
+                            </span>
+                          </div>
+                          <div class="min-w-0">
+                            <div class="font-bold truncate max-w-[150px]" :class="themeClasses.titleText">
+                              {{ u.name }}
+                            </div>
+                            <a 
+                              :href="'/@' + u.username.replace(/^@/, '')" 
+                              target="_blank"
+                              class="text-[11px] text-[#FFFF00] font-mono hover:underline truncate block"
+                            >
+                              @{{ u.username.replace(/^@/, '') }}
+                            </a>
+                          </div>
+                        </div>
+                      </td>
+
+                      <!-- E-posta -->
+                      <td class="p-4 text-[#8E8E93] max-w-[160px]">
+                        <div class="flex items-center gap-1.5 truncate">
+                          <span class="truncate">{{ u.email || '—' }}</span>
+                          <button 
+                            v-if="u.email"
+                            type="button" 
+                            @click="handleCopyUserUrl(u.username)"
+                            class="text-[10px] text-[#FFFF00] hover:underline shrink-0" 
+                            title="Profil linkini kopyala"
+                          >
+                            <Copy class="w-3 h-3" />
+                          </button>
+                        </div>
+                      </td>
+
+                      <!-- Rol -->
+                      <td class="p-4">
+                        <span 
+                          v-if="u.role === 'admin'"
+                          class="px-2 py-0.5 text-[10px] font-black uppercase tracking-wider rounded-full bg-[#FFFF00]/15 text-[#FFFF00] border border-[#FFFF00]/30"
+                        >
+                          Yönetici
+                        </span>
+                        <span 
+                          v-else
+                          class="px-2 py-0.5 text-[10px] font-semibold rounded-full bg-zinc-800 text-zinc-300 border border-zinc-700"
+                        >
+                          Üye
+                        </span>
+                      </td>
+
+                      <!-- Düzen -->
+                      <td class="p-4 font-mono text-[11px] text-[#8E8E93]">
+                        <span class="px-2 py-0.5 rounded-md bg-zinc-900 border border-zinc-800">
+                          {{ u.layoutStyle === 'bento' ? '🍱 Bento' : '📋 Liste' }}
+                        </span>
+                      </td>
+
+                      <!-- Bağlantılar -->
+                      <td class="p-4 font-mono font-bold" :class="themeClasses.titleText">
+                        {{ u.linkCount ?? (u.links?.length || 0) }} Link
+                      </td>
+
+                      <!-- Durum (Aktif / Askıda) -->
+                      <td class="p-4">
+                        <button 
+                          type="button"
+                          @click="handleQuickToggleStatus(u)"
+                          :disabled="u.id === 1"
+                          title="Hesap durumunu değiştirmek için tıklayın"
+                          class="px-2.5 py-1 rounded-full text-[10px] font-bold transition-all flex items-center gap-1.5 cursor-pointer"
+                          :class="u.status === 'suspended' ? 'bg-rose-500/15 text-rose-400 border border-rose-500/30' : 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30'"
+                        >
+                          <span class="w-1.5 h-1.5 rounded-full" :class="u.status === 'suspended' ? 'bg-rose-500' : 'bg-emerald-400 animate-pulse'"></span>
+                          <span>{{ u.status === 'suspended' ? 'Askıda' : 'Aktif' }}</span>
+                        </button>
+                      </td>
+
+                      <!-- Doğrulanmış Rozet -->
+                      <td class="p-4">
+                        <button 
+                          type="button"
+                          @click="handleQuickToggleVerify(u)"
+                          title="Doğrulama rozetini aç/kapat"
+                          class="w-7 h-7 rounded-lg border flex items-center justify-center transition-transform active:scale-90 cursor-pointer"
+                          :class="u.isVerified ? 'bg-[#FFFF00] text-black border-[#FFFF00]' : 'bg-zinc-900 border-zinc-700 text-zinc-500 hover:text-white'"
+                        >
+                          ✓
+                        </button>
+                      </td>
+
+                      <!-- Katılım Tarihi -->
+                      <td class="p-4 text-[11px] text-[#8E8E93] whitespace-nowrap">
+                        {{ formatRelativeTime(u.createdAt) }}
+                      </td>
+
+                      <!-- Aksiyon Butonları -->
+                      <td class="p-4 text-right pr-6">
+                        <div class="flex items-center justify-end gap-1.5">
+                          <!-- Profili Gör -->
+                          <a 
+                            :href="'/@' + u.username.replace(/^@/, '')" 
+                            target="_blank"
+                            title="Canlı Profil Sayfasını Ziyaret Et"
+                            class="p-2 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-[#FFFF00] transition-colors"
+                          >
+                            <ExternalLink class="w-3.5 h-3.5" />
+                          </a>
+
+                          <!-- Düzenle -->
+                          <button 
+                            type="button"
+                            @click="openEditUserModal(u)"
+                            title="Kullanıcı Bilgilerini Düzenle"
+                            class="p-2 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-white transition-colors cursor-pointer"
+                          >
+                            <Pencil class="w-3.5 h-3.5" />
+                          </button>
+
+                          <!-- QR Kod -->
+                          <button 
+                            type="button"
+                            @click="openUserQrModal(u)"
+                            title="Profil QR Kodunu Görüntüle"
+                            class="p-2 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-cyan-400 transition-colors cursor-pointer"
+                          >
+                            <QrCode class="w-3.5 h-3.5" />
+                          </button>
+
+                          <!-- Sil -->
+                          <button 
+                            type="button"
+                            @click="handleDeleteUserClick(u)"
+                            :disabled="u.id === 1 || u.username === 'tubagul'"
+                            :title="u.id === 1 ? 'Ana yönetici hesabı silinemez' : 'Kullanıcıyı Sil'"
+                            class="p-2 rounded-xl border transition-colors"
+                            :class="[
+                              u.id === 1 || u.username === 'tubagul' 
+                                ? 'opacity-20 cursor-not-allowed border-zinc-800 text-zinc-600' 
+                                : 'cursor-pointer hover:border-rose-500/50 hover:bg-rose-500/10 text-rose-400 border-zinc-800 bg-zinc-900'
+                            ]"
+                          >
+                            <Trash2 class="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            <!-- ======================================================== -->
+            <!-- GÖRÜNÜM 2: KART IZGARASI (GRID VIEW) -->
+            <!-- ======================================================== -->
+            <div 
+              v-else-if="userViewMode === 'grid' && filteredUsers.length > 0" 
+              class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4"
+            >
               <div 
                 v-for="u in filteredUsers" 
                 :key="u.id"
-                class="rounded-2xl border transition-all duration-200 p-5 flex flex-col justify-between group hover:border-[#FFFF00]/60 relative"
-                :class="[themeClasses.cardBg, u.role === 'admin' ? 'ring-1 ring-[#FFFF00]/20' : '']"
+                class="rounded-3xl border transition-all duration-200 p-5 flex flex-col justify-between group hover:border-[#FFFF00]/60 relative"
+                :class="[
+                  themeClasses.cardBg, 
+                  u.role === 'admin' ? 'ring-1 ring-[#FFFF00]/25' : '',
+                  selectedUserIds.includes(u.id) ? 'ring-2 ring-[#FFFF00] bg-[#FFFF00]/5' : '',
+                  u.status === 'suspended' ? 'opacity-65' : ''
+                ]"
               >
-                <!-- Üst Bilgi: Avatar, İsim, Rozet, Rol -->
+                <!-- Üst Bilgi: Seçim Checkbox, Avatar, İsim, Rozet, Rol -->
                 <div>
                   <div class="flex items-start justify-between gap-3">
                     <div class="flex items-center gap-3">
+                      <!-- Seçim Checkbox -->
+                      <input 
+                        type="checkbox"
+                        :checked="selectedUserIds.includes(u.id)"
+                        @change="toggleSelectUser(u.id)"
+                        class="w-4 h-4 accent-[#FFFF00] rounded cursor-pointer shrink-0"
+                        title="Toplu işlem için seç"
+                      />
+
                       <!-- Avatar -->
                       <div class="relative shrink-0">
                         <img 
@@ -5902,13 +6548,15 @@ const handleChangePassword = async () => {
                         >
                           {{ getInitials(u.name) }}
                         </div>
-                        <span 
-                          v-if="u.isVerified" 
-                          class="absolute -bottom-1 -right-1 w-4 h-4 rounded-full bg-[#FFFF00] text-black flex items-center justify-center text-[10px] font-bold shadow-sm"
-                          title="Doğrulanmış Hesap"
+                        <button 
+                          type="button"
+                          @click.stop="handleQuickToggleVerify(u)"
+                          class="absolute -bottom-1 -right-1 w-4 h-4 rounded-full flex items-center justify-center text-[10px] font-bold shadow-sm transition-transform active:scale-90 cursor-pointer"
+                          :class="u.isVerified ? 'bg-[#FFFF00] text-black' : 'bg-zinc-800 text-zinc-500 border border-zinc-700'"
+                          title="Doğrulama durumunu değiştir"
                         >
                           ✓
-                        </span>
+                        </button>
                       </div>
 
                       <!-- İsim & Kullanıcı Adı -->
@@ -5920,32 +6568,44 @@ const handleChangePassword = async () => {
                         </div>
                         <div class="flex items-center gap-1.5 mt-0.5">
                           <a 
-                            :href="'/@' + u.username" 
+                            :href="'/@' + u.username.replace(/^@/, '')" 
                             target="_blank" 
                             class="text-xs text-[#FFFF00] font-mono hover:underline truncate"
                             title="Canlı Profil Sayfasını Ziyaret Et"
                           >
-                            @{{ u.username }}
+                            @{{ u.username.replace(/^@/, '') }}
                           </a>
                         </div>
                       </div>
                     </div>
 
-                    <!-- Rol & Stil Rozeti -->
+                    <!-- Rol, Durum & Düzen Çipleri -->
                     <div class="flex flex-col items-end gap-1 shrink-0">
-                      <span 
-                        v-if="u.role === 'admin'"
-                        class="px-2 py-0.5 text-[10px] font-black uppercase tracking-wider rounded-full bg-[#FFFF00]/15 text-[#FFFF00] border border-[#FFFF00]/30"
-                      >
-                        Yönetici
-                      </span>
-                      <span 
-                        v-else
-                        class="px-2 py-0.5 text-[10px] font-semibold rounded-full bg-zinc-800 text-zinc-300 border border-zinc-700"
-                      >
-                        Üye
-                      </span>
-                      <span class="text-[10px] px-1.5 py-0.2 rounded font-mono text-[#8E8E93] bg-zinc-900/60">
+                      <div class="flex items-center gap-1">
+                        <span 
+                          v-if="u.role === 'admin'"
+                          class="px-2 py-0.5 text-[10px] font-black uppercase tracking-wider rounded-full bg-[#FFFF00]/15 text-[#FFFF00] border border-[#FFFF00]/30"
+                        >
+                          Yönetici
+                        </span>
+                        <span 
+                          v-else
+                          class="px-2 py-0.5 text-[10px] font-semibold rounded-full bg-zinc-800 text-zinc-300 border border-zinc-700"
+                        >
+                          Üye
+                        </span>
+                        <button 
+                          type="button"
+                          @click="handleQuickToggleStatus(u)"
+                          :disabled="u.id === 1"
+                          class="px-2 py-0.5 text-[10px] font-bold rounded-full cursor-pointer"
+                          :class="u.status === 'suspended' ? 'bg-rose-500/20 text-rose-400 border border-rose-500/40' : 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30'"
+                          title="Durumu değiştir"
+                        >
+                          {{ u.status === 'suspended' ? 'Askıda' : 'Aktif' }}
+                        </button>
+                      </div>
+                      <span class="text-[10px] px-1.5 py-0.2 rounded font-mono text-[#8E8E93] bg-zinc-900/60 border border-zinc-800">
                         {{ u.layoutStyle === 'bento' ? '🍱 Bento' : '📋 Liste' }}
                       </span>
                     </div>
@@ -5964,7 +6624,7 @@ const handleChangePassword = async () => {
                         <span>Bağlantılar:</span>
                       </span>
                       <span class="font-bold font-mono px-2 py-0.5 rounded-full text-[11px]" :class="adminTheme === 'light' ? 'bg-slate-100 text-slate-800' : 'bg-black text-[#FFFF00]'">
-                        {{ u.linksCount ?? (u.links?.length || 0) }} Link
+                        {{ u.linkCount ?? (u.links?.length || 0) }} Link
                       </span>
                     </div>
 
@@ -5997,16 +6657,39 @@ const handleChangePassword = async () => {
                 </div>
 
                 <!-- Alt Aksiyon Butonları -->
-                <div class="mt-4 pt-3 border-t flex items-center justify-between gap-2" :class="themeClasses.headerBorder">
+                <div class="mt-4 pt-3 border-t flex items-center justify-between gap-1.5" :class="themeClasses.headerBorder">
                   <a 
-                    :href="'/@' + u.username" 
+                    :href="'/@' + u.username.replace(/^@/, '')" 
                     target="_blank"
-                    class="flex-1 py-1.5 px-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 text-black bg-[#FFFF00] hover:bg-[#EEFF00] shadow-sm active:scale-95 text-center"
+                    class="flex-1 py-1.5 px-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 text-black bg-[#FFFF00] hover:bg-[#EEFF00] shadow-sm active:scale-95 text-center cursor-pointer"
                   >
                     <ExternalLink class="w-3.5 h-3.5" />
                     <span>Profili Gör</span>
                   </a>
 
+                  <!-- Düzenle Butonu -->
+                  <button 
+                    type="button"
+                    @click="openEditUserModal(u)"
+                    title="Kullanıcı Bilgilerini Düzenle"
+                    class="p-2 rounded-xl border transition-colors cursor-pointer"
+                    :class="adminTheme === 'light' ? 'bg-slate-50 border-slate-200 hover:bg-slate-100 text-slate-700' : 'bg-[#141414] border-[#282828] hover:border-[#444] text-[#8E8E93] hover:text-white'"
+                  >
+                    <Pencil class="w-3.5 h-3.5" />
+                  </button>
+
+                  <!-- QR Kod Butonu -->
+                  <button 
+                    type="button"
+                    @click="openUserQrModal(u)"
+                    title="Profil QR Kodunu Aç"
+                    class="p-2 rounded-xl border transition-colors cursor-pointer"
+                    :class="adminTheme === 'light' ? 'bg-slate-50 border-slate-200 hover:bg-slate-100 text-slate-700' : 'bg-[#141414] border-[#282828] hover:border-[#444] text-cyan-400'"
+                  >
+                    <QrCode class="w-3.5 h-3.5" />
+                  </button>
+
+                  <!-- Link Kopyala Butonu -->
                   <button 
                     type="button"
                     @click="handleCopyUserUrl(u.username)"
@@ -6017,6 +6700,7 @@ const handleChangePassword = async () => {
                     <Copy class="w-3.5 h-3.5" />
                   </button>
 
+                  <!-- Sil Butonu -->
                   <button 
                     type="button"
                     @click="handleDeleteUserClick(u)"
@@ -6060,7 +6744,6 @@ const handleChangePassword = async () => {
 
           </div>
 
-          <!-- ========================================== -->
           <!-- SEKME 5: AYARLAR & HESAP (SETTINGS) -->
           <!-- ========================================== -->
           <div v-else-if="activeTab === 'settings'" class="space-y-6">

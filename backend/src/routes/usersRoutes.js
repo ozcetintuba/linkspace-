@@ -13,13 +13,15 @@ export const mockUsers = [
     name: 'Tuba Gül',
     email: 'admin@linktree.local',
     role: 'admin',
+    status: 'active',
     avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=300&auto=format&fit=crop&q=80',
     bio: 'Full-Stack Web Geliştirici & UI/UX Meraklısı 🚀\nModern web teknolojileri ve açık kaynak projeler üretiyorum.',
     isVerified: true,
     linkCount: 4,
     profileUrl: '/@tubagul',
     layoutStyle: 'bento',
-    createdAt: '2026-10-15T10:00:00.000Z'
+    createdAt: '2026-10-15T10:00:00.000Z',
+    lastSeen: '2026-11-10T11:45:00.000Z'
   },
   {
     id: 2,
@@ -27,13 +29,15 @@ export const mockUsers = [
     name: 'Mert Yılmaz',
     email: 'mert.yilmaz@devmail.io',
     role: 'user',
+    status: 'active',
     avatar: 'https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?w=300&auto=format&fit=crop&q=80',
     bio: 'Senior Backend Engineer • Node.js & Go • Açık Kaynak Geliştirici 💻',
     isVerified: true,
     linkCount: 3,
     profileUrl: '/@mert.dev',
     layoutStyle: 'list',
-    createdAt: '2026-10-22T14:20:00.000Z'
+    createdAt: '2026-10-22T14:20:00.000Z',
+    lastSeen: '2026-11-10T09:30:00.000Z'
   },
   {
     id: 3,
@@ -41,13 +45,15 @@ export const mockUsers = [
     name: 'Selin Kaya',
     email: 'selin.design@creatives.co',
     role: 'user',
+    status: 'active',
     avatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=300&auto=format&fit=crop&q=80',
     bio: 'Product & Brand Designer • Design Systems • Minimalist UI/UX 🎨',
     isVerified: true,
     linkCount: 5,
     profileUrl: '/@selin.design',
     layoutStyle: 'bento',
-    createdAt: '2026-10-28T09:15:00.000Z'
+    createdAt: '2026-10-28T09:15:00.000Z',
+    lastSeen: '2026-11-09T17:10:00.000Z'
   },
   {
     id: 4,
@@ -55,13 +61,15 @@ export const mockUsers = [
     name: 'Can Demir',
     email: 'can.demir@cloudtech.com',
     role: 'user',
+    status: 'active',
     avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=300&auto=format&fit=crop&q=80',
     bio: 'Cloud Architect & DevOps • AWS Certified • Kubernetes & CI/CD ☁️',
     isVerified: false,
     linkCount: 2,
     profileUrl: '/@can.tech',
     layoutStyle: 'list',
-    createdAt: '2026-11-04T16:45:00.000Z'
+    createdAt: '2026-11-04T16:45:00.000Z',
+    lastSeen: '2026-11-08T12:00:00.000Z'
   }
 ]
 
@@ -319,4 +327,123 @@ router.delete('/:id', requireAuth, async (req, res) => {
   }
 })
 
+// 5. PUT /api/users/:id (Kullanıcı Bilgilerini Güncelleme)
+router.put('/:id', requireAuth, async (req, res) => {
+  try {
+    const targetId = parseInt(req.params.id, 10)
+    if (isNaN(targetId)) {
+      return res.status(400).json({ error: 'Geçersiz kullanıcı ID formatı' })
+    }
+
+    const { name, username, email, role, bio, isVerified, status, layoutStyle } = req.body
+
+    const mockIdx = mockUsers.findIndex(u => u.id === targetId)
+    if (mockIdx !== -1) {
+      const current = mockUsers[mockIdx]
+      const updated = {
+        ...current,
+        name: name !== undefined ? name.trim() : current.name,
+        username: username !== undefined ? username.trim().toLowerCase().replace(/^@/, '') : current.username,
+        email: email !== undefined ? email.trim().toLowerCase() : current.email,
+        role: role !== undefined ? role : current.role,
+        bio: bio !== undefined ? bio : current.bio,
+        isVerified: isVerified !== undefined ? Boolean(isVerified) : current.isVerified,
+        status: status !== undefined ? status : (current.status || 'active'),
+        layoutStyle: layoutStyle !== undefined ? layoutStyle : (current.layoutStyle || 'bento')
+      }
+      mockUsers[mockIdx] = updated
+      return res.json({ success: true, message: 'Kullanıcı başarıyla güncellendi', data: updated })
+    }
+
+    res.status(404).json({ error: 'Kullanıcı bulunamadı' })
+  } catch (error) {
+    console.error('Kullanıcı güncelleme hatası:', error)
+    res.status(500).json({ error: 'Kullanıcı güncellenemedi' })
+  }
+})
+
+// 6. PUT /api/users/:id/toggle-verify (Doğrulama Rozeti Aç/Kapat)
+router.put('/:id/toggle-verify', requireAuth, async (req, res) => {
+  try {
+    const targetId = parseInt(req.params.id, 10)
+    const mockIdx = mockUsers.findIndex(u => u.id === targetId)
+    if (mockIdx !== -1) {
+      mockUsers[mockIdx].isVerified = !mockUsers[mockIdx].isVerified
+      return res.json({ 
+        success: true, 
+        message: mockUsers[mockIdx].isVerified ? 'Kullanıcı doğrulandı' : 'Doğrulama rozeti kaldırıldı',
+        data: mockUsers[mockIdx]
+      })
+    }
+    res.status(404).json({ error: 'Kullanıcı bulunamadı' })
+  } catch (error) {
+    res.status(500).json({ error: 'Doğrulama durumu değiştirilemedi' })
+  }
+})
+
+// 7. PUT /api/users/:id/toggle-status (Hesap Durumu Aktif/Askıda Değiştir)
+router.put('/:id/toggle-status', requireAuth, async (req, res) => {
+  try {
+    const targetId = parseInt(req.params.id, 10)
+    if (targetId === 1) {
+      return res.status(403).json({ error: 'Ana yönetici hesabı askıya alınamaz' })
+    }
+    const mockIdx = mockUsers.findIndex(u => u.id === targetId)
+    if (mockIdx !== -1) {
+      const nextStatus = mockUsers[mockIdx].status === 'suspended' ? 'active' : 'suspended'
+      mockUsers[mockIdx].status = nextStatus
+      return res.json({ 
+        success: true, 
+        message: nextStatus === 'suspended' ? 'Hesap askıya alındı' : 'Hesap yeniden aktifleştirildi',
+        data: mockUsers[mockIdx]
+      })
+    }
+    res.status(404).json({ error: 'Kullanıcı bulunamadı' })
+  } catch (error) {
+    res.status(500).json({ error: 'Hesap durumu değiştirilemedi' })
+  }
+})
+
+// 8. POST /api/users/batch (Toplu Kullanıcı İşlemleri)
+router.post('/batch', requireAuth, async (req, res) => {
+  try {
+    const { ids, action } = req.body
+    if (!Array.isArray(ids) || ids.length === 0) {
+      return res.status(400).json({ error: 'İşlem yapılacak kullanıcılar belirtilmedi' })
+    }
+
+    let affectedCount = 0
+    ids.forEach(id => {
+      const targetId = parseInt(id, 10)
+      const u = mockUsers.find(x => x.id === targetId)
+      if (!u) return
+
+      if (action === 'verify') {
+        u.isVerified = true
+        affectedCount++
+      } else if (action === 'unverify') {
+        u.isVerified = false
+        affectedCount++
+      } else if (action === 'suspend' && targetId !== 1) {
+        u.status = 'suspended'
+        affectedCount++
+      } else if (action === 'activate') {
+        u.status = 'active'
+        affectedCount++
+      } else if (action === 'delete' && targetId !== 1) {
+        const idx = mockUsers.findIndex(x => x.id === targetId)
+        if (idx !== -1) {
+          mockUsers.splice(idx, 1)
+          affectedCount++
+        }
+      }
+    })
+
+    res.json({ success: true, message: `${affectedCount} kullanıcı üzerinde işlem tamamlandı`, affectedCount })
+  } catch (error) {
+    res.status(500).json({ error: 'Toplu işlem gerçekleştirilemedi' })
+  }
+})
+
 export default router
+

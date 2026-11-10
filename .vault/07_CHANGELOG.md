@@ -4,6 +4,40 @@ Tüm önemli mimari değişiklikler, özellik eklemeleri ve düzeltmeler bu dosy
 
 ---
 
+## [v0.39.1] - 2026-11-10 (Gelişmiş Kullanıcı Ekranı Zenginleştirmesi: SaaS Tablo Görünümü, Toplu İşlemler, Kullanıcı Düzenleme Modalı, QR Kod ve CSV Dışa Aktarma)
+
+### 💎 Kullanıcı Ekranı ve Topluluk Yönetimi İleri Düzey Zenginleştirmeleri (`AdminView.vue`, `linkStore.js`, `usersRoutes.js`, `ProfileView.vue`)
+- **Çift Görünüm Modu: Bento Kart Izgarası 🍱 vs. Detaylı SaaS Veri Tablosu 📊**:
+  - `userViewMode` ('grid' | 'table') seçicisi eklendi.
+  - **SaaS Veri Tablosu (Data Table)**:
+    - Master ve satır bazlı checkbox seçimi.
+    - Sütunlar: Seçim, Kullanıcı (Avatar, Ad Soyad, `@username`), E-posta (hızlı kopyalama), Rol (Yönetici/Üye), Sayfa Düzeni (`🍱 Bento` / `📋 Liste`), Bağlantı Sayısı, Hesap Durumu (🟢 Aktif / 🔴 Askıda), Doğrulanmış Rozet (✓), Katılım Tarihi, İşlemler (Gör, Düzenle, QR, Sil).
+    - Tek tıkla hesap durumu değiştirme (`toggleUserStatus`) ve tek tıkla onay rozeti açıp kapatma (`toggleUserVerification`).
+- **Topluluk Demografisi ve Oran Göstergeleri (3 Görsel Bar Kartı)**:
+  - **Rol Dağılımı**: Yönetici (%X) vs Standart Üye (%Y) çift renkli progress bar.
+  - **Sayfa Düzeni Tercihi**: Bento Grid (%X) vs Klasik Liste (%Y) modern bar.
+  - **Doğrulanmış Rozet & Hesap Sağlığı**: Onaylı profil oranı ve askıdaki hesap sayısı göstergesi.
+- **Toplu İşlemler Çubuğu (Bulk Action Toolbar)**:
+  - Bir veya daha fazla kullanıcı seçildiğinde üstte beliren altın sarısı işlem barı:
+    - Toplu Doğrulama (`✓ Rozet Ver`), Toplu Rozet Kaldırma (`✕`), Toplu Askıya Alma (`🚫`), Toplu Aktifleştirme (`🟢`), Toplu Silme (`🗑️`).
+- **Kullanıcı Detay & Düzenleme Modalı (`showEditUserModal`)**:
+  - Kullanıcının ad, kullanıcı adı, e-posta, biyografi bilgilerini düzenleme.
+  - Rol (`user` / `admin`), hesap durumu (`active` / `suspended`), sayfa düzeni (`bento` / `list`) ve doğrulanmış rozet anahtarı.
+  - Canlı profil QR kodu önizlemesi ve doğrudan vCard (.vcf) dijital kartvizit indirme butonu.
+- **Özel Kullanıcı QR Kod Modalı (`showUserQrModal`)**:
+  - Tıklanan kullanıcının profiline ait dinamik QR kodu dev boyutta görüntüleme ve tek tıkla PNG formatında indirme.
+- **CSV / Excel Dışa Aktarma (`exportUsersAsCsv`)**:
+  - Başlık çubuğuna ve toplu işlem sistemine entegre; UTF-8 BOM ile Excel uyumlu `.csv` dosyasını anında indirme.
+- **Ziyaretçi Profil Ekranı Zenginleştirmesi (`ProfileView.vue`)**:
+  - Kullanıcı profil sayfasında kullanıcı adı altında şık `👑 Platform Yöneticisi`, `✨ Topluluk Üyesi` ve `🍱 Bento Vitrin` prestij çipleri gösterimi.
+- **Backend Rotaları (`backend/src/routes/usersRoutes.js`)**:
+  - `PUT /api/users/:id`: Kullanıcı bilgilerini güncelleme.
+  - `PUT /api/users/:id/toggle-verify`: Hızlı rozet toggle.
+  - `PUT /api/users/:id/toggle-status`: Hesap durumu toggle.
+  - `POST /api/users/batch`: Toplu işlemler REST API uç noktası.
+
+---
+
 ## [v0.39.0] - 2026-11-10 (Faz 26: Çoklu Kullanıcı & Topluluk Yönetim Paneli, Üye İstatistikleri ve Dizin)
 
 ### 👥 Kullanıcı ve Topluluk Yönetim Paneli (`AdminView.vue`, `linkStore.js`, `usersRoutes.js`, `server.js`, `authRoutes.js`, `profileRoutes.js`)

@@ -1196,9 +1196,32 @@ const handleDownloadVCard = async () => {
         <span>{{ profile.name }}</span>
         <CheckCircle2 v-if="profile.isVerified !== false" class="w-5 h-5 text-[#FFFF00]" />
       </h1>
-      <p :class="['text-xs sm:text-sm font-semibold mb-3 tracking-wider font-mono', activeTheme.accentText]">
+      <p :class="['text-xs sm:text-sm font-semibold mb-2 tracking-wider font-mono', activeTheme.accentText]">
         {{ profile.username }}
       </p>
+
+      <!-- Topluluk & Rol Prestij Rozeti -->
+      <div class="flex items-center justify-center gap-2 mb-3.5 flex-wrap">
+        <span 
+          v-if="profile.role === 'admin' || profile.username === '@tubagul' || profile.username === 'tubagul'"
+          class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-black uppercase tracking-wider bg-[#FFFF00]/15 text-[#FFFF00] border border-[#FFFF00]/40 shadow-sm"
+        >
+          <Award class="w-3.5 h-3.5 text-[#FFFF00]" />
+          <span>Platform Yöneticisi</span>
+        </span>
+        <span 
+          v-else
+          class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-white/10 text-white/90 border border-white/20 shadow-xs backdrop-blur-sm"
+        >
+          <span>✨ Topluluk Üyesi</span>
+        </span>
+        <span 
+          v-if="profile.layoutStyle === 'bento'"
+          class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-mono font-bold bg-cyan-500/15 text-cyan-400 border border-cyan-500/30"
+        >
+          🍱 Bento Vitrin
+        </span>
+      </div>
       
       <!-- Biyografi -->
       <p :class="['text-sm sm:text-base text-center max-w-lg mb-4 leading-relaxed font-light opacity-90', activeTheme.id === 'pure-light' ? 'text-slate-600' : 'text-slate-300']">

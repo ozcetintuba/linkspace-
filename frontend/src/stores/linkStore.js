@@ -30,13 +30,15 @@ export const DEFAULT_USERS = [
     name: 'Tuba Gül',
     email: 'admin@linktree.local',
     role: 'admin',
+    status: 'active',
     avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=300&auto=format&fit=crop&q=80',
     bio: 'Full-Stack Web Geliştirici & UI/UX Meraklısı 🚀\nModern web teknolojileri ve açık kaynak projeler üretiyorum.',
     isVerified: true,
     linkCount: 4,
     profileUrl: '/@tubagul',
     layoutStyle: 'bento',
-    createdAt: '2026-10-15T10:00:00.000Z'
+    createdAt: '2026-10-15T10:00:00.000Z',
+    lastSeen: '2026-11-10T11:45:00.000Z'
   },
   {
     id: 2,
@@ -44,13 +46,15 @@ export const DEFAULT_USERS = [
     name: 'Mert Yılmaz',
     email: 'mert.yilmaz@devmail.io',
     role: 'user',
+    status: 'active',
     avatar: 'https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?w=300&auto=format&fit=crop&q=80',
     bio: 'Senior Backend Engineer • Node.js & Go • Açık Kaynak Geliştirici 💻',
     isVerified: true,
     linkCount: 3,
     profileUrl: '/@mert.dev',
     layoutStyle: 'list',
-    createdAt: '2026-10-22T14:20:00.000Z'
+    createdAt: '2026-10-22T14:20:00.000Z',
+    lastSeen: '2026-11-10T09:30:00.000Z'
   },
   {
     id: 3,
@@ -58,13 +62,15 @@ export const DEFAULT_USERS = [
     name: 'Selin Kaya',
     email: 'selin.design@creatives.co',
     role: 'user',
+    status: 'active',
     avatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=300&auto=format&fit=crop&q=80',
     bio: 'Product & Brand Designer • Design Systems • Minimalist UI/UX 🎨',
     isVerified: true,
     linkCount: 5,
     profileUrl: '/@selin.design',
     layoutStyle: 'bento',
-    createdAt: '2026-10-28T09:15:00.000Z'
+    createdAt: '2026-10-28T09:15:00.000Z',
+    lastSeen: '2026-11-09T17:10:00.000Z'
   },
   {
     id: 4,
@@ -72,13 +78,15 @@ export const DEFAULT_USERS = [
     name: 'Can Demir',
     email: 'can.demir@cloudtech.com',
     role: 'user',
+    status: 'active',
     avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=300&auto=format&fit=crop&q=80',
     bio: 'Cloud Architect & DevOps • AWS Certified • Kubernetes & CI/CD ☁️',
     isVerified: false,
     linkCount: 2,
     profileUrl: '/@can.tech',
     layoutStyle: 'list',
-    createdAt: '2026-11-04T16:45:00.000Z'
+    createdAt: '2026-11-04T16:45:00.000Z',
+    lastSeen: '2026-11-08T12:00:00.000Z'
   }
 ]
 
@@ -2574,6 +2582,140 @@ export const useLinkStore = defineStore('links', () => {
     return { success: true, message: 'Kullanıcı hesabı silindi.' }
   }
 
+  const updateUser = async (userId, updatedData) => {
+    const idx = users.value.findIndex(u => u.id === userId)
+    if (idx === -1) return { success: false, error: 'Kullanıcı bulunamadı.' }
+
+    const cleanUsername = updatedData.username ? updatedData.username.trim().toLowerCase().replace(/^@/, '') : users.value[idx].username
+    const merged = {
+      ...users.value[idx],
+      ...updatedData,
+      username: cleanUsername,
+      profileUrl: `/@${cleanUsername}`
+    }
+    users.value[idx] = merged
+    try {
+      localStorage.setItem(STORAGE_KEYS.USERS, JSON.stringify(users.value))
+    } catch (e) {}
+
+    if (isBackendConnected.value) {
+      try {
+        const res = await fetch(`${API_BASE}/users/${userId}`, {
+          method: 'PUT',
+          headers: getAuthHeaders(),
+          body: JSON.stringify(updatedData)
+        })
+        const data = await res.json()
+        if (res.ok && data.success) {
+          return { success: true, message: data.message, data: merged }
+        }
+      } catch (e) {
+        console.warn('Sunucuda kullanıcı güncellenemedi:', e)
+      }
+    }
+    return { success: true, message: 'Kullanıcı başarıyla güncellendi.', data: merged }
+  }
+
+  const toggleUserVerification = async (userId) => {
+    const user = users.value.find(u => u.id === userId)
+    if (!user) return { success: false }
+    user.isVerified = !user.isVerified
+    try {
+      localStorage.setItem(STORAGE_KEYS.USERS, JSON.stringify(users.value))
+    } catch (e) {}
+
+    if (isBackendConnected.value) {
+      try {
+        await fetch(`${API_BASE}/users/${userId}/toggle-verify`, {
+          method: 'PUT',
+          headers: getAuthHeaders()
+        })
+      } catch (e) {}
+    }
+    return { success: true, isVerified: user.isVerified }
+  }
+
+  const toggleUserStatus = async (userId) => {
+    if (userId === 1) return { success: false, error: 'Ana yönetici hesabı askıya alınamaz.' }
+    const user = users.value.find(u => u.id === userId)
+    if (!user) return { success: false }
+    const nextStatus = user.status === 'suspended' ? 'active' : 'suspended'
+    user.status = nextStatus
+    try {
+      localStorage.setItem(STORAGE_KEYS.USERS, JSON.stringify(users.value))
+    } catch (e) {}
+
+    if (isBackendConnected.value) {
+      try {
+        await fetch(`${API_BASE}/users/${userId}/toggle-status`, {
+          method: 'PUT',
+          headers: getAuthHeaders()
+        })
+      } catch (e) {}
+    }
+    return { success: true, status: nextStatus }
+  }
+
+  const batchUpdateUsers = async (userIds, action) => {
+    if (!Array.isArray(userIds) || userIds.length === 0) return { success: false }
+
+    if (action === 'delete') {
+      users.value = users.value.filter(u => !userIds.includes(u.id) || u.id === 1)
+    } else {
+      userIds.forEach(id => {
+        const u = users.value.find(x => x.id === id)
+        if (!u) return
+        if (action === 'verify') u.isVerified = true
+        if (action === 'unverify') u.isVerified = false
+        if (action === 'suspend' && id !== 1) u.status = 'suspended'
+        if (action === 'activate') u.status = 'active'
+      })
+    }
+
+    try {
+      localStorage.setItem(STORAGE_KEYS.USERS, JSON.stringify(users.value))
+    } catch (e) {}
+
+    if (isBackendConnected.value) {
+      try {
+        await fetch(`${API_BASE}/users/batch`, {
+          method: 'POST',
+          headers: getAuthHeaders(),
+          body: JSON.stringify({ ids: userIds, action })
+        })
+      } catch (e) {}
+    }
+    return { success: true }
+  }
+
+  const exportUsersAsCsv = () => {
+    const list = users.value || []
+    const headers = ['ID', 'İsim', 'Kullanıcı Adı', 'E-Posta', 'Rol', 'Bağlantı Sayısı', 'Doğrulanmış', 'Durum', 'Sayfa Düzeni', 'Kayıt Tarihi']
+    const rows = list.map(u => [
+      u.id,
+      `"${(u.name || '').replace(/"/g, '""')}"`,
+      `"@${(u.username || '').replace(/^@/, '')}"`,
+      `"${(u.email || '').replace(/"/g, '""')}"`,
+      u.role === 'admin' ? 'Yönetici' : 'Standart Üye',
+      u.linkCount ?? (u.links?.length || 0),
+      u.isVerified ? 'Evet' : 'Hayır',
+      u.status === 'suspended' ? 'Askıda' : 'Aktif',
+      u.layoutStyle === 'bento' ? 'Bento Grid' : 'Klasik Liste',
+      u.createdAt || ''
+    ])
+
+    const csvContent = '\uFEFF' + [headers.join(','), ...rows.map(e => e.join(','))].join('\n')
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.setAttribute('href', url)
+    link.setAttribute('download', `linkspace_kullanicilar_${new Date().toISOString().slice(0, 10)}.csv`)
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+    URL.revokeObjectURL(url)
+  }
+
   // SEO & OpenGraph Ayarlarını Güncelleme
   const updateSeoSettings = async (newSettings) => {
     seoSettings.value = {
@@ -3245,6 +3387,11 @@ export const useLinkStore = defineStore('links', () => {
     fetchUserStats,
     createUser,
     deleteUser,
+    updateUser,
+    toggleUserVerification,
+    toggleUserStatus,
+    batchUpdateUsers,
+    exportUsersAsCsv,
     DEFAULT_USERS,
     sendMessage,
     markMessageAsRead,
