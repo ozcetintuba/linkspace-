@@ -4,6 +4,7 @@ import jwt from 'jsonwebtoken'
 import { query } from '../db.js'
 import { requireAuth } from '../middleware/authMiddleware.js'
 import { authLimiter } from '../middleware/rateLimiter.js'
+import { mockUsers } from './usersRoutes.js'
 
 const router = Router()
 const JWT_SECRET = process.env.JWT_SECRET || 'super_secret_linktree_jwt_key_2026_x99!'
@@ -96,6 +97,22 @@ router.post('/register', authLimiter, async (req, res) => {
       name: newUser.name
     }
     const token = jwt.sign(payload, JWT_SECRET, { expiresIn: JWT_EXPIRES_IN })
+
+    // Bellek listesini güncelle
+    mockUsers.unshift({
+      id: newUser.id,
+      username: newUser.username,
+      name: newUser.name,
+      email: newUser.email,
+      role: 'user',
+      avatar: `https://api.dicebear.com/7.x/notionists/svg?seed=${newUser.username}`,
+      bio: 'Linktree profilime hoş geldiniz! ✨',
+      isVerified: false,
+      linkCount: 0,
+      profileUrl: `/@${newUser.username}`,
+      layoutStyle: 'list',
+      createdAt: newUser.createdAt || new Date().toISOString()
+    })
 
     res.status(201).json({
       message: 'Kayıt başarıyla tamamlandı',

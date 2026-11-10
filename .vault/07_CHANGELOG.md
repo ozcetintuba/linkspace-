@@ -4,6 +4,42 @@ Tüm önemli mimari değişiklikler, özellik eklemeleri ve düzeltmeler bu dosy
 
 ---
 
+## [v0.39.0] - 2026-11-10 (Faz 26: Çoklu Kullanıcı & Topluluk Yönetim Paneli, Üye İstatistikleri ve Dizin)
+
+### 👥 Kullanıcı ve Topluluk Yönetim Paneli (`AdminView.vue`, `linkStore.js`, `usersRoutes.js`, `server.js`, `authRoutes.js`, `profileRoutes.js`)
+- **Yönetim Panelinde 6. Sekme: "Kullanıcılar"**:
+  - `AdminView.vue` masaüstü üst navigasyon barına ve mobil menü çekmecesine anlık üye sayısını gösteren canlı sayaçlı (`usersCount`) **"Kullanıcılar"** sekmesi eklendi.
+  - Linktree mantığında `links | appearance | analytics | messages | users | settings` tam entegrasyonu sağlandı.
+- **Topluluk KPI Kartları (4 Temel Metrik)**:
+  1. **Toplam Üye**: Sistemde kayıtlı tüm hesapların sayısı.
+  2. **Aktif Sayfalar**: En az 1 yayınlanmış bağlantısı olan canlı profiller.
+  3. **Toplam Bağlantı**: Tüm üyelerin oluşturduğu ortak link havuzu.
+  4. **Doğrulanmış Rozetliler**: Doğrulanmış mavi/sarı tikli ve yönetici hesap sayısı.
+- **Arama, Filtreleme ve Sıralama Çözümleri**:
+  - Canlı arama kutusu: İsim, `@kullanıcıadı`, e-posta veya biyografi anahtar kelimeleriyle anında filtreleme.
+  - Filtre çipleri: `Tümü`, `Doğrulanmış Rozetliler`, `Yöneticiler`, `Aktif Linki Olanlar`.
+  - Sıralama seçenekleri: `En Yeni Katılanlar`, `En Eski Katılanlar`, `En Çok Linki Olanlar`, `İsme Göre (A-Z)`.
+- **Zengin Kullanıcı Kartları (Community Directory)**:
+  - Responsive 3 sütunlu ızgara (`grid-cols-1 md:grid-cols-2 xl:grid-cols-3`).
+  - Her kartta avatar (hata durumunda renkli baş harf monogram fallback'i), isim, `@username` bağlantısı, yönetici/üye rol çipi, Bento/Klasik düzen rozeti ve biyografi özeti.
+  - Bağlantı sayısı, katılım tarihi (`formatRelativeTime` ile "2 saat önce" vb.), tek tıkla e-posta/profil linki kopyalama.
+  - Aksiyon butonları:
+    - 🚀 **Profili Gör**: Yeni sekmede doğrudan kullanıcının canlı profil sayfasını (`/@username`) açar.
+    - 📋 **Link Kopyala**: Panoya profil linkini kopyalar ve toast geri bildirimi verir.
+    - 🗑️ **Kullanıcıyı Sil**: Onay modalı ile silme işlemi (Ana yönetici ID 1 hesabı korunmuştur).
+- **Yeni Üye / Profil Tanımlama Modalı (`Teleport to="body"`)**:
+  - Yönetici panelinden doğrudan yeni kullanıcı oluşturabilme: Ad-Soyad, kullanıcı adı, e-posta, biyografi, rol (`user` / `admin`), sayfa düzeni (`bento` / `classic`) ve doğrulanmış rozet anahtarı.
+- **Backend & REST API Katmanı (`backend/src/routes/usersRoutes.js`)**:
+  - `GET /api/users`: Kayıtlı tüm kullanıcıları, profil ve link özetlerini listeler.
+  - `GET /api/users/stats`: Toplam kullanıcı, aktif profil ve toplam link istatistiklerini hesaplar.
+  - `POST /api/users`: Yeni kullanıcı hesabı kaydeder.
+  - `DELETE /api/users/:id`: Kullanıcıyı ve ilişkili verileri siler.
+  - PostgreSQL bağlıyken doğrudan veritabanından, çevrimdışı modda ise hazır tohumlanmış `mockUsers` listesinden (Tuba Gül, Mert Yılmaz, Selin Kaya, Can Demir) sıfır hatayla hizmet verir.
+  - `authRoutes.js` (`POST /register`) ile kayıt olan yeni kullanıcılar otomatik olarak kullanıcı listesine eklenir.
+  - `profileRoutes.js` (`GET /:username`) fallback mekanizması sayesinde kullanıcı dizinindeki profiller (`/@tubagul`, `/@mert.dev`, `/@selin.design`, `/@can.tech`) anında ziyaret edilebilir.
+
+---
+
 ## [v0.38.1] - 2026-11-05 (Arayüz Temizliği: Yönetim Panelinden 'Yüz İfadesi & Mimik (Mood)' Seçicisinin Kaldırılması)
 
 ### 🧹 Maskot Özelleştirme Sadeleştirmesi (`AdminView.vue`)

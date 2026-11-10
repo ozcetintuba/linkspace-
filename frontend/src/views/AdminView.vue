@@ -124,7 +124,11 @@ import {
   Compass,
   LayoutGrid,
   Columns,
-  Square
+  Square,
+  Search,
+  UserPlus,
+  UserCheck,
+  Shield
 } from 'lucide-vue-next'
 
 
@@ -208,7 +212,10 @@ const {
   seoSettings,
   allCategories,
   usedCategories,
-  cacheStats
+  cacheStats,
+  users,
+  usersCount,
+  userStats
 } = storeToRefs(linkStore)
 
 // ---------------------------------------------------------
@@ -368,6 +375,12 @@ onMounted(async () => {
   // İlk veri yüklemeleri
   loadSmartInsights()
   linkStore.fetchPasskeys()
+  linkStore.fetchUsers()
+  linkStore.fetchUserStats()
+
+  if (route.query.tab === 'users') {
+    activeTab.value = 'users'
+  }
 })
 
 // Aktif Sekme Kontrolü: Linktree Mantığı ('links' | 'appearance' | 'analytics' | 'messages' | 'settings')
@@ -407,6 +420,9 @@ const handleClearCache = async () => {
 watch(activeTab, (newTab) => {
   if (newTab === 'settings') {
     linkStore.fetchCacheStats()
+  } else if (newTab === 'users') {
+    linkStore.fetchUsers()
+    linkStore.fetchUserStats()
   }
 })
 
@@ -465,6 +481,208 @@ const getInitials = (name) => {
     return (parts[0][0] + parts[1][0]).toUpperCase()
   }
   return name.slice(0, 2).toUpperCase()
+}
+
+
+// ========================================================
+// KULLANICI & TOPLULUK YÖNETİMİ (Faz 26 - User Management)
+// ========================================================
+const searchUserQuery = ref('')
+const selectedUserFilter = ref('all') // 'all' | 'verified' | 'admin' | 'has_links'
+const selectedUserSort = ref('newest') // 'newest' | 'oldest' | 'links_desc' | 'name_asc'
+const userFeedback = ref('')
+const isUserActionLoading = ref(false)
+
+const showCreateUserModal = ref(false)
+const createUserError = ref('')
+const newUserForm = ref({
+  name: '',
+  username: '',
+  email: '',
+  role: 'user',
+  isVerified: false,
+  bio: '',
+  layoutStyle: 'bento'
+})
+
+const showDeleteUserModal = ref(false)
+const userToDelete = ref(null)
+
+const filteredUsers = computed(() => {
+  let list = [...(users.value || [])]
+
+  // Arama filtresi
+  const q = (searchUserQuery.value || '').trim().toLowerCase()
+  if (q) {
+    list = list.filter(u => 
+      (u.name && u.name.toLowerCase().includes(q)) ||
+      (u.username && u.username.toLowerCase().includes(q)) ||
+      (u.email && u.email.toLowerCase().includes(q)) ||
+      (u.bio && u.bio.toLowerCase().includes(q))
+    )
+  }
+
+  // Segment filtreleri
+  if (selectedUserFilter.value === 'verified') {
+    list = list.filter(u => u.isVerified)
+  } else if (selectedUserFilter.value === 'admin') {
+    list = list.filter(u => u.role === 'admin')
+  } else if (selectedUserFilter.value === 'has_links') {
+    list = list.filter(u => (u.linksCount ?? (u.links?.length || 0)) > 0)
+  }
+
+  // Sıralama
+  if (selectedUserSort.value === 'newest') {
+    list.sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0))
+  } else if (selectedUserSort.value === 'oldest') {
+    list.sort((a, b) => new Date(a.createdAt || 0) - new Date(b.createdAt || 0))
+  } else if (selectedUserSort.value === 'links_desc') {
+    list.sort((a, b) => ((b.linksCount ?? (b.links?.length || 0)) - (a.linksCount ?? (a.links?.length || 0))))
+  } else if (selectedUserSort.value === 'name_asc') {
+    list.sort((a, b) => (a.name || '').localeCompare(b.name || '', 'tr'))
+  }
+
+  return list
+})
+
+const activeProfilesCount = computed(() => {
+  return (users.value || []).filter(u => (u.linksCount ?? (u.links?.length || 0)) > 0).length
+})
+
+const totalCommunityLinks = computed(() => {
+  return (users.value || []).reduce((acc, u) => acc + (u.linksCount ?? (u.links?.length || 0)), 0)
+})
+
+const verifiedMembersCount = computed(() => {
+  return (users.value || []).filter(u => u.isVerified).length
+})
+
+const adminMembersCount = computed(() => {
+  return (users.value || []).filter(u => u.role === 'admin').length
+})
+
+const handleRefreshUsers = async () => {
+  isUserActionLoading.value = true
+  await Promise.all([linkStore.fetchUsers(), linkStore.fetchUserStats()])
+  setTimeout(() => {
+    isUserActionLoading.value = false
+    userFeedback.value = 'Kullanıcı listesi ve istatistikleri başarıyla güncellendi.'
+    setTimeout(() => { userFeedback.value = '' }, 3000)
+  }, 350)
+}
+
+const handleCopyUserUrl = async (username) => {
+  try {
+    const url = `${window.location.origin}/@${username}`
+    await navigator.clipboard.writeText(url)
+    userFeedback.value = `@${username} profil bağlantısı panoya kopyalandı!`
+    setTimeout(() => { userFeedback.value = '' }, 3000)
+  } catch (e) {
+    userFeedback.value = 'URL kopyalanamadı.'
+  }
+}
+
+const openCreateUserModal = () => {
+  newUserForm.value = {
+    name: '',
+    username: '',
+    email: '',
+    role: 'user',
+    isVerified: false,
+    bio: '',
+    layoutStyle: 'bento'
+  }
+  createUserError.value = ''
+  showCreateUserModal.value = true
+}
+
+const handleCreateUserSubmit = async () => {
+  createUserError.value = ''
+  if (!newUserForm.value.name.trim()) {
+    createUserError.value = 'Lütfen ad ve soyad giriniz.'
+    return
+  }
+  if (!newUserForm.value.username.trim()) {
+    createUserError.value = 'Lütfen kullanıcı adı giriniz.'
+    return
+  }
+  const cleanUsername = newUserForm.value.username.trim().replace(/^@/, '').toLowerCase()
+  if (!/^[a-zA-Z0-9._-]+$/.test(cleanUsername)) {
+    createUserError.value = 'Kullanıcı adı sadece harf, rakam, nokta, tire ve alt çizgi içerebilir.'
+    return
+  }
+
+  isUserActionLoading.value = true
+  const res = await linkStore.createUser({
+    ...newUserForm.value,
+    username: cleanUsername
+  })
+  isUserActionLoading.value = false
+
+  if (res.success) {
+    showCreateUserModal.value = false
+    userFeedback.value = `"${res.data.name}" kullanıcısı başarıyla oluşturuldu!`
+    setTimeout(() => { userFeedback.value = '' }, 3500)
+  } else {
+    createUserError.value = res.error || 'Kullanıcı oluşturulurken bir hata oluştu.'
+  }
+}
+
+const handleDeleteUserClick = (u) => {
+  if (u.id === 1 || u.username === 'tubagul') {
+    alert('Ana yönetici hesabı sistem güvenliği nedeniyle silinemez.')
+    return
+  }
+  userToDelete.value = u
+  showDeleteUserModal.value = true
+}
+
+const confirmDeleteUser = async () => {
+  if (!userToDelete.value) return
+  isUserActionLoading.value = true
+  const res = await linkStore.deleteUser(userToDelete.value.id)
+  isUserActionLoading.value = false
+  showDeleteUserModal.value = false
+  if (res.success) {
+    userFeedback.value = `@${userToDelete.value.username} hesabı başarıyla silindi.`
+    setTimeout(() => { userFeedback.value = '' }, 3000)
+  }
+  userToDelete.value = null
+}
+
+const formatUserDate = (dateStr) => {
+  if (!dateStr) return '-'
+  try {
+    return new Date(dateStr).toLocaleDateString('tr-TR', {
+      day: 'numeric',
+      month: 'short',
+      year: 'numeric'
+    })
+  } catch {
+    return dateStr
+  }
+}
+
+const formatRelativeTime = (dateStr) => {
+  if (!dateStr) return ''
+  try {
+    const now = new Date()
+    const d = new Date(dateStr)
+    const diffMs = now - d
+    const diffSec = Math.floor(diffMs / 1000)
+    if (diffSec < 60) return 'Az önce'
+    const diffMin = Math.floor(diffSec / 60)
+    if (diffMin < 60) return `${diffMin} dk önce`
+    const diffHour = Math.floor(diffMin / 60)
+    if (diffHour < 24) return `${diffHour} saat önce`
+    const diffDay = Math.floor(diffHour / 24)
+    if (diffDay < 30) return `${diffDay} gün önce`
+    const diffMonth = Math.floor(diffDay / 30)
+    if (diffMonth < 12) return `${diffMonth} ay önce`
+    return `${Math.floor(diffMonth / 12)} yıl önce`
+  } catch {
+    return ''
+  }
 }
 
 // ========================================================
@@ -1763,6 +1981,20 @@ const handleChangePassword = async () => {
 
           <button 
             type="button"
+            @click="activeTab = 'users'"
+            class="px-4 py-1.5 rounded-full text-xs lg:text-sm transition-all flex items-center gap-1.5"
+            :class="activeTab === 'users' 
+              ? (adminTheme === 'dark' ? 'bg-white text-black font-bold shadow-md ring-1 ring-black/10' : 'bg-[#FFFF00] text-black font-bold shadow-md shadow-yellow-500/20') 
+              : (adminTheme === 'dark' ? 'text-[#8E8E93] hover:text-white font-semibold' : 'text-slate-600 hover:text-black font-semibold')"
+          >
+            <span>Kullanıcılar</span>
+            <span class="text-[10px] px-1.5 py-0.2 rounded-full font-bold" :class="activeTab === 'users' ? 'bg-black text-[#FFFF00]' : (adminTheme === 'light' ? 'bg-black/10 text-slate-800' : 'bg-[#FFFF00]/15 text-[#FFFF00]')">
+              {{ usersCount }}
+            </span>
+          </button>
+
+          <button 
+            type="button"
             @click="activeTab = 'settings'"
             class="px-4 py-1.5 rounded-full text-xs lg:text-sm transition-all flex items-center gap-1.5"
             :class="activeTab === 'settings' 
@@ -1877,6 +2109,21 @@ const handleChangePassword = async () => {
                 :class="activeTab === 'messages' ? 'bg-black text-[#FFFF00]' : (adminTheme === 'light' ? 'bg-black/10 text-slate-800' : 'bg-[#FFFF00]/15 text-[#FFFF00]')"
               >
                 {{ messages.length }}
+              </span>
+            </button>
+
+            <button 
+              @click="activeTab = 'users'"
+              class="px-4 py-2.5 rounded-xl text-xs font-semibold transition-all flex items-center gap-2 whitespace-nowrap"
+              :class="activeTab === 'users' ? 'bg-[#FFFF00] text-black font-bold shadow-md shadow-yellow-500/20' : themeClasses.navInactive"
+            >
+              <Users class="w-3.5 h-3.5" />
+              <span>Kullanıcılar</span>
+              <span 
+                class="px-1.5 py-0.2 rounded-full text-[10px] font-bold"
+                :class="activeTab === 'users' ? 'bg-black text-[#FFFF00]' : (adminTheme === 'light' ? 'bg-black/10 text-slate-800' : 'bg-[#FFFF00]/15 text-[#FFFF00]')"
+              >
+                {{ usersCount }}
               </span>
             </button>
 
@@ -5413,6 +5660,407 @@ const handleChangePassword = async () => {
           </div>
 
           <!-- ========================================== -->
+          <!-- SEKME 6: KULLANICILAR & TOPLULUK (USERS) -->
+          <!-- ========================================== -->
+          <div v-else-if="activeTab === 'users'" class="space-y-6">
+
+            <!-- ÜST BİLGİ & AKSİYON BARI -->
+            <div :class="['border rounded-3xl p-6 transition-colors', themeClasses.cardBg]">
+              <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                <div>
+                  <div class="flex items-center gap-2.5">
+                    <div class="w-10 h-10 rounded-2xl bg-[#FFFF00]/10 border border-[#FFFF00]/30 flex items-center justify-center text-[#FFFF00]">
+                      <Users class="w-5 h-5" />
+                    </div>
+                    <div>
+                      <h2 :class="['text-lg font-bold flex items-center gap-2', themeClasses.titleText]">
+                        <span>Kullanıcı & Topluluk Yönetimi</span>
+                        <span class="px-2 py-0.5 text-[10px] font-black uppercase tracking-wider rounded-full bg-[#FFFF00] text-black">
+                          {{ usersCount }} Üye
+                        </span>
+                      </h2>
+                      <p :class="['text-xs mt-0.5', themeClasses.subText]">
+                        Sisteme kayıtlı üyeleri görüntüleyin, profillerini ziyaret edin ve yeni kullanıcı hesapları yönetin.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="flex items-center gap-2 self-start sm:self-auto">
+                  <button 
+                    type="button"
+                    @click="handleRefreshUsers"
+                    :disabled="isUserActionLoading"
+                    title="Listeyi ve İstatistikleri Yenile"
+                    class="p-2.5 rounded-xl border transition-all cursor-pointer flex items-center gap-1.5 text-xs font-semibold"
+                    :class="adminTheme === 'light' ? 'bg-white border-slate-200 hover:bg-slate-50 text-slate-700' : 'bg-[#121212] border-[#282828] hover:border-[#444] text-zinc-300'"
+                  >
+                    <RefreshCw class="w-3.5 h-3.5" :class="{ 'animate-spin': isUserActionLoading }" />
+                    <span class="hidden sm:inline">Yenile</span>
+                  </button>
+
+                  <button 
+                    type="button"
+                    @click="openCreateUserModal"
+                    class="px-4 py-2.5 rounded-xl bg-[#FFFF00] hover:bg-[#EEFF00] text-black font-bold text-xs flex items-center gap-2 transition-transform active:scale-95 shadow-lg shadow-yellow-500/10 cursor-pointer"
+                  >
+                    <UserPlus class="w-4 h-4 stroke-[2.5]" />
+                    <span>+ Yeni Üye Tanımla</span>
+                  </button>
+                </div>
+              </div>
+
+              <!-- Geri Bildirim Bildirimi -->
+              <div 
+                v-if="userFeedback"
+                class="mt-4 p-3 rounded-xl bg-[#FFFF00]/10 border border-[#FFFF00]/30 text-[#FFFF00] text-xs font-semibold flex items-center gap-2 animate-in fade-in"
+              >
+                <CheckCircle2 class="w-4 h-4 shrink-0" />
+                <span>{{ userFeedback }}</span>
+              </div>
+            </div>
+
+            <!-- KPI İSTATİSTİK KARTLARI (4 KART) -->
+            <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+              <!-- Kart 1: Toplam Kullanıcı -->
+              <div :class="['border rounded-2xl p-4 transition-all', themeClasses.cardBg]">
+                <div class="flex items-center justify-between text-[#8E8E93] text-xs font-medium mb-2">
+                  <span>Toplam Üye</span>
+                  <div class="w-7 h-7 rounded-lg bg-blue-500/10 text-blue-400 flex items-center justify-center">
+                    <Users class="w-3.5 h-3.5" />
+                  </div>
+                </div>
+                <div class="text-2xl font-black" :class="themeClasses.titleText">
+                  {{ usersCount }}
+                </div>
+                <p class="text-[11px] text-[#8E8E93] mt-1 flex items-center gap-1">
+                  <span>Kayıtlı tüm profiller</span>
+                </p>
+              </div>
+
+              <!-- Kart 2: Yayında Sayfalar (Aktif Linki Olanlar) -->
+              <div :class="['border rounded-2xl p-4 transition-all', themeClasses.cardBg]">
+                <div class="flex items-center justify-between text-[#8E8E93] text-xs font-medium mb-2">
+                  <span>Aktif Sayfalar</span>
+                  <div class="w-7 h-7 rounded-lg bg-emerald-500/10 text-emerald-400 flex items-center justify-center">
+                    <Globe class="w-3.5 h-3.5" />
+                  </div>
+                </div>
+                <div class="text-2xl font-black text-emerald-400">
+                  {{ activeProfilesCount }}
+                </div>
+                <p class="text-[11px] text-[#8E8E93] mt-1 flex items-center gap-1">
+                  <span>Bağlantı yayınlayanlar</span>
+                </p>
+              </div>
+
+              <!-- Kart 3: Toplam Link Havuzu -->
+              <div :class="['border rounded-2xl p-4 transition-all', themeClasses.cardBg]">
+                <div class="flex items-center justify-between text-[#8E8E93] text-xs font-medium mb-2">
+                  <span>Toplam Bağlantı</span>
+                  <div class="w-7 h-7 rounded-lg bg-[#FFFF00]/10 text-[#FFFF00] flex items-center justify-center">
+                    <MousePointerClick class="w-3.5 h-3.5" />
+                  </div>
+                </div>
+                <div class="text-2xl font-black text-[#FFFF00]">
+                  {{ totalCommunityLinks }}
+                </div>
+                <p class="text-[11px] text-[#8E8E93] mt-1 flex items-center gap-1">
+                  <span>Topluluk link havuzu</span>
+                </p>
+              </div>
+
+              <!-- Kart 4: Doğrulanmış Rozetliler -->
+              <div :class="['border rounded-2xl p-4 transition-all', themeClasses.cardBg]">
+                <div class="flex items-center justify-between text-[#8E8E93] text-xs font-medium mb-2">
+                  <span>Doğrulanmış Rozet</span>
+                  <div class="w-7 h-7 rounded-lg bg-amber-500/10 text-amber-400 flex items-center justify-center">
+                    <Award class="w-3.5 h-3.5" />
+                  </div>
+                </div>
+                <div class="text-2xl font-black text-amber-400">
+                  {{ verifiedMembersCount }}
+                </div>
+                <p class="text-[11px] text-[#8E8E93] mt-1 flex items-center gap-1">
+                  <span>{{ adminMembersCount }} yönetici hesap</span>
+                </p>
+              </div>
+            </div>
+
+            <!-- ARAMA, FİLTRE & SIRALAMA BARI -->
+            <div :class="['border rounded-2xl p-4 transition-colors space-y-3', themeClasses.cardBg]">
+              <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+                <!-- Arama Kutusu -->
+                <div class="relative flex-1">
+                  <Search class="w-4 h-4 text-[#8E8E93] absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                  <input 
+                    v-model="searchUserQuery"
+                    type="text"
+                    placeholder="İsim, @kullanıcıadı, e-posta veya biyografi ile ara..."
+                    class="w-full pl-10 pr-9 py-2.5 rounded-xl text-xs transition-colors"
+                    :class="themeClasses.inputBg"
+                  />
+                  <button 
+                    v-if="searchUserQuery"
+                    type="button"
+                    @click="searchUserQuery = ''"
+                    class="absolute right-3 top-1/2 -translate-y-1/2 text-[#8E8E93] hover:text-white"
+                  >
+                    <X class="w-3.5 h-3.5" />
+                  </button>
+                </div>
+
+                <!-- Sıralama Seçimi -->
+                <div class="flex items-center gap-2 shrink-0">
+                  <span class="text-xs text-[#8E8E93] hidden sm:inline">Sırala:</span>
+                  <select 
+                    v-model="selectedUserSort"
+                    class="px-3 py-2.5 rounded-xl text-xs font-medium border cursor-pointer"
+                    :class="themeClasses.inputBg"
+                  >
+                    <option value="newest">En Yeni Katılanlar</option>
+                    <option value="oldest">En Eski Katılanlar</option>
+                    <option value="links_desc">En Çok Linki Olanlar</option>
+                    <option value="name_asc">İsme Göre (A-Z)</option>
+                  </select>
+                </div>
+              </div>
+
+              <!-- Filtre Çipleri -->
+              <div class="flex items-center gap-2 overflow-x-auto pb-1 no-scrollbar text-xs">
+                <button 
+                  type="button"
+                  @click="selectedUserFilter = 'all'"
+                  class="px-3 py-1.5 rounded-lg font-semibold transition-all shrink-0 cursor-pointer"
+                  :class="selectedUserFilter === 'all' 
+                    ? 'bg-[#FFFF00] text-black font-bold shadow-xs' 
+                    : (adminTheme === 'light' ? 'bg-slate-100 text-slate-700 hover:bg-slate-200' : 'bg-[#121212] text-[#8E8E93] hover:text-white border border-[#282828]')"
+                >
+                  Tümü ({{ users.length }})
+                </button>
+                <button 
+                  type="button"
+                  @click="selectedUserFilter = 'verified'"
+                  class="px-3 py-1.5 rounded-lg font-semibold transition-all shrink-0 flex items-center gap-1.5 cursor-pointer"
+                  :class="selectedUserFilter === 'verified' 
+                    ? 'bg-[#FFFF00] text-black font-bold shadow-xs' 
+                    : (adminTheme === 'light' ? 'bg-slate-100 text-slate-700 hover:bg-slate-200' : 'bg-[#121212] text-[#8E8E93] hover:text-white border border-[#282828]')"
+                >
+                  <Award class="w-3 h-3 text-amber-400" />
+                  <span>Doğrulanmış Rozetliler ({{ verifiedMembersCount }})</span>
+                </button>
+                <button 
+                  type="button"
+                  @click="selectedUserFilter = 'admin'"
+                  class="px-3 py-1.5 rounded-lg font-semibold transition-all shrink-0 flex items-center gap-1.5 cursor-pointer"
+                  :class="selectedUserFilter === 'admin' 
+                    ? 'bg-[#FFFF00] text-black font-bold shadow-xs' 
+                    : (adminTheme === 'light' ? 'bg-slate-100 text-slate-700 hover:bg-slate-200' : 'bg-[#121212] text-[#8E8E93] hover:text-white border border-[#282828]')"
+                >
+                  <Shield class="w-3 h-3 text-[#FFFF00]" />
+                  <span>Yöneticiler ({{ adminMembersCount }})</span>
+                </button>
+                <button 
+                  type="button"
+                  @click="selectedUserFilter = 'has_links'"
+                  class="px-3 py-1.5 rounded-lg font-semibold transition-all shrink-0 flex items-center gap-1.5 cursor-pointer"
+                  :class="selectedUserFilter === 'has_links' 
+                    ? 'bg-[#FFFF00] text-black font-bold shadow-xs' 
+                    : (adminTheme === 'light' ? 'bg-slate-100 text-slate-700 hover:bg-slate-200' : 'bg-[#121212] text-[#8E8E93] hover:text-white border border-[#282828]')"
+                >
+                  <Globe class="w-3 h-3 text-emerald-400" />
+                  <span>Aktif Linki Olanlar ({{ activeProfilesCount }})</span>
+                </button>
+              </div>
+            </div>
+
+            <!-- KULLANICI KARTLARI GRİDİ -->
+            <div v-if="filteredUsers.length > 0" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+              <div 
+                v-for="u in filteredUsers" 
+                :key="u.id"
+                class="rounded-2xl border transition-all duration-200 p-5 flex flex-col justify-between group hover:border-[#FFFF00]/60 relative"
+                :class="[themeClasses.cardBg, u.role === 'admin' ? 'ring-1 ring-[#FFFF00]/20' : '']"
+              >
+                <!-- Üst Bilgi: Avatar, İsim, Rozet, Rol -->
+                <div>
+                  <div class="flex items-start justify-between gap-3">
+                    <div class="flex items-center gap-3">
+                      <!-- Avatar -->
+                      <div class="relative shrink-0">
+                        <img 
+                          v-if="u.avatar" 
+                          :src="u.avatar" 
+                          :alt="u.name"
+                          class="w-12 h-12 rounded-full object-cover border-2 transition-transform group-hover:scale-105"
+                          :class="u.role === 'admin' ? 'border-[#FFFF00]' : 'border-zinc-700'"
+                          @error="(e) => { e.target.style.display = 'none'; if (e.target.nextElementSibling) e.target.nextElementSibling.style.display = 'flex'; }"
+                        />
+                        <div 
+                          class="w-12 h-12 rounded-full items-center justify-center font-bold text-sm border-2 text-white bg-gradient-to-br from-zinc-700 to-zinc-900"
+                          :class="[u.avatar ? 'hidden' : 'flex', u.role === 'admin' ? 'border-[#FFFF00]' : 'border-zinc-700']"
+                        >
+                          {{ getInitials(u.name) }}
+                        </div>
+                        <span 
+                          v-if="u.isVerified" 
+                          class="absolute -bottom-1 -right-1 w-4 h-4 rounded-full bg-[#FFFF00] text-black flex items-center justify-center text-[10px] font-bold shadow-sm"
+                          title="Doğrulanmış Hesap"
+                        >
+                          ✓
+                        </span>
+                      </div>
+
+                      <!-- İsim & Kullanıcı Adı -->
+                      <div class="min-w-0">
+                        <div class="flex items-center gap-1.5 flex-wrap">
+                          <h3 class="font-bold text-sm truncate" :class="themeClasses.titleText">
+                            {{ u.name }}
+                          </h3>
+                        </div>
+                        <div class="flex items-center gap-1.5 mt-0.5">
+                          <a 
+                            :href="'/@' + u.username" 
+                            target="_blank" 
+                            class="text-xs text-[#FFFF00] font-mono hover:underline truncate"
+                            title="Canlı Profil Sayfasını Ziyaret Et"
+                          >
+                            @{{ u.username }}
+                          </a>
+                        </div>
+                      </div>
+                    </div>
+
+                    <!-- Rol & Stil Rozeti -->
+                    <div class="flex flex-col items-end gap-1 shrink-0">
+                      <span 
+                        v-if="u.role === 'admin'"
+                        class="px-2 py-0.5 text-[10px] font-black uppercase tracking-wider rounded-full bg-[#FFFF00]/15 text-[#FFFF00] border border-[#FFFF00]/30"
+                      >
+                        Yönetici
+                      </span>
+                      <span 
+                        v-else
+                        class="px-2 py-0.5 text-[10px] font-semibold rounded-full bg-zinc-800 text-zinc-300 border border-zinc-700"
+                      >
+                        Üye
+                      </span>
+                      <span class="text-[10px] px-1.5 py-0.2 rounded font-mono text-[#8E8E93] bg-zinc-900/60">
+                        {{ u.layoutStyle === 'bento' ? '🍱 Bento' : '📋 Liste' }}
+                      </span>
+                    </div>
+                  </div>
+
+                  <!-- Biyografi -->
+                  <p class="text-xs mt-3 line-clamp-2" :class="themeClasses.subText">
+                    {{ u.bio || 'Henüz biyografi eklenmemiş.' }}
+                  </p>
+
+                  <!-- Detaylar / Rozetler (Bağlantı Sayısı, E-posta, Tarih) -->
+                  <div class="mt-4 pt-3 border-t space-y-2 text-xs" :class="themeClasses.headerBorder">
+                    <div class="flex items-center justify-between text-[#8E8E93]">
+                      <span class="flex items-center gap-1.5">
+                        <MousePointerClick class="w-3.5 h-3.5 text-[#FFFF00]" />
+                        <span>Bağlantılar:</span>
+                      </span>
+                      <span class="font-bold font-mono px-2 py-0.5 rounded-full text-[11px]" :class="adminTheme === 'light' ? 'bg-slate-100 text-slate-800' : 'bg-black text-[#FFFF00]'">
+                        {{ u.linksCount ?? (u.links?.length || 0) }} Link
+                      </span>
+                    </div>
+
+                    <div class="flex items-center justify-between text-[#8E8E93]">
+                      <span class="flex items-center gap-1.5">
+                        <Clock class="w-3.5 h-3.5 text-blue-400" />
+                        <span>Katılım:</span>
+                      </span>
+                      <span class="text-[11px]">
+                        {{ formatRelativeTime(u.createdAt) }} ({{ formatUserDate(u.createdAt) }})
+                      </span>
+                    </div>
+
+                    <div class="flex items-center justify-between text-[#8E8E93]">
+                      <span class="flex items-center gap-1.5 truncate max-w-[180px]">
+                        <Mail class="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                        <span class="truncate">{{ u.email || '—' }}</span>
+                      </span>
+                      <button 
+                        v-if="u.email"
+                        type="button"
+                        @click="handleCopyUserUrl(u.username)"
+                        class="text-[10px] text-[#FFFF00] hover:underline cursor-pointer"
+                        title="Profil bağlantısını kopyala"
+                      >
+                        Link Kopyala
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Alt Aksiyon Butonları -->
+                <div class="mt-4 pt-3 border-t flex items-center justify-between gap-2" :class="themeClasses.headerBorder">
+                  <a 
+                    :href="'/@' + u.username" 
+                    target="_blank"
+                    class="flex-1 py-1.5 px-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 text-black bg-[#FFFF00] hover:bg-[#EEFF00] shadow-sm active:scale-95 text-center"
+                  >
+                    <ExternalLink class="w-3.5 h-3.5" />
+                    <span>Profili Gör</span>
+                  </a>
+
+                  <button 
+                    type="button"
+                    @click="handleCopyUserUrl(u.username)"
+                    title="Profil URL'ini Kopyala"
+                    class="p-2 rounded-xl border transition-colors cursor-pointer"
+                    :class="adminTheme === 'light' ? 'bg-slate-50 border-slate-200 hover:bg-slate-100 text-slate-700' : 'bg-[#141414] border-[#282828] hover:border-[#444] text-[#8E8E93] hover:text-white'"
+                  >
+                    <Copy class="w-3.5 h-3.5" />
+                  </button>
+
+                  <button 
+                    type="button"
+                    @click="handleDeleteUserClick(u)"
+                    :disabled="u.id === 1 || u.username === 'tubagul'"
+                    :title="u.id === 1 ? 'Ana yönetici hesabı silinemez' : 'Kullanıcıyı Sil'"
+                    class="p-2 rounded-xl border transition-colors"
+                    :class="[
+                      u.id === 1 || u.username === 'tubagul' 
+                        ? 'opacity-30 cursor-not-allowed border-zinc-800 text-zinc-600' 
+                        : 'cursor-pointer hover:border-rose-500/50 hover:bg-rose-500/10 text-rose-400 border-[#282828] bg-[#141414]'
+                    ]"
+                  >
+                    <Trash2 class="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <!-- Boş Arama / Eşleşme Yok Durumu -->
+            <div 
+              v-else 
+              :class="['text-center py-16 px-4 rounded-3xl border border-dashed', themeClasses.cardBg]"
+            >
+              <div class="w-14 h-14 rounded-2xl bg-[#FFFF00]/10 text-[#FFFF00] flex items-center justify-center mx-auto mb-4">
+                <Search class="w-7 h-7" />
+              </div>
+              <h3 class="text-base font-bold mb-1" :class="themeClasses.titleText">
+                Aramanızla Eşleşen Kullanıcı Bulunamadı
+              </h3>
+              <p class="text-xs max-w-sm mx-auto mb-5" :class="themeClasses.subText">
+                "{{ searchUserQuery }}" kriteriyle hiçbir üye eşleşmedi. Farklı bir anahtar kelime deneyebilir veya filtreleri sıfırlayabilirsiniz.
+              </p>
+              <button 
+                type="button"
+                @click="searchUserQuery = ''; selectedUserFilter = 'all'"
+                class="px-4 py-2 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-white text-xs font-semibold cursor-pointer"
+              >
+                Filtreleri Temizle
+              </button>
+            </div>
+
+          </div>
+
+          <!-- ========================================== -->
           <!-- SEKME 5: AYARLAR & HESAP (SETTINGS) -->
           <!-- ========================================== -->
           <div v-else-if="activeTab === 'settings'" class="space-y-6">
@@ -7406,6 +8054,236 @@ const handleChangePassword = async () => {
             </div>
           </div>
 
+        </div>
+      </div>
+    </Teleport>
+
+    <!-- YENİ ÜYE / KULLANICI OLUŞTURMA MODALI -->
+    <Teleport to="body">
+      <div 
+        v-if="showCreateUserModal" 
+        class="fixed inset-0 z-50 flex items-center justify-center p-4"
+        :class="themeClasses.modalOverlay"
+        @click.self="showCreateUserModal = false"
+      >
+        <div 
+          class="w-full max-w-lg rounded-3xl border shadow-2xl p-6 sm:p-7 space-y-5 animate-in fade-in zoom-in-95 duration-200"
+          :class="themeClasses.modalBg"
+        >
+          <!-- Modal Başlığı -->
+          <div class="flex items-center justify-between pb-4 border-b" :class="themeClasses.headerBorder">
+            <div class="flex items-center gap-3">
+              <div class="w-10 h-10 rounded-2xl bg-[#FFFF00]/10 border border-[#FFFF00]/30 flex items-center justify-center text-[#FFFF00]">
+                <UserPlus class="w-5 h-5" />
+              </div>
+              <div>
+                <h3 class="text-base font-bold" :class="themeClasses.titleText">Yeni Üye / Profil Tanımla</h3>
+                <p class="text-xs" :class="themeClasses.subText">Sisteme yeni bir Linkspace profili kaydedin.</p>
+              </div>
+            </div>
+            <button 
+              type="button" 
+              @click="showCreateUserModal = false" 
+              class="p-2 rounded-xl text-[#8E8E93] hover:text-white hover:bg-zinc-800 transition-colors cursor-pointer"
+            >
+              <X class="w-5 h-5" />
+            </button>
+          </div>
+
+          <!-- Hata Mesajı -->
+          <div 
+            v-if="createUserError"
+            class="p-3 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-400 text-xs flex items-center gap-2"
+          >
+            <AlertCircle class="w-4 h-4 shrink-0" />
+            <span>{{ createUserError }}</span>
+          </div>
+
+          <!-- Form Alanları -->
+          <div class="space-y-4 text-xs">
+            <!-- Ad Soyad & Kullanıcı Adı (Grid) -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label class="block font-semibold mb-1.5" :class="themeClasses.inputLabel">Ad ve Soyad *</label>
+                <input 
+                  v-model="newUserForm.name" 
+                  type="text" 
+                  placeholder="Örn: Ayşe Demir" 
+                  class="w-full px-3.5 py-2.5 rounded-xl border text-xs"
+                  :class="themeClasses.inputBg"
+                />
+              </div>
+              <div>
+                <label class="block font-semibold mb-1.5" :class="themeClasses.inputLabel">Kullanıcı Adı (Handle) *</label>
+                <div class="relative">
+                  <span class="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#8E8E93] font-mono">@</span>
+                  <input 
+                    v-model="newUserForm.username" 
+                    type="text" 
+                    placeholder="aysedemir" 
+                    class="w-full pl-8 pr-3.5 py-2.5 rounded-xl border text-xs font-mono"
+                    :class="themeClasses.inputBg"
+                  />
+                </div>
+              </div>
+            </div>
+
+            <!-- E-posta -->
+            <div>
+              <label class="block font-semibold mb-1.5" :class="themeClasses.inputLabel">E-posta Adresi</label>
+              <input 
+                v-model="newUserForm.email" 
+                type="email" 
+                placeholder="ayse@example.com" 
+                class="w-full px-3.5 py-2.5 rounded-xl border text-xs"
+                :class="themeClasses.inputBg"
+              />
+            </div>
+
+            <!-- Biyografi -->
+            <div>
+              <label class="block font-semibold mb-1.5" :class="themeClasses.inputLabel">Biyografi & Kısa Tanıtım</label>
+              <textarea 
+                v-model="newUserForm.bio" 
+                rows="2"
+                placeholder="Yazılım mühendisi, açık kaynak meraklısı..." 
+                class="w-full px-3.5 py-2 rounded-xl border text-xs resize-none"
+                :class="themeClasses.inputBg"
+              ></textarea>
+            </div>
+
+            <!-- Rol & Sayfa Düzeni (Grid) -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label class="block font-semibold mb-1.5" :class="themeClasses.inputLabel">Hesap Rolü</label>
+                <select 
+                  v-model="newUserForm.role"
+                  class="w-full px-3.5 py-2.5 rounded-xl border text-xs cursor-pointer"
+                  :class="themeClasses.inputBg"
+                >
+                  <option value="user">Standart Üye</option>
+                  <option value="admin">Yönetici (Admin)</option>
+                </select>
+              </div>
+
+              <div>
+                <label class="block font-semibold mb-1.5" :class="themeClasses.inputLabel">Varsayılan Profil Düzeni</label>
+                <select 
+                  v-model="newUserForm.layoutStyle"
+                  class="w-full px-3.5 py-2.5 rounded-xl border text-xs cursor-pointer"
+                  :class="themeClasses.inputBg"
+                >
+                  <option value="bento">🍱 Bento Grid (Modern)</option>
+                  <option value="classic">📋 Klasik Liste (Linktree)</option>
+                </select>
+              </div>
+            </div>
+
+            <!-- Doğrulanmış Rozet Kutusu -->
+            <div 
+              class="p-3.5 rounded-2xl border flex items-center justify-between cursor-pointer"
+              :class="themeClasses.boxInner"
+              @click="newUserForm.isVerified = !newUserForm.isVerified"
+            >
+              <div class="flex items-center gap-2.5">
+                <div class="w-8 h-8 rounded-xl bg-amber-500/10 text-amber-400 flex items-center justify-center">
+                  <Award class="w-4 h-4" />
+                </div>
+                <div>
+                  <div class="font-bold text-xs" :class="themeClasses.titleText">Doğrulanmış Rozet (Verified Badge)</div>
+                  <div class="text-[11px]" :class="themeClasses.subText">Profilde onaylı rozet simgesini göster</div>
+                </div>
+              </div>
+              <input 
+                type="checkbox" 
+                v-model="newUserForm.isVerified" 
+                class="w-4 h-4 accent-[#FFFF00] rounded cursor-pointer"
+              />
+            </div>
+          </div>
+
+          <!-- Aksiyon Butonları -->
+          <div class="pt-3 border-t flex items-center justify-end gap-2.5" :class="themeClasses.headerBorder">
+            <button 
+              type="button" 
+              @click="showCreateUserModal = false"
+              class="px-4 py-2.5 rounded-xl border text-xs font-semibold hover:bg-zinc-800 transition-colors cursor-pointer"
+              :class="themeClasses.headerBorder"
+            >
+              Vazgeç
+            </button>
+            <button 
+              type="button" 
+              @click="handleCreateUserSubmit"
+              :disabled="isUserActionLoading"
+              class="px-5 py-2.5 rounded-xl bg-[#FFFF00] hover:bg-[#EEFF00] text-black font-bold text-xs flex items-center gap-2 transition-transform active:scale-95 shadow-lg shadow-yellow-500/20 cursor-pointer"
+            >
+              <RefreshCw v-if="isUserActionLoading" class="w-3.5 h-3.5 animate-spin" />
+              <UserPlus v-else class="w-3.5 h-3.5 stroke-[2.5]" />
+              <span>Üyeyi Kaydet</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    </Teleport>
+
+    <!-- KULLANICI SİLME ONAY MODALI -->
+    <Teleport to="body">
+      <div 
+        v-if="showDeleteUserModal && userToDelete" 
+        class="fixed inset-0 z-50 flex items-center justify-center p-4"
+        :class="themeClasses.modalOverlay"
+        @click.self="showDeleteUserModal = false"
+      >
+        <div 
+          class="w-full max-w-md rounded-3xl border shadow-2xl p-6 space-y-5 animate-in fade-in zoom-in-95 duration-200"
+          :class="themeClasses.modalBg"
+        >
+          <div class="flex items-center gap-3">
+            <div class="w-12 h-12 rounded-2xl bg-rose-500/10 border border-rose-500/30 flex items-center justify-center text-rose-500 shrink-0">
+              <Trash2 class="w-6 h-6" />
+            </div>
+            <div>
+              <h3 class="text-base font-bold text-rose-400">Kullanıcıyı Silmek İstiyor musunuz?</h3>
+              <p class="text-xs" :class="themeClasses.subText">Bu işlem geri alınamaz.</p>
+            </div>
+          </div>
+
+          <div class="p-4 rounded-2xl border space-y-2 text-xs" :class="themeClasses.boxInner">
+            <div class="flex items-center gap-3">
+              <div class="w-10 h-10 rounded-full bg-zinc-800 flex items-center justify-center font-bold text-xs text-white">
+                {{ getInitials(userToDelete.name) }}
+              </div>
+              <div>
+                <div class="font-bold" :class="themeClasses.titleText">{{ userToDelete.name }}</div>
+                <div class="text-[#FFFF00] font-mono text-xs">@{{ userToDelete.username }}</div>
+              </div>
+            </div>
+            <p class="text-[11px] text-[#8E8E93] pt-2 border-t border-zinc-800">
+              Bu kullanıcıya ait tüm biyografi, bağlantı kartları ve istatistik kayıtları kalıcı olarak kaldırılacaktır.
+            </p>
+          </div>
+
+          <div class="flex items-center justify-end gap-2.5 pt-2">
+            <button 
+              type="button" 
+              @click="showDeleteUserModal = false; userToDelete = null"
+              class="px-4 py-2.5 rounded-xl border text-xs font-semibold hover:bg-zinc-800 transition-colors cursor-pointer"
+              :class="themeClasses.headerBorder"
+            >
+              İptal Et
+            </button>
+            <button 
+              type="button" 
+              @click="confirmDeleteUser"
+              :disabled="isUserActionLoading"
+              class="px-5 py-2.5 rounded-xl bg-rose-500 hover:bg-rose-600 text-white font-bold text-xs flex items-center gap-2 transition-transform active:scale-95 cursor-pointer"
+            >
+              <RefreshCw v-if="isUserActionLoading" class="w-3.5 h-3.5 animate-spin" />
+              <Trash2 v-else class="w-3.5 h-3.5" />
+              <span>Evet, Kullanıcıyı Sil</span>
+            </button>
+          </div>
         </div>
       </div>
     </Teleport>

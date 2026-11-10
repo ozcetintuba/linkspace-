@@ -461,9 +461,27 @@ Bu liste, projenin geliştirme fazlarını ve önceliklendirilmiş iş paketleri
 
 ---
 
+## 📌 Faz 26: Çoklu Kullanıcı & Topluluk Yönetim Paneli (TAMAMLANDI ✅)
+- [x] **Görev 26.1: Backend REST API Katmanı (`backend/src/routes/usersRoutes.js`, `server.js`)**:
+  - `GET /api/users`, `GET /api/users/stats`, `POST /api/users`, `DELETE /api/users/:id` rotaları oluşturuldu.
+  - PostgreSQL ve çevrimdışı yedek `mockUsers` çift modlu dayanıklılık sağlandı.
+  - `authRoutes.js` ve `profileRoutes.js` ile yeni kayıtların ve profillerin entegrasyonu tamamlandı.
+- [x] **Görev 26.2: Pinia Link Store Yönetimi (`frontend/src/stores/linkStore.js`)**:
+  - `users`, `usersCount`, `userStats` reaktif durumları ve `fetchUsers`, `fetchUserStats`, `createUser`, `deleteUser` eylemleri eklendi.
+  - LocalStorage senkronizasyonu sağlandı.
+- [x] **Görev 26.3: Yönetim Paneli Navigasyonu ve Sekme Mimarisi (`AdminView.vue`)**:
+  - Masaüstü ve mobil navigasyonda anlık sayaç rozetli 6. sekme: "Kullanıcılar".
+- [x] **Görev 26.4: Topluluk KPI Kartları ve Arama / Filtreleme Çözümleri**:
+  - 4 temel metrik kartı (Toplam Üye, Aktif Sayfalar, Toplam Bağlantı, Doğrulanmış Rozetliler).
+  - Canlı arama, segment çipleri ve 4 farklı sıralama modu.
+- [x] **Görev 26.5: Zengin Kullanıcı Kartları ve Hızlı Aksiyonlar**:
+  - Profil ziyareti (`/@username`), link kopyalama, kullanıcı silme ve yeni üye ekleme modalları.
+
+---
+
 ## 📌 Sıradaki Aday Fazlar (Gelecek Yol Haritası)
-- **Faz 26**: Çoklu Profil / Sayfa Yönetimi (Multi-Tenant Profile Switching).
-- **Faz 27**: Canlı Entegrasyonlar ve Webhook'lar (Discord / Telegram / Slack anlık bildirimleri).
+- **Faz 27**: Çoklu Profil / Sayfa Yönetimi (Multi-Tenant Profile Switching - Tek hesaba bağlı birden fazla sayfa).
+- **Faz 28**: Canlı Entegrasyonlar ve Webhook'lar (Discord / Telegram / Slack anlık bildirimleri).
 
 
 

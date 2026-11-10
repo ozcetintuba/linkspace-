@@ -2,6 +2,7 @@ import { Router } from 'express'
 import { query } from '../db.js'
 import { requireAuth } from '../middleware/authMiddleware.js'
 import { cacheMiddleware, invalidateCache } from '../middleware/cacheService.js'
+import { mockUsers } from './usersRoutes.js'
 
 const router = Router()
 
@@ -187,20 +188,23 @@ router.get('/:username', cacheMiddleware(60), async (req, res) => {
   } catch (error) {
     console.error('Kullanıcı profili getirme hatası:', error)
 
-    // Veritabanı çevrimdışıysa ve varsayılan kullanıcı sorgulanıyorsa graceful fallback sun
+    // Veritabanı çevrimdışıysa ve kullanıcı sorgulanıyorsa graceful fallback sun
     const cleanUser = (req.params.username || '').replace(/^@/, '').trim().toLowerCase()
-    if (cleanUser === 'tubagul' || cleanUser === 'admin') {
+    const foundMock = mockUsers.find(u => u.username.toLowerCase().replace(/^@/, '') === cleanUser) ||
+      (cleanUser === 'admin' || cleanUser === 'tubagul' ? mockUsers[0] : null)
+
+    if (foundMock) {
       return res.json({
         profile: {
-          name: 'Tuba Gül',
-          username: '@tubagul',
-          bio: 'Yazılım Mühendisliği Öğrencisi | Full-Stack Geliştirici Adayı 🚀',
-          avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=300&auto=format&fit=crop&q=80',
+          name: foundMock.name,
+          username: `@${foundMock.username.replace(/^@/, '')}`,
+          bio: foundMock.bio || `${foundMock.name} resmi bağlantıları ✨`,
+          avatar: foundMock.avatar,
           avatarShape: 'circle',
           avatarGlow: 'yellow',
           statusText: 'Yeni Projelere & Fırsatlara Açık',
           statusColor: 'none',
-          isVerified: true,
+          isVerified: foundMock.isVerified !== undefined ? foundMock.isVerified : true,
           banner: '',
           bannerPattern: 'mesh',
           badges: [],
@@ -211,13 +215,17 @@ router.get('/:username', cacheMiddleware(60), async (req, res) => {
           },
           groupByCategory: false,
           foldersDefaultExpanded: true,
-          showBadges: false
+          showBadges: false,
+          layoutStyle: foundMock.layoutStyle || 'list'
         },
-        links: [
-          { id: 1, title: 'Kişisel Web Sitem & Portfolyom', url: 'https://github.com', isActive: true, icon: 'globe', customColor: 'default', clicks: 12, orderIndex: 0 },
-          { id: 2, title: 'GitHub Projelerim', url: 'https://github.com', isActive: true, icon: 'github', customColor: 'emerald', clicks: 38, orderIndex: 1 },
-          { id: 3, title: 'LinkedIn Bağlantım', url: 'https://linkedin.com', isActive: true, icon: 'linkedin', customColor: 'blue', clicks: 24, orderIndex: 2 },
-          { id: 4, title: 'Instagram Hesabım', url: 'https://instagram.com', isActive: true, icon: 'instagram', customColor: 'rose', clicks: 15, orderIndex: 3 }
+        links: foundMock.id === 1 ? [
+          { id: 1, title: 'Kişisel Web Sitem & Portfolyom', url: 'https://github.com/tubaaa7', isActive: true, icon: 'globe', customColor: 'default', clicks: 12, orderIndex: 0, gridSpan: 'featured', thumbnail: 'https://images.unsplash.com/photo-1517694712202-14dd9538aa97?w=600&auto=format&fit=crop&q=80', cardBadge: '⭐ Vitrin' },
+          { id: 2, title: 'GitHub Projelerim', url: 'https://github.com/tubaaa7', isActive: true, icon: 'github', customColor: 'default', clicks: 38, orderIndex: 1, gridSpan: 'half' },
+          { id: 3, title: 'LinkedIn Bağlantım', url: 'https://linkedin.com', isActive: true, icon: 'linkedin', customColor: 'default', clicks: 24, orderIndex: 2, gridSpan: 'half' }
+        ] : [
+          { id: 101, title: `${foundMock.name} Portfolyo & Projeler`, url: 'https://github.com', isActive: true, icon: 'globe', customColor: 'default', clicks: 19, orderIndex: 0, gridSpan: 'full' },
+          { id: 102, title: 'LinkedIn & Profesyonel Ağ', url: 'https://linkedin.com', isActive: true, icon: 'linkedin', customColor: 'default', clicks: 42, orderIndex: 1, gridSpan: 'half' },
+          { id: 103, title: 'Bana Ulaşın & E-Posta', url: `mailto:${foundMock.email}`, isActive: true, icon: 'mail', customColor: 'default', clicks: 8, orderIndex: 2, gridSpan: 'half' }
         ]
       })
     }

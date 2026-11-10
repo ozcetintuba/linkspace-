@@ -15,6 +15,7 @@ import webauthnRoutes from './routes/webauthnRoutes.js'
 import analyticsRoutes from './routes/analyticsRoutes.js'
 import messagesRoutes from './routes/messagesRoutes.js'
 import aiRoutes from './routes/aiRoutes.js'
+import usersRoutes from './routes/usersRoutes.js'
 
 import { securityHeaders } from './middleware/securityHeaders.js'
 import { globalLimiter } from './middleware/rateLimiter.js'
@@ -95,6 +96,7 @@ app.use('/api/settings', settingsRoutes)
 app.use('/api/analytics', analyticsRoutes)
 app.use('/api/messages', messagesRoutes)
 app.use('/api/ai', aiRoutes)
+app.use('/api/users', usersRoutes)
 
 // API Dokümantasyonu (OpenAPI / Swagger & Postman)
 app.get('/api/docs/swagger.json', (req, res) => {

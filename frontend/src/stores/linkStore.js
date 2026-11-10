@@ -10,7 +10,8 @@ const STORAGE_KEYS = {
   ADMIN_THEME: 'linktree_admin_theme',
   ANALYTICS: 'linktree_analytics',
   MESSAGES: 'linktree_messages',
-  SEO: 'linktree_seo'
+  SEO: 'linktree_seo',
+  USERS: 'linktree_users'
 }
 
 export const DEFAULT_SEO = {
@@ -20,6 +21,66 @@ export const DEFAULT_SEO = {
   customDomain: 'tubagul.dev',
   domainVerified: true
 }
+
+
+export const DEFAULT_USERS = [
+  {
+    id: 1,
+    username: 'tubagul',
+    name: 'Tuba Gül',
+    email: 'admin@linktree.local',
+    role: 'admin',
+    avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=300&auto=format&fit=crop&q=80',
+    bio: 'Full-Stack Web Geliştirici & UI/UX Meraklısı 🚀\nModern web teknolojileri ve açık kaynak projeler üretiyorum.',
+    isVerified: true,
+    linkCount: 4,
+    profileUrl: '/@tubagul',
+    layoutStyle: 'bento',
+    createdAt: '2026-10-15T10:00:00.000Z'
+  },
+  {
+    id: 2,
+    username: 'mert.dev',
+    name: 'Mert Yılmaz',
+    email: 'mert.yilmaz@devmail.io',
+    role: 'user',
+    avatar: 'https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?w=300&auto=format&fit=crop&q=80',
+    bio: 'Senior Backend Engineer • Node.js & Go • Açık Kaynak Geliştirici 💻',
+    isVerified: true,
+    linkCount: 3,
+    profileUrl: '/@mert.dev',
+    layoutStyle: 'list',
+    createdAt: '2026-10-22T14:20:00.000Z'
+  },
+  {
+    id: 3,
+    username: 'selin.design',
+    name: 'Selin Kaya',
+    email: 'selin.design@creatives.co',
+    role: 'user',
+    avatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=300&auto=format&fit=crop&q=80',
+    bio: 'Product & Brand Designer • Design Systems • Minimalist UI/UX 🎨',
+    isVerified: true,
+    linkCount: 5,
+    profileUrl: '/@selin.design',
+    layoutStyle: 'bento',
+    createdAt: '2026-10-28T09:15:00.000Z'
+  },
+  {
+    id: 4,
+    username: 'can.tech',
+    name: 'Can Demir',
+    email: 'can.demir@cloudtech.com',
+    role: 'user',
+    avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=300&auto=format&fit=crop&q=80',
+    bio: 'Cloud Architect & DevOps • AWS Certified • Kubernetes & CI/CD ☁️',
+    isVerified: false,
+    linkCount: 2,
+    profileUrl: '/@can.tech',
+    layoutStyle: 'list',
+    createdAt: '2026-11-04T16:45:00.000Z'
+  }
+]
 
 export const DEFAULT_MESSAGES = [
   {
@@ -1379,6 +1440,9 @@ export const useLinkStore = defineStore('links', () => {
       if (key === STORAGE_KEYS.MESSAGES && Array.isArray(parsed)) {
         return parsed
       }
+      if (key === STORAGE_KEYS.USERS && Array.isArray(parsed)) {
+        return parsed
+      }
       if (key === STORAGE_KEYS.SEO && parsed && typeof parsed === 'object') {
         return {
           ...DEFAULT_SEO,
@@ -1399,6 +1463,14 @@ export const useLinkStore = defineStore('links', () => {
   const adminTheme = ref(localStorage.getItem(STORAGE_KEYS.ADMIN_THEME) || 'dark')
   const analytics = ref(loadStoredData(STORAGE_KEYS.ANALYTICS, DEFAULT_ANALYTICS))
   const messages = ref(loadStoredData(STORAGE_KEYS.MESSAGES, DEFAULT_MESSAGES))
+  const users = ref(loadStoredData(STORAGE_KEYS.USERS, DEFAULT_USERS))
+  const usersCount = computed(() => users.value.length)
+  const userStats = ref({
+    totalUsers: users.value.length,
+    activeProfiles: users.value.length,
+    totalLinks: 14,
+    newUsersThisMonth: 2
+  })
   const seoSettings = ref(loadStoredData(STORAGE_KEYS.SEO, DEFAULT_SEO))
   const isBackendConnected = ref(false)
 
@@ -1545,6 +1617,34 @@ export const useLinkStore = defineStore('links', () => {
       } catch (msgErr) {
         // Ziyaretçi modunda 401 normaldir
       }
+
+      // Kullanıcı listesi ve istatistiklerini çek (Admin)
+      try {
+        const userRes = await fetch(`${API_BASE}/users`, {
+          headers: getAuthHeaders()
+        })
+        if (userRes.ok) {
+          const userJson = await userRes.json()
+          if (userJson.success && Array.isArray(userJson.data)) {
+            users.value = userJson.data
+            localStorage.setItem(STORAGE_KEYS.USERS, JSON.stringify(userJson.data))
+          }
+        }
+      } catch (e) {
+        console.warn('Kullanıcılar API senkronizasyonu atlandı:', e.message)
+      }
+
+      try {
+        const statsRes = await fetch(`${API_BASE}/users/stats`, {
+          headers: getAuthHeaders()
+        })
+        if (statsRes.ok) {
+          const statsJson = await statsRes.json()
+          if (statsJson.success && statsJson.data) {
+            userStats.value = statsJson.data
+          }
+        }
+      } catch (e) {}
 
       // SEO ayarlarını çek
       try {
@@ -1727,6 +1827,18 @@ export const useLinkStore = defineStore('links', () => {
         localStorage.setItem(STORAGE_KEYS.MESSAGES, JSON.stringify(newVal))
       } catch (e) {
         console.error('Mesajlar kaydedilemedi:', e)
+      }
+    },
+    { deep: true }
+  )
+
+  watch(
+    users,
+    (newVal) => {
+      try {
+        localStorage.setItem(STORAGE_KEYS.USERS, JSON.stringify(newVal))
+      } catch (e) {
+        console.error('Kullanıcılar kaydedilemedi:', e)
       }
     },
     { deep: true }
@@ -2342,6 +2454,124 @@ export const useLinkStore = defineStore('links', () => {
       localStorage.setItem(STORAGE_KEYS.MESSAGES, JSON.stringify(messages.value))
     } catch (e) {}
     return simMsg
+  }
+
+
+  // --- KULLANICI & ÜYE YÖNETİMİ AKSİYONLARI ---
+  const fetchUsers = async () => {
+    if (isBackendConnected.value) {
+      try {
+        const res = await fetch(`${API_BASE}/users`, {
+          headers: getAuthHeaders()
+        })
+        if (res.ok) {
+          const data = await res.json()
+          if (data.success && Array.isArray(data.data)) {
+            users.value = data.data
+            localStorage.setItem(STORAGE_KEYS.USERS, JSON.stringify(data.data))
+          }
+        }
+      } catch (e) {
+        console.warn('Kullanıcılar sunucudan alınamadı:', e)
+      }
+    }
+  }
+
+  const fetchUserStats = async () => {
+    if (isBackendConnected.value) {
+      try {
+        const res = await fetch(`${API_BASE}/users/stats`, {
+          headers: getAuthHeaders()
+        })
+        if (res.ok) {
+          const json = await res.json()
+          if (json.success && json.data) {
+            userStats.value = json.data
+          }
+        }
+      } catch (e) {
+        console.warn('Kullanıcı istatistikleri alınamadı:', e)
+      }
+    }
+  }
+
+  const createUser = async (userData) => {
+    if (isBackendConnected.value) {
+      try {
+        const res = await fetch(`${API_BASE}/users`, {
+          method: 'POST',
+          headers: getAuthHeaders(),
+          body: JSON.stringify(userData)
+        })
+        const resData = await res.json()
+        if (res.ok && resData.success) {
+          if (resData.data) {
+            users.value.unshift(resData.data)
+            localStorage.setItem(STORAGE_KEYS.USERS, JSON.stringify(users.value))
+          }
+          return { success: true, message: resData.message || 'Kullanıcı hesabı oluşturuldu!' }
+        } else {
+          return { success: false, error: resData.error || 'Kullanıcı oluşturulamadı.' }
+        }
+      } catch (e) {
+        console.warn('Sunucuya kullanıcı eklenemedi:', e)
+      }
+    }
+
+    // Çevrimdışı / LocalStorage Modu
+    const cleanUsername = (userData.username || '').trim().toLowerCase().replace(/^@/, '')
+    const exists = users.value.some(u => u.username.toLowerCase().replace(/^@/, '') === cleanUsername)
+    if (exists) {
+      return { success: false, error: 'Bu kullanıcı adı zaten kayıtlı.' }
+    }
+
+    const newUser = {
+      id: Date.now(),
+      username: cleanUsername,
+      name: (userData.name || '').trim(),
+      email: (userData.email || '').trim().toLowerCase(),
+      role: userData.role || 'user',
+      avatar: `https://api.dicebear.com/7.x/notionists/svg?seed=${cleanUsername}`,
+      bio: userData.bio || `${userData.name} kişisel profil sayfası ✨`,
+      isVerified: false,
+      linkCount: 0,
+      profileUrl: `/@${cleanUsername}`,
+      layoutStyle: 'list',
+      createdAt: new Date().toISOString()
+    }
+
+    users.value.unshift(newUser)
+    try {
+      localStorage.setItem(STORAGE_KEYS.USERS, JSON.stringify(users.value))
+    } catch (e) {}
+    return { success: true, message: 'Yeni kullanıcı başarıyla eklendi!' }
+  }
+
+  const deleteUser = async (userId) => {
+    if (userId === 1) {
+      return { success: false, error: 'Ana yönetici hesabı silinemez.' }
+    }
+
+    users.value = users.value.filter(u => u.id !== userId)
+    try {
+      localStorage.setItem(STORAGE_KEYS.USERS, JSON.stringify(users.value))
+    } catch (e) {}
+
+    if (isBackendConnected.value) {
+      try {
+        const res = await fetch(`${API_BASE}/users/${userId}`, {
+          method: 'DELETE',
+          headers: getAuthHeaders()
+        })
+        const data = await res.json()
+        if (res.ok && data.success) {
+          return { success: true, message: data.message }
+        }
+      } catch (e) {
+        console.warn('Kullanıcı sunucudan silinemedi:', e)
+      }
+    }
+    return { success: true, message: 'Kullanıcı hesabı silindi.' }
   }
 
   // SEO & OpenGraph Ayarlarını Güncelleme
@@ -3008,6 +3238,14 @@ export const useLinkStore = defineStore('links', () => {
     messages,
     unreadMessagesCount,
     fetchMessages,
+    users,
+    usersCount,
+    userStats,
+    fetchUsers,
+    fetchUserStats,
+    createUser,
+    deleteUser,
+    DEFAULT_USERS,
     sendMessage,
     markMessageAsRead,
     deleteMessage,
