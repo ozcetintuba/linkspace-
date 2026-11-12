@@ -570,7 +570,7 @@ const selectedUserFilter = ref('all') // 'all' | 'pending' | 'verified' | 'admin
 const selectedUserSort = ref('newest') // 'newest' | 'oldest' | 'links_desc' | 'name_asc'
 const userFeedback = ref('')
 const isUserActionLoading = ref(false)
-const userViewMode = ref('grid') // 'grid' | 'table'
+const userViewMode = ref('table') // 'table' | 'grid'
 const selectedUserIds = ref([])
 
 // Modallar
@@ -660,7 +660,7 @@ const filteredUsers = computed(() => {
   } else if (selectedUserFilter.value === 'admin') {
     list = list.filter(u => u.role === 'admin')
   } else if (selectedUserFilter.value === 'has_links') {
-    list = list.filter(u => (u.linksCount ?? (u.links?.length || 0)) > 0)
+    list = list.filter(u => (u.linkCount ?? u.linksCount ?? (u.links?.length || 0)) > 0)
   } else if (selectedUserFilter.value === 'suspended') {
     list = list.filter(u => u.status === 'suspended')
   }
@@ -671,7 +671,7 @@ const filteredUsers = computed(() => {
   } else if (selectedUserSort.value === 'oldest') {
     list.sort((a, b) => new Date(a.createdAt || 0) - new Date(b.createdAt || 0))
   } else if (selectedUserSort.value === 'links_desc') {
-    list.sort((a, b) => ((b.linksCount ?? (b.links?.length || 0)) - (a.linksCount ?? (a.links?.length || 0))))
+    list.sort((a, b) => ((b.linkCount ?? b.linksCount ?? (b.links?.length || 0)) - (a.linkCount ?? a.linksCount ?? (a.links?.length || 0))))
   } else if (selectedUserSort.value === 'name_asc') {
     list.sort((a, b) => (a.name || '').localeCompare(b.name || '', 'tr'))
   }
@@ -681,11 +681,11 @@ const filteredUsers = computed(() => {
 
 // KPI ve Demografi Hesaplamaları
 const activeProfilesCount = computed(() => {
-  return (users.value || []).filter(u => (u.linksCount ?? (u.links?.length || 0)) > 0).length
+  return (users.value || []).filter(u => (u.linkCount ?? u.linksCount ?? (u.links?.length || 0)) > 0).length
 })
 
 const totalCommunityLinks = computed(() => {
-  return (users.value || []).reduce((acc, u) => acc + (u.linksCount ?? (u.links?.length || 0)), 0)
+  return (users.value || []).reduce((acc, u) => acc + (u.linkCount ?? u.linksCount ?? (u.links?.length || 0)), 0)
 })
 
 const verifiedMembersCount = computed(() => {
@@ -6464,6 +6464,16 @@ const handleChangePassword = async () => {
                   <div class="flex items-center p-1 rounded-xl border" :class="themeClasses.boxInner">
                     <button 
                       type="button"
+                      @click="userViewMode = 'table'"
+                      title="Alt Alta Sıralı Liste Görünümü"
+                      class="px-2.5 py-1 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer"
+                      :class="userViewMode === 'table' ? 'bg-[#FFFF00] text-black shadow-xs' : 'text-[#8E8E93] hover:text-white'"
+                    >
+                      <Table class="w-3.5 h-3.5" />
+                      <span class="hidden sm:inline">Liste</span>
+                    </button>
+                    <button 
+                      type="button"
                       @click="userViewMode = 'grid'"
                       title="Bento Kart Izgarası Görünümü"
                       class="px-2.5 py-1 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer"
@@ -6471,16 +6481,6 @@ const handleChangePassword = async () => {
                     >
                       <LayoutGrid class="w-3.5 h-3.5" />
                       <span class="hidden sm:inline">Kart</span>
-                    </button>
-                    <button 
-                      type="button"
-                      @click="userViewMode = 'table'"
-                      title="Detaylı Veri Tablosu Görünümü"
-                      class="px-2.5 py-1 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer"
-                      :class="userViewMode === 'table' ? 'bg-[#FFFF00] text-black shadow-xs' : 'text-[#8E8E93] hover:text-white'"
-                    >
-                      <Table class="w-3.5 h-3.5" />
-                      <span class="hidden sm:inline">Tablo</span>
                     </button>
                   </div>
                 </div>
@@ -6647,6 +6647,7 @@ const handleChangePassword = async () => {
                           title="Tümünü Seç / Kaldır"
                         />
                       </th>
+                      <th class="p-4 w-12 font-bold text-center">#</th>
                       <th class="p-4 font-bold">Kullanıcı & Profil</th>
                       <th class="p-4 font-bold">E-Posta & İletişim</th>
                       <th class="p-4 font-bold">Rol</th>
@@ -6660,7 +6661,7 @@ const handleChangePassword = async () => {
                   </thead>
                   <tbody class="divide-y" :class="adminTheme === 'light' ? 'divide-slate-200' : 'divide-[#202020]'">
                     <tr 
-                      v-for="u in filteredUsers" 
+                      v-for="(u, idx) in filteredUsers" 
                       :key="u.id"
                       @click="openUserProfilePreview(u)"
                       class="transition-colors hover:bg-white/[0.03] cursor-pointer"
@@ -6677,6 +6678,11 @@ const handleChangePassword = async () => {
                           @change="toggleSelectUser(u.id)"
                           class="w-4 h-4 accent-[#FFFF00] rounded cursor-pointer"
                         />
+                      </td>
+
+                      <!-- Sıra Numarası -->
+                      <td class="p-4 text-center font-mono text-[11px] font-bold text-[#8E8E93]">
+                        {{ idx + 1 }}
                       </td>
 
                       <!-- Kullanıcı & Avatar -->

@@ -235,6 +235,8 @@ const mutedText = computed(() =>
   props.isDark ? 'text-[#8E8E93]' : 'text-slate-500'
 )
 
+const overviewUserSort = ref('pending_newest')
+
 const overviewUsers = computed(() => {
   const q = (props.searchQuery || '').trim().toLowerCase()
   let list = Array.isArray(props.users) ? [...props.users] : []
@@ -245,14 +247,22 @@ const overviewUsers = computed(() => {
       (u.email || '').toLowerCase().includes(q)
     )
   }
-  // Önce onay bekleyen üyeler, sonra en yeni / aktif kullanıcılar
-  list.sort((a, b) => {
-    const aPend = a.status === 'pending' ? 1 : 0
-    const bPend = b.status === 'pending' ? 1 : 0
-    if (aPend !== bPend) return bPend - aPend
-    return (b.id || 0) - (a.id || 0)
-  })
-  return list.slice(0, 6)
+  if (overviewUserSort.value === 'name_asc') {
+    list.sort((a, b) => (a.name || a.username || '').localeCompare(b.name || b.username || '', 'tr'))
+  } else if (overviewUserSort.value === 'links_desc') {
+    list.sort((a, b) => (b.linkCount ?? (Array.isArray(b.links) ? b.links.length : 0)) - (a.linkCount ?? (Array.isArray(a.links) ? a.links.length : 0)))
+  } else if (overviewUserSort.value === 'oldest') {
+    list.sort((a, b) => new Date(a.createdAt || 0) - new Date(b.createdAt || 0) || (a.id || 0) - (b.id || 0))
+  } else {
+    // Önce onay bekleyen üyeler, sonra en yeni katılanlar
+    list.sort((a, b) => {
+      const aPend = a.status === 'pending' ? 1 : 0
+      const bPend = b.status === 'pending' ? 1 : 0
+      if (aPend !== bPend) return bPend - aPend
+      return new Date(b.createdAt || 0) - new Date(a.createdAt || 0) || (b.id || 0) - (a.id || 0)
+    })
+  }
+  return list
 })
 </script>
 
@@ -960,75 +970,114 @@ const overviewUsers = computed(() => {
           </div>
         </div>
 
-        <button
-          type="button"
-          @click="emit('navigate', 'users')"
-          class="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold bg-[#FFFF00] hover:bg-[#EEFF00] text-black shadow-md shadow-yellow-500/15 transition-all cursor-pointer shrink-0"
-        >
-          <span>Tüm Kullanıcıları Yönet</span>
-          <ArrowUpRight class="w-3.5 h-3.5" />
-        </button>
+        <div class="flex items-center gap-2 flex-wrap shrink-0">
+          <select
+            v-model="overviewUserSort"
+            aria-label="Kullanıcı sıralaması"
+            :class="['px-3 py-2 rounded-xl text-xs font-semibold border cursor-pointer', subtleInner, isDark ? 'text-zinc-200' : 'text-slate-700']"
+          >
+            <option value="pending_newest">Onay Bekleyen & En Yeni</option>
+            <option value="oldest">En Eski Katılanlar</option>
+            <option value="name_asc">İsme Göre (A-Z)</option>
+            <option value="links_desc">En Çok Linki Olanlar</option>
+          </select>
+
+          <button
+            type="button"
+            @click="emit('navigate', 'users')"
+            class="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold bg-[#FFFF00] hover:bg-[#EEFF00] text-black shadow-md shadow-yellow-500/15 transition-all cursor-pointer shrink-0"
+          >
+            <span>Kullanıcıları Yönet</span>
+            <ArrowUpRight class="w-3.5 h-3.5" />
+          </button>
+        </div>
       </div>
 
-      <div class="mt-4 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
-        <div
-          v-for="u in overviewUsers"
-          :key="u.id || u.username"
-          @click="emit('navigate', 'users')"
-          :class="['p-3.5 rounded-xl border flex items-center justify-between gap-3 transition-all cursor-pointer hover:border-[#FFFF00]/50', subtleInner]"
-        >
-          <div class="flex items-center gap-3 min-w-0">
-            <img
-              v-if="u.avatar"
-              :src="u.avatar"
-              :alt="u.name || u.username"
-              class="w-10 h-10 rounded-full object-cover border shrink-0"
-              :class="isDark ? 'border-[#333330]' : 'border-slate-300'"
-            />
-            <div
-              v-else
-              class="w-10 h-10 rounded-full flex items-center justify-center font-extrabold text-xs shrink-0"
-              :class="isDark ? 'bg-[#252522] text-[#FFFF00]' : 'bg-slate-200 text-slate-800'"
+      <!-- Alt Alta Sıralı Kullanıcı Listesi -->
+      <div class="mt-4 overflow-x-auto max-h-[460px] overflow-y-auto rounded-xl border" :class="isDark ? 'border-[#242422]' : 'border-slate-200'">
+        <table class="w-full text-left text-xs border-collapse">
+          <thead :class="[isDark ? 'bg-[#181816] text-[#8E8E93]' : 'bg-slate-50 text-slate-500', 'sticky top-0 z-10 border-b', isDark ? 'border-[#262624]' : 'border-slate-200']">
+            <tr>
+              <th class="py-2.5 px-3 font-bold w-10 text-center">#</th>
+              <th class="py-2.5 px-3 font-bold">Kullanıcı</th>
+              <th class="py-2.5 px-3 font-bold hidden sm:table-cell">E-posta</th>
+              <th class="py-2.5 px-3 font-bold">Rol</th>
+              <th class="py-2.5 px-3 font-bold text-right">Bağlantı</th>
+              <th class="py-2.5 px-3 font-bold text-right">Durum</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y" :class="isDark ? 'divide-[#222220]' : 'divide-slate-100'">
+            <tr
+              v-for="(u, idx) in overviewUsers"
+              :key="u.id || u.username"
+              @click="emit('navigate', 'users')"
+              :class="['transition-colors cursor-pointer', isDark ? 'hover:bg-[#1B1B19]' : 'hover:bg-slate-50']"
             >
-              {{ (u.name || u.username || 'U').slice(0, 2).toUpperCase() }}
-            </div>
-            <div class="min-w-0">
-              <div class="flex items-center gap-1.5">
-                <p class="text-xs font-bold truncate">{{ u.name || u.username }}</p>
+              <td :class="['py-3 px-3 text-center font-mono text-[11px] font-bold', mutedText]">
+                {{ idx + 1 }}
+              </td>
+              <td class="py-3 px-3">
+                <div class="flex items-center gap-3 min-w-0">
+                  <img
+                    v-if="u.avatar"
+                    :src="u.avatar"
+                    :alt="u.name || u.username"
+                    class="w-8 h-8 rounded-full object-cover border shrink-0"
+                    :class="isDark ? 'border-[#333330]' : 'border-slate-300'"
+                  />
+                  <div
+                    v-else
+                    class="w-8 h-8 rounded-full flex items-center justify-center font-extrabold text-[11px] shrink-0"
+                    :class="isDark ? 'bg-[#252522] text-[#FFFF00]' : 'bg-slate-200 text-slate-800'"
+                  >
+                    {{ (u.name || u.username || 'U').slice(0, 2).toUpperCase() }}
+                  </div>
+                  <div class="min-w-0">
+                    <p class="font-bold truncate max-w-[180px]">{{ u.name || u.username }}</p>
+                    <p :class="['text-[11px] font-mono truncate', mutedText]">@{{ u.username }}</p>
+                  </div>
+                </div>
+              </td>
+              <td :class="['py-3 px-3 hidden sm:table-cell truncate max-w-[180px]', mutedText]">
+                {{ u.email || '—' }}
+              </td>
+              <td class="py-3 px-3">
                 <span
                   v-if="u.role === 'admin' || u.id === 1"
-                  class="text-[9px] font-black uppercase px-1.5 py-0.5 rounded bg-[#FFFF00]/15 text-[#FFFF00]"
+                  class="text-[10px] font-black uppercase px-2 py-0.5 rounded-full bg-[#FFFF00]/15 text-[#FFFF00] border border-[#FFFF00]/30"
                 >
-                  Admin
+                  Yönetici
                 </span>
-              </div>
-              <p :class="['text-[11px] truncate font-mono', mutedText]">@{{ u.username }}</p>
-            </div>
-          </div>
-
-          <div class="flex flex-col items-end gap-1 shrink-0">
-            <span
-              class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold border"
-              :class="u.status === 'pending'
-                ? 'bg-rose-500/15 text-rose-400 border-rose-500/30'
-                : (u.status === 'suspended'
-                  ? 'bg-zinc-500/15 text-zinc-400 border-zinc-500/30'
-                  : 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30')"
-            >
-              {{ u.status === 'pending' ? 'Onay Bekliyor' : (u.status === 'suspended' ? 'Askıda' : 'Aktif') }}
-            </span>
-            <span :class="['text-[10px] font-mono', mutedText]">
-              {{ u.linkCount ?? (Array.isArray(u.links) ? u.links.length : 0) }} link
-            </span>
-          </div>
-        </div>
-
-        <div
-          v-if="overviewUsers.length === 0"
-          :class="['md:col-span-2 xl:col-span-3 py-6 text-center text-xs rounded-xl border border-dashed', isDark ? 'border-[#2B2B28]' : 'border-slate-300', mutedText]"
-        >
-          Henüz kullanıcı listesi yüklenmedi veya arama sonucu bulunamadı.
-        </div>
+                <span
+                  v-else
+                  :class="['text-[10px] font-semibold px-2 py-0.5 rounded-full border', isDark ? 'bg-[#222220] text-zinc-300 border-[#2F2F2C]' : 'bg-slate-100 text-slate-700 border-slate-200']"
+                >
+                  Üye
+                </span>
+              </td>
+              <td class="py-3 px-3 text-right font-mono font-semibold">
+                {{ u.linkCount ?? (Array.isArray(u.links) ? u.links.length : 0) }} Link
+              </td>
+              <td class="py-3 px-3 text-right">
+                <span
+                  class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold border"
+                  :class="u.status === 'pending'
+                    ? 'bg-rose-500/15 text-rose-400 border-rose-500/30'
+                    : (u.status === 'suspended'
+                      ? 'bg-zinc-500/15 text-zinc-400 border-zinc-500/30'
+                      : 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30')"
+                >
+                  {{ u.status === 'pending' ? 'Onay Bekliyor' : (u.status === 'suspended' ? 'Askıda' : 'Aktif') }}
+                </span>
+              </td>
+            </tr>
+            <tr v-if="overviewUsers.length === 0">
+              <td colspan="6" :class="['py-8 text-center text-xs', mutedText]">
+                Henüz kullanıcı listesi yüklenmedi veya arama sonucu bulunamadı.
+              </td>
+            </tr>
+          </tbody>
+        </table>
       </div>
     </div>
   </div>
