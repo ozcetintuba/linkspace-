@@ -541,7 +541,7 @@ const loadProfileData = async (usernameParam) => {
         }
       } else {
         if (typeof document !== 'undefined') {
-          document.title = `${res.profile?.name || usernameParam} (@${usernameParam}) | linkspace`
+          document.title = `${res.profile?.name || usernameParam} (@${usernameParam.replace(/^@/, '')}) | linkspace`
         }
       }
     } catch (e) {
@@ -555,7 +555,7 @@ const loadProfileData = async (usernameParam) => {
   } else {
     profileNotFound.value = false
     isLoadingProfile.value = false
-    linkStore.fetchFromApi()
+    linkStore.clearPublicProfile()
     if (typeof document !== 'undefined') {
       document.title = `${profile.value.name || 'Profil'} | linkspace`
     }
@@ -1204,14 +1204,24 @@ const handleDownloadVCard = async () => {
       <div class="flex items-center justify-center gap-2 mb-3.5 flex-wrap">
         <span 
           v-if="profile.role === 'admin' || profile.username === '@tubagul' || profile.username === 'tubagul'"
-          class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-black uppercase tracking-wider bg-[#FFFF00]/15 text-[#FFFF00] border border-[#FFFF00]/40 shadow-sm"
+          :class="[
+            'inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-black uppercase tracking-wider border shadow-sm',
+            activeTheme.id === 'pure-light'
+              ? 'bg-[#FFFF00] text-black border-yellow-500'
+              : 'bg-[#FFFF00]/15 text-[#FFFF00] border-[#FFFF00]/40'
+          ]"
         >
-          <Award class="w-3.5 h-3.5 text-[#FFFF00]" />
+          <Award :class="['w-3.5 h-3.5', activeTheme.id === 'pure-light' ? 'text-black' : 'text-[#FFFF00]']" />
           <span>Platform Yöneticisi</span>
         </span>
         <span 
           v-else
-          class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-white/10 text-white/90 border border-white/20 shadow-xs backdrop-blur-sm"
+          :class="[
+            'inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-semibold border shadow-xs backdrop-blur-sm',
+            activeTheme.id === 'pure-light'
+              ? 'bg-slate-900/5 text-slate-800 border-slate-300'
+              : 'bg-white/10 text-white/90 border-white/20'
+          ]"
         >
           <span>✨ Topluluk Üyesi</span>
         </span>

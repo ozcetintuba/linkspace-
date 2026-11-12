@@ -373,6 +373,9 @@ onMounted(async () => {
   }
 
   // İlk veri yüklemeleri
+  if (linkStore.isViewingPublicProfile) {
+    linkStore.clearPublicProfile()
+  }
   loadSmartInsights()
   linkStore.fetchPasskeys()
   linkStore.fetchUsers()
@@ -507,6 +510,46 @@ const newUserForm = ref({
   bio: '',
   layoutStyle: 'bento'
 })
+
+const showUserProfilePreviewModal = ref(false)
+const previewUser = ref(null)
+const previewUserLinks = ref([])
+
+const getPreviewLinkDomain = (url) => {
+  try {
+    if (!url) return 'linkspace'
+    if (url.startsWith('mailto:')) return url.replace('mailto:', '')
+    const host = new URL(url).hostname.replace(/^www\./, '')
+    return host || 'link'
+  } catch {
+    return 'link'
+  }
+}
+
+const openUserProfilePreview = async (u) => {
+  if (!u) return
+  previewUser.value = u
+  previewUserLinks.value = linkStore.getMockLinksForUser(u)
+  showUserProfilePreviewModal.value = true
+
+  // Varsa backend'den kullanıcının canlı profil & link verisini çek
+  try {
+    const clean = (u.username || '').replace(/^@/, '').trim().toLowerCase()
+    const res = await fetch(`/api/profile/${encodeURIComponent(clean)}`)
+    if (res.ok) {
+      const data = await res.json()
+      const stillSameUser = previewUser.value?.username?.replace(/^@/, '').toLowerCase() === clean
+      if (stillSameUser) {
+        if (data.profile) {
+          previewUser.value = { ...u, ...data.profile, username: u.username }
+        }
+        if (Array.isArray(data.links) && data.links.length > 0) {
+          previewUserLinks.value = data.links
+        }
+      }
+    }
+  } catch (err) {}
+}
 
 const showEditUserModal = ref(false)
 const editUserError = ref('')
@@ -1252,12 +1295,36 @@ const ICON_COMPONENT_MAP = {
   Code,
   Music,
   ShoppingBag,
-  BookOpen
+  BookOpen,
+  Terminal,
+  Award
+}
+
+const DIRECT_ICON_LOOKUP = {
+  sparkles: Sparkles,
+  globe: Globe,
+  github: Github,
+  linkedin: Linkedin,
+  instagram: Instagram,
+  youtube: Youtube,
+  twitter: Twitter,
+  mail: Mail,
+  phone: Phone,
+  code: Code,
+  music: Music,
+  shop: ShoppingBag,
+  book: BookOpen,
+  terminal: Terminal,
+  award: Award
 }
 
 // İkon algılama ve çözümleme yardımcısı
 const getLinkIcon = (link) => {
   if (link.icon && link.icon !== 'auto') {
+    const lowerIcon = String(link.icon).toLowerCase()
+    if (DIRECT_ICON_LOOKUP[lowerIcon]) {
+      return DIRECT_ICON_LOOKUP[lowerIcon]
+    }
     const found = AVAILABLE_ICONS.find(i => i.id === link.icon)
     if (found && ICON_COMPONENT_MAP[found.icon]) {
       return ICON_COMPONENT_MAP[found.icon]
@@ -6312,14 +6379,15 @@ const handleChangePassword = async () => {
                     <tr 
                       v-for="u in filteredUsers" 
                       :key="u.id"
-                      class="transition-colors hover:bg-white/[0.02]"
+                      @click="openUserProfilePreview(u)"
+                      class="transition-colors hover:bg-white/[0.03] cursor-pointer"
                       :class="[
                         selectedUserIds.includes(u.id) ? (adminTheme === 'light' ? 'bg-yellow-50/50' : 'bg-[#FFFF00]/5') : '',
                         u.status === 'suspended' ? 'opacity-60' : ''
                       ]"
                     >
                       <!-- Seçim Checkbox -->
-                      <td class="p-4 text-center">
+                      <td class="p-4 text-center" @click.stop>
                         <input 
                           type="checkbox" 
                           :checked="selectedUserIds.includes(u.id)"
@@ -6331,7 +6399,11 @@ const handleChangePassword = async () => {
                       <!-- Kullanıcı & Avatar -->
                       <td class="p-4">
                         <div class="flex items-center gap-3">
-                          <div class="relative shrink-0">
+                          <div 
+                            @click.stop="openUserProfilePreview(u)"
+                            class="relative shrink-0 cursor-pointer hover:scale-105 transition-transform"
+                            title="Linktree Profilini İncele"
+                          >
                             <img 
                               v-if="u.avatar" 
                               :src="u.avatar" 
@@ -6354,12 +6426,18 @@ const handleChangePassword = async () => {
                             </span>
                           </div>
                           <div class="min-w-0">
-                            <div class="font-bold truncate max-w-[150px]" :class="themeClasses.titleText">
-                              {{ u.name }}
+                            <div 
+                              class="font-bold truncate max-w-[150px] hover:text-[#FFFF00] transition-colors flex items-center gap-1" 
+                              :class="themeClasses.titleText"
+                              title="Linktree Profilini İncele"
+                            >
+                              <span>{{ u.name }}</span>
+                              <Eye class="w-3 h-3 text-[#FFFF00] opacity-80" />
                             </div>
                             <a 
                               :href="'/@' + u.username.replace(/^@/, '')" 
                               target="_blank"
+                              @click.stop
                               class="text-[11px] text-[#FFFF00] font-mono hover:underline truncate block"
                             >
                               @{{ u.username.replace(/^@/, '') }}
@@ -6375,7 +6453,7 @@ const handleChangePassword = async () => {
                           <button 
                             v-if="u.email"
                             type="button" 
-                            @click="handleCopyUserUrl(u.username)"
+                            @click.stop="handleCopyUserUrl(u.username)"
                             class="text-[10px] text-[#FFFF00] hover:underline shrink-0" 
                             title="Profil linkini kopyala"
                           >
@@ -6413,7 +6491,7 @@ const handleChangePassword = async () => {
                       </td>
 
                       <!-- Durum (Aktif / Askıda) -->
-                      <td class="p-4">
+                      <td class="p-4" @click.stop>
                         <button 
                           type="button"
                           @click="handleQuickToggleStatus(u)"
@@ -6428,7 +6506,7 @@ const handleChangePassword = async () => {
                       </td>
 
                       <!-- Doğrulanmış Rozet -->
-                      <td class="p-4">
+                      <td class="p-4" @click.stop>
                         <button 
                           type="button"
                           @click="handleQuickToggleVerify(u)"
@@ -6446,13 +6524,23 @@ const handleChangePassword = async () => {
                       </td>
 
                       <!-- Aksiyon Butonları -->
-                      <td class="p-4 text-right pr-6">
+                      <td class="p-4 text-right pr-6" @click.stop>
                         <div class="flex items-center justify-end gap-1.5">
-                          <!-- Profili Gör -->
+                          <!-- Linktree Önizleme / Profili Gör -->
+                          <button 
+                            type="button"
+                            @click="openUserProfilePreview(u)"
+                            title="Linktree Profil Önizlemesini Aç"
+                            class="p-2 rounded-xl bg-[#FFFF00] hover:bg-[#EEFF00] text-black font-bold transition-all active:scale-95 cursor-pointer shadow-sm"
+                          >
+                            <Eye class="w-3.5 h-3.5" />
+                          </button>
+
+                          <!-- Yeni Sekmede Canlı Aç -->
                           <a 
                             :href="'/@' + u.username.replace(/^@/, '')" 
                             target="_blank"
-                            title="Canlı Profil Sayfasını Ziyaret Et"
+                            title="Yeni Sekmede Canlı Aç"
                             class="p-2 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-[#FFFF00] transition-colors"
                           >
                             <ExternalLink class="w-3.5 h-3.5" />
@@ -6511,7 +6599,8 @@ const handleChangePassword = async () => {
               <div 
                 v-for="u in filteredUsers" 
                 :key="u.id"
-                class="rounded-3xl border transition-all duration-200 p-5 flex flex-col justify-between group hover:border-[#FFFF00]/60 relative"
+                @click="openUserProfilePreview(u)"
+                class="rounded-3xl border transition-all duration-200 p-5 flex flex-col justify-between group hover:border-[#FFFF00]/70 hover:shadow-xl hover:shadow-yellow-500/5 relative cursor-pointer"
                 :class="[
                   themeClasses.cardBg, 
                   u.role === 'admin' ? 'ring-1 ring-[#FFFF00]/25' : '',
@@ -6521,29 +6610,34 @@ const handleChangePassword = async () => {
               >
                 <!-- Üst Bilgi: Seçim Checkbox, Avatar, İsim, Rozet, Rol -->
                 <div>
-                  <div class="flex items-start justify-between gap-3">
-                    <div class="flex items-center gap-3">
+                  <div class="flex items-start justify-between gap-2.5">
+                    <div class="flex items-center gap-2.5 min-w-0 flex-1">
                       <!-- Seçim Checkbox -->
                       <input 
                         type="checkbox"
                         :checked="selectedUserIds.includes(u.id)"
+                        @click.stop
                         @change="toggleSelectUser(u.id)"
                         class="w-4 h-4 accent-[#FFFF00] rounded cursor-pointer shrink-0"
                         title="Toplu işlem için seç"
                       />
 
                       <!-- Avatar -->
-                      <div class="relative shrink-0">
+                      <div 
+                        @click.stop="openUserProfilePreview(u)"
+                        class="relative shrink-0 cursor-pointer"
+                        title="Linktree Profilini İncele"
+                      >
                         <img 
                           v-if="u.avatar" 
                           :src="u.avatar" 
                           :alt="u.name"
-                          class="w-12 h-12 rounded-full object-cover border-2 transition-transform group-hover:scale-105"
+                          class="w-11 h-11 rounded-full object-cover border-2 transition-transform group-hover:scale-105"
                           :class="u.role === 'admin' ? 'border-[#FFFF00]' : 'border-zinc-700'"
                           @error="(e) => { e.target.style.display = 'none'; if (e.target.nextElementSibling) e.target.nextElementSibling.style.display = 'flex'; }"
                         />
                         <div 
-                          class="w-12 h-12 rounded-full items-center justify-center font-bold text-sm border-2 text-white bg-gradient-to-br from-zinc-700 to-zinc-900"
+                          class="w-11 h-11 rounded-full items-center justify-center font-bold text-sm border-2 text-white bg-gradient-to-br from-zinc-700 to-zinc-900"
                           :class="[u.avatar ? 'hidden' : 'flex', u.role === 'admin' ? 'border-[#FFFF00]' : 'border-zinc-700']"
                         >
                           {{ getInitials(u.name) }}
@@ -6560,9 +6654,13 @@ const handleChangePassword = async () => {
                       </div>
 
                       <!-- İsim & Kullanıcı Adı -->
-                      <div class="min-w-0">
-                        <div class="flex items-center gap-1.5 flex-wrap">
-                          <h3 class="font-bold text-sm truncate" :class="themeClasses.titleText">
+                      <div class="min-w-0 flex-1">
+                        <div class="flex items-center gap-1">
+                          <h3 
+                            class="font-bold text-sm truncate group-hover:text-[#FFFF00] transition-colors" 
+                            :class="themeClasses.titleText"
+                            :title="u.name + ' - Linktree Profilini İncele'"
+                          >
                             {{ u.name }}
                           </h3>
                         </div>
@@ -6570,8 +6668,9 @@ const handleChangePassword = async () => {
                           <a 
                             :href="'/@' + u.username.replace(/^@/, '')" 
                             target="_blank" 
+                            @click.stop
                             class="text-xs text-[#FFFF00] font-mono hover:underline truncate"
-                            title="Canlı Profil Sayfasını Ziyaret Et"
+                            title="Canlı Profil Sayfasını Yeni Sekmede Aç"
                           >
                             @{{ u.username.replace(/^@/, '') }}
                           </a>
@@ -6596,7 +6695,7 @@ const handleChangePassword = async () => {
                         </span>
                         <button 
                           type="button"
-                          @click="handleQuickToggleStatus(u)"
+                          @click.stop="handleQuickToggleStatus(u)"
                           :disabled="u.id === 1"
                           class="px-2 py-0.5 text-[10px] font-bold rounded-full cursor-pointer"
                           :class="u.status === 'suspended' ? 'bg-rose-500/20 text-rose-400 border border-rose-500/40' : 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30'"
@@ -6646,7 +6745,7 @@ const handleChangePassword = async () => {
                       <button 
                         v-if="u.email"
                         type="button"
-                        @click="handleCopyUserUrl(u.username)"
+                        @click.stop="handleCopyUserUrl(u.username)"
                         class="text-[10px] text-[#FFFF00] hover:underline cursor-pointer"
                         title="Profil bağlantısını kopyala"
                       >
@@ -6658,19 +6757,31 @@ const handleChangePassword = async () => {
 
                 <!-- Alt Aksiyon Butonları -->
                 <div class="mt-4 pt-3 border-t flex items-center justify-between gap-1.5" :class="themeClasses.headerBorder">
+                  <button 
+                    type="button"
+                    @click.stop="openUserProfilePreview(u)"
+                    class="flex-1 py-1.5 px-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 text-black bg-[#FFFF00] hover:bg-[#EEFF00] shadow-sm active:scale-95 text-center cursor-pointer"
+                    title="Linktree Profilini Görüntüle"
+                  >
+                    <Eye class="w-3.5 h-3.5" />
+                    <span>Profili Gör</span>
+                  </button>
+
                   <a 
                     :href="'/@' + u.username.replace(/^@/, '')" 
                     target="_blank"
-                    class="flex-1 py-1.5 px-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 text-black bg-[#FFFF00] hover:bg-[#EEFF00] shadow-sm active:scale-95 text-center cursor-pointer"
+                    @click.stop
+                    title="Yeni Sekmede Canlı Aç"
+                    class="p-2 rounded-xl border transition-colors cursor-pointer"
+                    :class="adminTheme === 'light' ? 'bg-slate-50 border-slate-200 hover:bg-slate-100 text-slate-700' : 'bg-[#141414] border-[#282828] hover:border-[#444] text-[#FFFF00] hover:text-white'"
                   >
                     <ExternalLink class="w-3.5 h-3.5" />
-                    <span>Profili Gör</span>
                   </a>
 
                   <!-- Düzenle Butonu -->
                   <button 
                     type="button"
-                    @click="openEditUserModal(u)"
+                    @click.stop="openEditUserModal(u)"
                     title="Kullanıcı Bilgilerini Düzenle"
                     class="p-2 rounded-xl border transition-colors cursor-pointer"
                     :class="adminTheme === 'light' ? 'bg-slate-50 border-slate-200 hover:bg-slate-100 text-slate-700' : 'bg-[#141414] border-[#282828] hover:border-[#444] text-[#8E8E93] hover:text-white'"
@@ -6681,7 +6792,7 @@ const handleChangePassword = async () => {
                   <!-- QR Kod Butonu -->
                   <button 
                     type="button"
-                    @click="openUserQrModal(u)"
+                    @click.stop="openUserQrModal(u)"
                     title="Profil QR Kodunu Aç"
                     class="p-2 rounded-xl border transition-colors cursor-pointer"
                     :class="adminTheme === 'light' ? 'bg-slate-50 border-slate-200 hover:bg-slate-100 text-slate-700' : 'bg-[#141414] border-[#282828] hover:border-[#444] text-cyan-400'"
@@ -6692,7 +6803,7 @@ const handleChangePassword = async () => {
                   <!-- Link Kopyala Butonu -->
                   <button 
                     type="button"
-                    @click="handleCopyUserUrl(u.username)"
+                    @click.stop="handleCopyUserUrl(u.username)"
                     title="Profil URL'ini Kopyala"
                     class="p-2 rounded-xl border transition-colors cursor-pointer"
                     :class="adminTheme === 'light' ? 'bg-slate-50 border-slate-200 hover:bg-slate-100 text-slate-700' : 'bg-[#141414] border-[#282828] hover:border-[#444] text-[#8E8E93] hover:text-white'"
@@ -6703,7 +6814,7 @@ const handleChangePassword = async () => {
                   <!-- Sil Butonu -->
                   <button 
                     type="button"
-                    @click="handleDeleteUserClick(u)"
+                    @click.stop="handleDeleteUserClick(u)"
                     :disabled="u.id === 1 || u.username === 'tubagul'"
                     :title="u.id === 1 ? 'Ana yönetici hesabı silinemez' : 'Kullanıcıyı Sil'"
                     class="p-2 rounded-xl border transition-colors"
@@ -8965,6 +9076,329 @@ const handleChangePassword = async () => {
               <RefreshCw v-if="isUserActionLoading" class="w-3.5 h-3.5 animate-spin" />
               <Trash2 v-else class="w-3.5 h-3.5" />
               <span>Evet, Kullanıcıyı Sil</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    </Teleport>
+
+    <!-- CANLI LİNKTREE PROFİL ÖNİZLEME MODALI (MÜŞTERİ / ÜYE VİTRİNİ) -->
+    <Teleport to="body">
+      <div 
+        v-if="showUserProfilePreviewModal && previewUser" 
+        class="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-5 overflow-y-auto"
+        :class="themeClasses.modalOverlay"
+        @click.self="showUserProfilePreviewModal = false"
+      >
+        <div 
+          class="w-full max-w-3xl rounded-3xl border shadow-2xl overflow-hidden flex flex-col max-h-[94vh] animate-in fade-in zoom-in-95 duration-200 my-auto"
+          :class="themeClasses.modalBg"
+        >
+          <!-- Modal Üst Bar -->
+          <div class="px-5 py-4 border-b flex items-center justify-between gap-3 flex-wrap shrink-0" :class="themeClasses.headerBorder">
+            <div class="flex items-center gap-3 min-w-0">
+              <div class="relative shrink-0">
+                <img 
+                  v-if="previewUser.avatar"
+                  :src="previewUser.avatar"
+                  :alt="previewUser.name"
+                  class="w-10 h-10 rounded-full object-cover border-2 border-[#FFFF00]"
+                  @error="(e) => { e.target.style.display = 'none'; if (e.target.nextElementSibling) e.target.nextElementSibling.style.display = 'flex'; }"
+                />
+                <div 
+                  class="w-10 h-10 rounded-full items-center justify-center font-bold text-xs border-2 border-[#FFFF00] bg-zinc-800 text-white"
+                  :class="previewUser.avatar ? 'hidden' : 'flex'"
+                >
+                  {{ getInitials(previewUser.name) }}
+                </div>
+              </div>
+              <div class="min-w-0">
+                <div class="flex items-center gap-1.5 flex-wrap">
+                  <h3 class="text-sm sm:text-base font-bold truncate" :class="themeClasses.titleText">
+                    {{ previewUser.name }}
+                  </h3>
+                  <CheckCircle2 v-if="previewUser.isVerified !== false" class="w-4 h-4 text-[#FFFF00] shrink-0" />
+                  <span 
+                    v-if="previewUser.role === 'admin' || previewUser.username === 'tubagul'"
+                    class="px-2 py-0.5 text-[10px] font-black uppercase rounded-full bg-[#FFFF00]/15 text-[#FFFF00] border border-[#FFFF00]/30"
+                  >
+                    Yönetici
+                  </span>
+                  <span 
+                    v-else
+                    class="px-2 py-0.5 text-[10px] font-semibold rounded-full bg-cyan-500/15 text-cyan-400 border border-cyan-500/30"
+                  >
+                    Üye Linktree
+                  </span>
+                </div>
+                <p class="text-[11px] font-mono text-[#FFFF00] truncate">
+                  @{{ (previewUser.username || '').replace(/^@/, '') }} • {{ previewUserLinks.length }} Aktif Bağlantı
+                </p>
+              </div>
+            </div>
+
+            <div class="flex items-center gap-2 shrink-0">
+              <button 
+                type="button"
+                @click="handleCopyUserUrl(previewUser.username)"
+                class="px-3 py-2 rounded-xl border text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer"
+                :class="adminTheme === 'light' ? 'bg-slate-50 border-slate-200 hover:bg-slate-100 text-slate-700' : 'bg-[#121212] border-[#282828] hover:border-[#444] text-zinc-200'"
+              >
+                <Copy class="w-3.5 h-3.5 text-[#FFFF00]" />
+                <span class="hidden sm:inline">Linki Kopyala</span>
+              </button>
+
+              <a 
+                :href="'/@' + (previewUser.username || '').replace(/^@/, '')" 
+                target="_blank"
+                class="px-3.5 py-2 rounded-xl bg-[#FFFF00] hover:bg-[#EEFF00] text-black font-bold text-xs flex items-center gap-1.5 transition-transform active:scale-95 shadow-lg shadow-yellow-500/20"
+              >
+                <ExternalLink class="w-3.5 h-3.5" />
+                <span>Yeni Sekmede Canlı Aç</span>
+              </a>
+
+              <button 
+                type="button" 
+                @click="showUserProfilePreviewModal = false" 
+                class="p-2 rounded-xl text-[#8E8E93] hover:text-white hover:bg-zinc-800 transition-colors cursor-pointer"
+              >
+                <X class="w-5 h-5" />
+              </button>
+            </div>
+          </div>
+
+          <!-- Orta Alan: Canlı iPhone 16 Pro Linktree Vitrin Önizlemesi -->
+          <div 
+            class="flex-1 overflow-y-auto p-5 sm:p-7 flex flex-col items-center justify-center relative"
+            :class="adminTheme === 'light' ? 'bg-slate-100/80' : 'bg-[#0A0A09]'"
+          >
+            <!-- Telefon Çerçevesi -->
+            <div class="w-full max-w-[360px] h-[570px] rounded-[46px] border-[10px] border-[#1f1f22] bg-[#0B0B0D] text-white shadow-[0_25px_70px_rgba(0,0,0,0.85)] ring-1 ring-white/10 relative flex flex-col overflow-hidden">
+              <!-- Üst Dynamic Island & Durum Çubuğu -->
+              <div class="px-6 pt-3 pb-2 flex items-center justify-between text-[11px] font-semibold text-white/90 shrink-0 relative z-20 bg-[#0B0B0D]/90 backdrop-blur-md">
+                <span>09:41</span>
+                <div class="w-24 h-6 rounded-full bg-black border border-white/10 shadow-inner mx-auto flex items-center justify-end pr-2">
+                  <span class="w-2 h-2 rounded-full bg-emerald-500/80"></span>
+                </div>
+                <div class="flex items-center gap-1.5">
+                  <Wifi class="w-3.5 h-3.5" />
+                  <span class="text-[10px] px-1 rounded bg-white/15 font-mono">100%</span>
+                </div>
+              </div>
+
+              <!-- Kaydırılabilir Linktree Profil İçeriği -->
+              <div class="flex-1 overflow-y-auto px-4 pt-4 pb-8 relative">
+                <!-- Atmosferik Üst Parlama -->
+                <div class="absolute -top-12 left-1/2 -translate-x-1/2 w-56 h-56 rounded-full bg-[#FFFF00]/15 blur-3xl pointer-events-none"></div>
+
+                <!-- Profil Üst Bilgisi -->
+                <div class="relative z-10 flex flex-col items-center text-center mb-5">
+                  <div class="relative mb-3">
+                    <div class="absolute -inset-1 rounded-full bg-gradient-to-tr from-[#FFFF00] via-amber-400 to-cyan-400 blur-sm opacity-75"></div>
+                    <img 
+                      v-if="previewUser.avatar"
+                      :src="previewUser.avatar"
+                      :alt="previewUser.name"
+                      class="relative w-20 h-20 rounded-full object-cover border-2 border-[#141414] shadow-xl"
+                      @error="(e) => { e.target.style.display = 'none'; if (e.target.nextElementSibling) e.target.nextElementSibling.style.display = 'flex'; }"
+                    />
+                    <div 
+                      class="relative w-20 h-20 rounded-full items-center justify-center font-bold text-xl border-2 border-[#141414] bg-gradient-to-br from-zinc-700 to-zinc-900 text-white shadow-xl"
+                      :class="previewUser.avatar ? 'hidden' : 'flex'"
+                    >
+                      {{ getInitials(previewUser.name) }}
+                    </div>
+                  </div>
+
+                  <h4 class="text-lg font-extrabold tracking-tight text-white flex items-center gap-1.5 justify-center">
+                    <span>{{ previewUser.name }}</span>
+                    <CheckCircle2 v-if="previewUser.isVerified !== false" class="w-4 h-4 text-[#FFFF00]" />
+                  </h4>
+                  <span class="text-xs font-mono text-[#FFFF00] mt-0.5">
+                    @{{ (previewUser.username || '').replace(/^@/, '') }}
+                  </span>
+
+                  <!-- Rol ve Düzen Rozetleri -->
+                  <div class="flex items-center justify-center gap-1.5 mt-2 flex-wrap">
+                    <span 
+                      v-if="previewUser.role === 'admin' || previewUser.username === 'tubagul'"
+                      class="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-[#FFFF00]/15 text-[#FFFF00] border border-[#FFFF00]/30"
+                    >
+                      👑 Platform Yöneticisi
+                    </span>
+                    <span 
+                      v-else
+                      class="px-2.5 py-0.5 rounded-full text-[10px] font-semibold bg-white/10 text-zinc-200 border border-white/15"
+                    >
+                      ✨ Topluluk Üyesi
+                    </span>
+                    <span 
+                      v-if="previewUser.layoutStyle === 'bento'"
+                      class="px-2 py-0.5 rounded-full text-[10px] font-mono font-bold bg-cyan-500/15 text-cyan-400 border border-cyan-500/30"
+                    >
+                      🍱 Bento Vitrin
+                    </span>
+                  </div>
+
+                  <p class="text-xs text-zinc-300 mt-2.5 leading-relaxed max-w-[270px]">
+                    {{ previewUser.bio || `${previewUser.name} resmi Linkspace profili.` }}
+                  </p>
+
+                  <!-- Mini Sosyal İkon Barı -->
+                  <div class="flex items-center justify-center gap-2 mt-3.5 px-3 py-1.5 rounded-full bg-[#161616] border border-[#262626]">
+                    <a href="https://github.com" target="_blank" class="p-1.5 rounded-full hover:bg-white/10 text-zinc-300 hover:text-white transition-colors" title="GitHub">
+                      <Github class="w-3.5 h-3.5" />
+                    </a>
+                    <a href="https://linkedin.com" target="_blank" class="p-1.5 rounded-full hover:bg-white/10 text-zinc-300 hover:text-white transition-colors" title="LinkedIn">
+                      <Linkedin class="w-3.5 h-3.5" />
+                    </a>
+                    <a href="https://instagram.com" target="_blank" class="p-1.5 rounded-full hover:bg-white/10 text-zinc-300 hover:text-white transition-colors" title="Instagram">
+                      <Instagram class="w-3.5 h-3.5" />
+                    </a>
+                  </div>
+                </div>
+
+                <!-- Bağlantılar (Bento Grid veya Klasik Liste) -->
+                <div 
+                  v-if="previewUserLinks.length > 0"
+                  :class="previewUser.layoutStyle === 'bento' ? 'grid grid-cols-2 gap-2.5 relative z-10' : 'flex flex-col gap-2.5 relative z-10'"
+                >
+                  <template v-for="link in previewUserLinks" :key="link.id">
+                    <!-- 1. FEATURED HERO VİTRİN KARTI -->
+                    <a
+                      v-if="previewUser.layoutStyle === 'bento' && link.gridSpan === 'featured'"
+                      :href="link.url"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      class="col-span-2 group rounded-2xl overflow-hidden border border-[#2C2C2E] hover:border-[#FFFF00] bg-[#161616] transition-all duration-200 block shadow-lg"
+                    >
+                      <div v-if="link.thumbnail" class="relative h-28 w-full overflow-hidden">
+                        <img :src="link.thumbnail" :alt="link.title" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
+                        <div class="absolute inset-0 bg-gradient-to-t from-[#161616] via-[#161616]/40 to-transparent"></div>
+                        <div v-if="link.cardBadge" class="absolute top-2.5 left-2.5 px-2.5 py-0.5 rounded-full bg-black/70 backdrop-blur-md border border-[#FFFF00]/40 text-[10px] font-bold text-[#FFFF00]">
+                          {{ link.cardBadge }}
+                        </div>
+                        <div class="absolute top-2.5 right-2.5 w-7 h-7 rounded-full bg-black/60 text-white flex items-center justify-center group-hover:bg-[#FFFF00] group-hover:text-black transition-colors">
+                          <ExternalLink class="w-3.5 h-3.5" />
+                        </div>
+                      </div>
+                      <div class="p-3.5">
+                        <div class="flex items-start justify-between gap-2">
+                          <div>
+                            <div class="text-xs font-bold text-white group-hover:text-[#FFFF00] transition-colors leading-snug">
+                              {{ link.title }}
+                            </div>
+                            <div class="text-[10px] text-zinc-400 font-mono mt-1 flex items-center gap-2">
+                              <span>{{ getPreviewLinkDomain(link.url) }}</span>
+                              <span>•</span>
+                              <span class="text-[#FFFF00]">{{ link.clicks || 0 }} tık</span>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </a>
+
+                    <!-- 2. KOMPAKT BENTO KUTUSU (1 Sütun) -->
+                    <a
+                      v-else-if="previewUser.layoutStyle === 'bento' && link.gridSpan === 'half'"
+                      :href="link.url"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      class="col-span-1 group rounded-2xl border border-[#282828] hover:border-[#FFFF00] bg-[#161616] p-3 flex flex-col justify-between min-h-[104px] transition-all hover:-translate-y-0.5"
+                    >
+                      <div class="flex items-center justify-between gap-1">
+                        <div class="w-8 h-8 rounded-xl bg-[#FFFF00]/10 border border-[#FFFF00]/25 text-[#FFFF00] flex items-center justify-center shrink-0">
+                          <component :is="getLinkIcon(link)" class="w-4 h-4" />
+                        </div>
+                        <span v-if="link.cardBadge" class="text-[9px] px-1.5 py-0.5 rounded-full bg-zinc-800 text-[#FFFF00] font-semibold truncate max-w-[70px]">
+                          {{ link.cardBadge }}
+                        </span>
+                        <ExternalLink v-else class="w-3 h-3 text-zinc-500 group-hover:text-[#FFFF00] transition-colors" />
+                      </div>
+                      <div class="mt-2">
+                        <div class="text-[11px] font-bold text-white group-hover:text-[#FFFF00] line-clamp-2 leading-tight">
+                          {{ link.title }}
+                        </div>
+                        <div class="text-[9px] text-zinc-500 font-mono mt-1 truncate">
+                          {{ link.clicks || 0 }} tıklama
+                        </div>
+                      </div>
+                    </a>
+
+                    <!-- 3. TAM GENİŞLİK LİNK KARTI -->
+                    <a
+                      v-else
+                      :href="link.url"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      :class="[
+                        previewUser.layoutStyle === 'bento' ? 'col-span-2' : 'w-full',
+                        'group rounded-2xl border border-[#282828] hover:border-[#FFFF00] bg-[#161616] px-3.5 py-3 flex items-center justify-between gap-3 transition-all hover:bg-[#1D1D1F]'
+                      ]"
+                    >
+                      <div class="flex items-center gap-3 min-w-0">
+                        <div class="w-9 h-9 rounded-xl bg-[#FFFF00]/10 border border-[#FFFF00]/25 text-[#FFFF00] flex items-center justify-center shrink-0">
+                          <component :is="getLinkIcon(link)" class="w-4 h-4" />
+                        </div>
+                        <div class="min-w-0">
+                          <div class="text-xs font-bold text-white group-hover:text-[#FFFF00] truncate transition-colors">
+                            {{ link.title }}
+                          </div>
+                          <div class="text-[10px] text-zinc-400 font-mono truncate">
+                            {{ getPreviewLinkDomain(link.url) }} • {{ link.clicks || 0 }} tık
+                          </div>
+                        </div>
+                      </div>
+                      <ExternalLink class="w-3.5 h-3.5 text-zinc-500 group-hover:text-[#FFFF00] shrink-0 transition-colors" />
+                    </a>
+                  </template>
+                </div>
+
+                <div v-else class="text-center py-8 text-xs text-zinc-500 border border-dashed border-zinc-800 rounded-2xl">
+                  Bu kullanıcının henüz aktif bağlantısı bulunmuyor.
+                </div>
+
+                <!-- Alt Marka İmza Hapı -->
+                <div class="mt-6 flex justify-center">
+                  <div class="px-3.5 py-1.5 rounded-full bg-[#161616] border border-[#262626] text-[10px] font-black tracking-widest uppercase text-zinc-400 flex items-center gap-1">
+                    <span>LINKSPACE</span>
+                    <Zap class="w-3 h-3 text-[#FFFF00] fill-[#FFFF00]" />
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Modal Alt Aksiyon Barı -->
+          <div class="px-5 py-3.5 border-t flex items-center justify-between gap-3 flex-wrap shrink-0" :class="themeClasses.headerBorder">
+            <div class="flex items-center gap-2">
+              <button 
+                type="button"
+                @click="showUserProfilePreviewModal = false; openEditUserModal(previewUser)"
+                class="px-3.5 py-2 rounded-xl border text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer"
+                :class="adminTheme === 'light' ? 'bg-slate-50 border-slate-200 hover:bg-slate-100 text-slate-700' : 'bg-[#121212] border-[#282828] hover:border-[#444] text-zinc-200'"
+              >
+                <Pencil class="w-3.5 h-3.5" />
+                <span>Kullanıcıyı Düzenle</span>
+              </button>
+              <button 
+                type="button"
+                @click="showUserProfilePreviewModal = false; openUserQrModal(previewUser)"
+                class="px-3.5 py-2 rounded-xl border text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer"
+                :class="adminTheme === 'light' ? 'bg-slate-50 border-slate-200 hover:bg-slate-100 text-slate-700' : 'bg-[#121212] border-[#282828] hover:border-cyan-500/40 text-cyan-400'"
+              >
+                <QrCode class="w-3.5 h-3.5" />
+                <span>QR Kodu</span>
+              </button>
+            </div>
+
+            <button 
+              type="button"
+              @click="showUserProfilePreviewModal = false"
+              class="px-4 py-2 rounded-xl border text-xs font-semibold hover:bg-zinc-800 transition-colors cursor-pointer"
+              :class="themeClasses.headerBorder"
+            >
+              Kapat
             </button>
           </div>
         </div>

@@ -32,6 +32,50 @@ const mockProfile = {
   layoutStyle: 'list'
 }
 
+export const getMockLinksForUser = (user) => {
+  const username = (user.username || '').replace(/^@/, '').toLowerCase()
+
+  if (username === 'tubagul' || username === 'admin') {
+    return [
+      { id: 1, title: 'Kişisel Web Sitem & Portfolyom', url: 'https://github.com/tubaaa7', isActive: true, icon: 'globe', customColor: 'default', clicks: 12, orderIndex: 0, gridSpan: 'featured', thumbnail: 'https://images.unsplash.com/photo-1517694712202-14dd9538aa97?w=600&auto=format&fit=crop&q=80', cardBadge: '⭐ Vitrin' },
+      { id: 2, title: 'GitHub Açık Kaynak Projelerim', url: 'https://github.com/tubaaa7/linkspace-', isActive: true, icon: 'github', customColor: 'default', clicks: 38, orderIndex: 1, gridSpan: 'half' },
+      { id: 3, title: 'Lo-Fi Chill Beats (Spotify)', url: 'https://open.spotify.com', isActive: true, icon: 'music', customColor: 'default', clicks: 19, orderIndex: 2, gridSpan: 'half' },
+      { id: 4, title: 'VIP Kodlama & Discord Topluluğu', url: 'https://discord.com', isActive: true, icon: 'globe', customColor: 'purple', clicks: 44, orderIndex: 3, gridSpan: 'full' }
+    ]
+  }
+
+  if (username === 'selin.design') {
+    return [
+      { id: 201, title: 'Selin Kaya Design Studio & Portfolyo', url: 'https://dribbble.com', isActive: true, icon: 'globe', customColor: 'default', clicks: 68, orderIndex: 0, gridSpan: 'featured', thumbnail: 'https://images.unsplash.com/photo-1561070791-2526d30994b5?w=600&auto=format&fit=crop&q=80', cardBadge: '🎨 Portfolyo' },
+      { id: 202, title: 'Figma UI Kit & Design System 2026', url: 'https://figma.com', isActive: true, icon: 'code', customColor: 'default', clicks: 45, orderIndex: 1, gridSpan: 'half', cardBadge: '🔥 Popüler' },
+      { id: 203, title: 'Dribbble Tasarım Vaka Analizleri', url: 'https://dribbble.com', isActive: true, icon: 'sparkles', customColor: 'default', clicks: 31, orderIndex: 2, gridSpan: 'half' },
+      { id: 204, title: 'Behance Marka Kimliği & İllüstrasyonlar', url: 'https://behance.net', isActive: true, icon: 'globe', customColor: 'default', clicks: 27, orderIndex: 3, gridSpan: 'full' },
+      { id: 205, title: 'Tasarım Danışmanlığı & Teklif İste', url: 'mailto:selin.design@creatives.co', isActive: true, icon: 'mail', customColor: 'emerald', clicks: 16, orderIndex: 4, gridSpan: 'full' }
+    ]
+  }
+
+  if (username === 'mert.dev') {
+    return [
+      { id: 301, title: 'GitHub Açık Kaynak Kütüphanelerim', url: 'https://github.com', isActive: true, icon: 'github', customColor: 'default', clicks: 84, orderIndex: 0, gridSpan: 'featured', thumbnail: 'https://images.unsplash.com/photo-1555066931-4365d14bab8c?w=600&auto=format&fit=crop&q=80', cardBadge: '🚀 Açık Kaynak' },
+      { id: 302, title: 'Node.js & Go Backend Mimarileri Blogu', url: 'https://medium.com', isActive: true, icon: 'book', customColor: 'default', clicks: 52, orderIndex: 1, gridSpan: 'half' },
+      { id: 303, title: 'LinkedIn & Profesyonel Kariyer Ağı', url: 'https://linkedin.com', isActive: true, icon: 'linkedin', customColor: 'default', clicks: 39, orderIndex: 2, gridSpan: 'half' }
+    ]
+  }
+
+  if (username === 'can.tech') {
+    return [
+      { id: 401, title: 'AWS Cloud & DevOps En İyi Uygulamaları', url: 'https://aws.amazon.com', isActive: true, icon: 'terminal', customColor: 'default', clicks: 43, orderIndex: 0, gridSpan: 'full', cardBadge: '☁️ Cloud' },
+      { id: 402, title: 'Kubernetes & CI/CD Pipeline Rehberim', url: 'https://kubernetes.io', isActive: true, icon: 'code', customColor: 'default', clicks: 29, orderIndex: 1, gridSpan: 'full' }
+    ]
+  }
+
+  // Genel veya yeni oluşturulan kullanıcılar için dinamik demo linkler
+  return [
+    { id: Date.now() + 1, title: `${user.name} Resmi Web Sitesi`, url: 'https://google.com', isActive: true, icon: 'globe', customColor: 'default', clicks: 12, orderIndex: 0, gridSpan: 'full' },
+    { id: Date.now() + 2, title: 'Sosyal Medya & İletişim', url: user.email ? `mailto:${user.email}` : 'https://instagram.com', isActive: true, icon: 'mail', customColor: 'default', clicks: 5, orderIndex: 1, gridSpan: 'full' }
+  ]
+}
+
 // GET /api/profile (Herkese açık, 60s TTL & ETag Önbellekli)
 router.get('/', cacheMiddleware(60), async (req, res) => {
   try {
@@ -76,6 +120,39 @@ router.get('/', cacheMiddleware(60), async (req, res) => {
   }
 })
 
+export const buildMockPublicProfileResponse = (foundMock) => {
+  const cleanName = (foundMock.username || '').replace(/^@/, '').toLowerCase()
+  const isMainOwner = cleanName === 'tubagul' || cleanName === 'admin'
+  return {
+    profile: {
+      name: foundMock.name,
+      username: `@${foundMock.username.replace(/^@/, '')}`,
+      bio: foundMock.bio || `${foundMock.name} resmi bağlantıları ✨`,
+      avatar: foundMock.avatar,
+      avatarShape: 'circle',
+      avatarGlow: 'yellow',
+      avatarMode: isMainOwner ? 'switchable' : 'photo',
+      role: foundMock.role || (isMainOwner ? 'admin' : 'user'),
+      statusText: 'Yeni Projelere & Fırsatlara Açık',
+      statusColor: 'none',
+      isVerified: foundMock.isVerified !== undefined ? foundMock.isVerified : true,
+      banner: '',
+      bannerPattern: 'mesh',
+      badges: [],
+      socialLinks: {
+        github: 'https://github.com',
+        linkedin: 'https://linkedin.com',
+        instagram: 'https://instagram.com'
+      },
+      groupByCategory: false,
+      foldersDefaultExpanded: true,
+      showBadges: false,
+      layoutStyle: foundMock.layoutStyle || 'list'
+    },
+    links: getMockLinksForUser(foundMock)
+  }
+}
+
 // GET /api/profile/:username (Giriş yapmamış ziyaretçiler için aktif linkleri döner, 60s TTL & ETag Önbellekli)
 router.get('/:username', cacheMiddleware(60), async (req, res) => {
   try {
@@ -116,49 +193,64 @@ router.get('/:username', cacheMiddleware(60), async (req, res) => {
     `, [cleanUsername])
 
     if (profileResult.rows.length === 0) {
+      // Veritabanında profil bulunamadıysa mock kullanıcıları kontrol et
+      const foundMock = mockUsers.find(u => u.username.toLowerCase().replace(/^@/, '') === cleanUsername) ||
+        (cleanUsername === 'admin' || cleanUsername === 'tubagul' ? mockUsers[0] : null)
+
+      if (foundMock) {
+        return res.json(buildMockPublicProfileResponse(foundMock))
+      }
+
       return res.status(404).json({ error: `'${username}' kullanıcısına ait profil bulunamadı` })
     }
 
     const profile = profileResult.rows[0]
+    const isMainOwner = cleanUsername === 'tubagul' || cleanUsername === 'admin'
 
-    // Sadece aktif ve süresi dolmamış linkleri getir
-    const linksResult = await query(`
-      SELECT 
-        id, 
-        title, 
-        url, 
-        is_active AS "isActive", 
-        icon, 
-        custom_color AS "customColor", 
-        clicks, 
-        order_index AS "orderIndex",
-        COALESCE(is_scheduled, false) AS "isScheduled",
-        schedule_start AS "scheduleStart",
-        schedule_end AS "scheduleEnd",
-        COALESCE(show_countdown, true) AS "showCountdown",
-        COALESCE(category, '') AS "category",
-        COALESCE(embed_type, 'none') AS "embedType",
-        COALESCE(show_embed, false) AS "showEmbed",
-        COALESCE(is_locked, false) AS "isLocked",
-        COALESCE(lock_type, 'pin') AS "lockType",
-        COALESCE(passcode, '') AS "passcode",
-        COALESCE(lock_warning, '') AS "lockWarning",
-        COALESCE(is_header, false) AS "isHeader",
-        COALESCE(ab_test_enabled, false) AS "abTestEnabled",
-        COALESCE(title_b, '') AS "titleB",
-        COALESCE(url_b, '') AS "urlB",
-        COALESCE(clicks_a, 0) AS "clicksA",
-        COALESCE(clicks_b, 0) AS "clicksB",
-        COALESCE(views_a, 0) AS "viewsA",
-        COALESCE(views_b, 0) AS "viewsB",
-        COALESCE(grid_span, 'full') AS "gridSpan",
-        COALESCE(thumbnail, '') AS "thumbnail",
-        COALESCE(card_badge, '') AS "cardBadge"
-      FROM links 
-      WHERE is_active = true
-        AND (is_scheduled = false OR schedule_end IS NULL OR schedule_end >= CURRENT_TIMESTAMP)
-      ORDER BY order_index ASC, id DESC
-    `)
+    let userLinks = []
+    if (isMainOwner) {
+      // Sadece aktif ve süresi dolmamış linkleri getir
+      const linksResult = await query(`
+        SELECT 
+          id, 
+          title, 
+          url, 
+          is_active AS "isActive", 
+          icon, 
+          custom_color AS "customColor", 
+          clicks, 
+          order_index AS "orderIndex",
+          COALESCE(is_scheduled, false) AS "isScheduled",
+          schedule_start AS "scheduleStart",
+          schedule_end AS "scheduleEnd",
+          COALESCE(show_countdown, true) AS "showCountdown",
+          COALESCE(category, '') AS "category",
+          COALESCE(embed_type, 'none') AS "embedType",
+          COALESCE(show_embed, false) AS "showEmbed",
+          COALESCE(is_locked, false) AS "isLocked",
+          COALESCE(lock_type, 'pin') AS "lockType",
+          COALESCE(passcode, '') AS "passcode",
+          COALESCE(lock_warning, '') AS "lockWarning",
+          COALESCE(is_header, false) AS "isHeader",
+          COALESCE(ab_test_enabled, false) AS "abTestEnabled",
+          COALESCE(title_b, '') AS "titleB",
+          COALESCE(url_b, '') AS "urlB",
+          COALESCE(clicks_a, 0) AS "clicksA",
+          COALESCE(clicks_b, 0) AS "clicksB",
+          COALESCE(views_a, 0) AS "viewsA",
+          COALESCE(views_b, 0) AS "viewsB",
+          COALESCE(grid_span, 'full') AS "gridSpan",
+          COALESCE(thumbnail, '') AS "thumbnail",
+          COALESCE(card_badge, '') AS "cardBadge"
+        FROM links 
+        WHERE is_active = true
+          AND (is_scheduled = false OR schedule_end IS NULL OR schedule_end >= CURRENT_TIMESTAMP)
+        ORDER BY order_index ASC, id DESC
+      `)
+      userLinks = linksResult.rows
+    } else {
+      userLinks = getMockLinksForUser({ ...profile, username: cleanUsername })
+    }
 
     res.json({
       profile: {
@@ -168,6 +260,8 @@ router.get('/:username', cacheMiddleware(60), async (req, res) => {
         avatar: profile.avatar,
         avatarShape: profile.avatarShape || 'circle',
         avatarGlow: profile.avatarGlow || 'yellow',
+        avatarMode: isMainOwner ? 'switchable' : 'photo',
+        role: isMainOwner ? 'admin' : 'user',
         statusText: profile.statusText || 'Yeni Projelere & Fırsatlara Açık',
         statusColor: profile.statusColor || 'none',
         isVerified: profile.isVerified !== undefined ? profile.isVerified : true,
@@ -183,7 +277,7 @@ router.get('/:username', cacheMiddleware(60), async (req, res) => {
         subdomain: profile.subdomain || '',
         layoutStyle: profile.layoutStyle || 'list'
       },
-      links: linksResult.rows
+      links: userLinks
     })
   } catch (error) {
     console.error('Kullanıcı profili getirme hatası:', error)
@@ -194,40 +288,7 @@ router.get('/:username', cacheMiddleware(60), async (req, res) => {
       (cleanUser === 'admin' || cleanUser === 'tubagul' ? mockUsers[0] : null)
 
     if (foundMock) {
-      return res.json({
-        profile: {
-          name: foundMock.name,
-          username: `@${foundMock.username.replace(/^@/, '')}`,
-          bio: foundMock.bio || `${foundMock.name} resmi bağlantıları ✨`,
-          avatar: foundMock.avatar,
-          avatarShape: 'circle',
-          avatarGlow: 'yellow',
-          statusText: 'Yeni Projelere & Fırsatlara Açık',
-          statusColor: 'none',
-          isVerified: foundMock.isVerified !== undefined ? foundMock.isVerified : true,
-          banner: '',
-          bannerPattern: 'mesh',
-          badges: [],
-          socialLinks: {
-            github: 'https://github.com',
-            linkedin: 'https://linkedin.com',
-            instagram: 'https://instagram.com'
-          },
-          groupByCategory: false,
-          foldersDefaultExpanded: true,
-          showBadges: false,
-          layoutStyle: foundMock.layoutStyle || 'list'
-        },
-        links: foundMock.id === 1 ? [
-          { id: 1, title: 'Kişisel Web Sitem & Portfolyom', url: 'https://github.com/tubaaa7', isActive: true, icon: 'globe', customColor: 'default', clicks: 12, orderIndex: 0, gridSpan: 'featured', thumbnail: 'https://images.unsplash.com/photo-1517694712202-14dd9538aa97?w=600&auto=format&fit=crop&q=80', cardBadge: '⭐ Vitrin' },
-          { id: 2, title: 'GitHub Projelerim', url: 'https://github.com/tubaaa7', isActive: true, icon: 'github', customColor: 'default', clicks: 38, orderIndex: 1, gridSpan: 'half' },
-          { id: 3, title: 'LinkedIn Bağlantım', url: 'https://linkedin.com', isActive: true, icon: 'linkedin', customColor: 'default', clicks: 24, orderIndex: 2, gridSpan: 'half' }
-        ] : [
-          { id: 101, title: `${foundMock.name} Portfolyo & Projeler`, url: 'https://github.com', isActive: true, icon: 'globe', customColor: 'default', clicks: 19, orderIndex: 0, gridSpan: 'full' },
-          { id: 102, title: 'LinkedIn & Profesyonel Ağ', url: 'https://linkedin.com', isActive: true, icon: 'linkedin', customColor: 'default', clicks: 42, orderIndex: 1, gridSpan: 'half' },
-          { id: 103, title: 'Bana Ulaşın & E-Posta', url: `mailto:${foundMock.email}`, isActive: true, icon: 'mail', customColor: 'default', clicks: 8, orderIndex: 2, gridSpan: 'half' }
-        ]
-      })
+      return res.json(buildMockPublicProfileResponse(foundMock))
     }
 
     res.status(404).json({ error: `'${req.params.username}' kullanıcısına ait profil bulunamadı` })

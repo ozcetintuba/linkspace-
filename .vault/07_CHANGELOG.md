@@ -4,6 +4,25 @@ Tüm önemli mimari değişiklikler, özellik eklemeleri ve düzeltmeler bu dosy
 
 ---
 
+## [v0.39.2] - 2026-11-10 (Çoklu Kullanıcı Linktree Profil Görüntüleme Düzeltmesi ve Yönetici Panelinde Canlı Linktree Telefon Önizleme Modalı)
+
+### 🚀 Çoklu Kullanıcı Profil Görüntüleme & Linktree İnceleme Mimarisi (`AdminView.vue`, `linkStore.js`, `profileRoutes.js`, `ProfileView.vue`, `vite.config.js`)
+- **Kullanıcı Sayfası Yönlendirme ve Ezilme Sorunu Çözüldü**:
+  - `AdminView.vue` üzerinden başka bir kullanıcının sayfasına (`/@selin.design`, `/@mert.dev` vb.) tıklandığında kullanıcının kendi yönetici profiline yönlenmesi / verilerin yönetici verisiyle ezilmesi sorunu kökten çözüldü.
+  - **Asenkron Yarış Koşulu (Race Condition) Giderildi**: `linkStore.js` oluşturulurken arka planda asenkron tetiklenen `fetchFromApi()` çağrısının, `fetchPublicProfile(username)` tarafından yüklenen hedef kullanıcı verilerini ezmesi engellendi. `isViewingPublicProfile` bayrağı ile ziyaretçi profilinde varsayılan API yüklemesi devre dışı bırakıldı.
+  - **LocalStorage İzolasyonu**: `watch(profile)` ve `watch(links)` mekanizmalarına `isViewingPublicProfile` koruması eklendi; başka bir kullanıcının profili incelenirken yöneticinin yerel tarayıcı hafızasının (`linktree_profile`, `linktree_links`) bozulması ve ezilmesi tamamen önlendi.
+  - `ProfileView.vue` bileşeni ayrılırken `linkStore.clearPublicProfile()` ile durum temizliği sağlandı.
+- **Backend Çoklu Kullanıcı Fallback Desteği (`backend/src/routes/profileRoutes.js`)**:
+  - `GET /api/profile/:username` uç noktası zenginleştirildi; veritabanında satır bulunmadığında veya PostgreSQL çevrimdışıyken bile Selin Kaya (`selin.design`), Mert Yılmaz (`mert.dev`), Can Demir (`can.tech`) gibi kullanıcıların zengin profil ve bağlantı verilerini (Bento Grid vitrini, Behance portfolyosu, Figma UI kiti vb.) eksiksiz döndüren `getMockLinksForUser(user)` desteği eklendi.
+- **Vite Proxy Yapılandırması (`frontend/vite.config.js`)**:
+  - Frontend geliştirme sunucusunun `/api` proxy hedefi port `5000`'den aktif backend portu olan `http://localhost:3000`'e güncellendi.
+- **Yönetim Panelinde Canlı Linktree Profil Önizleme Modalı (`AdminView.vue`)**:
+  - Kullanıcılar sekmesinde gerek ızgara (Grid) gerekse detaylı SaaS tablo görünümünde Selin Hanım veya herhangi bir kullanıcıya tıklandığında (veya "Profili Gör" dendiğinde) anında açılan interaktif **"Canlı Linktree Profil Önizleme Modalı"** (`showUserProfilePreviewModal`) eklendi.
+  - Modal içerisinde gerçekçi bir iPhone çerçevesi üzerinde kullanıcının avatarı, doğrulanmış onay rozeti, Bento vitrin veya klasik düzeni, biyografisi ve tüm aktif linkleri birebir Linktree deneyimiyle sergilenir.
+  - Modal başlığında ve altında "Yeni Sekmede Canlı Aç" (`/@username`) ve "Bağlantıyı Kopyala" hızlı aksiyon butonları sunuldu.
+
+---
+
 ## [v0.39.1] - 2026-11-10 (Gelişmiş Kullanıcı Ekranı Zenginleştirmesi: SaaS Tablo Görünümü, Toplu İşlemler, Kullanıcı Düzenleme Modalı, QR Kod ve CSV Dışa Aktarma)
 
 ### 💎 Kullanıcı Ekranı ve Topluluk Yönetimi İleri Düzey Zenginleştirmeleri (`AdminView.vue`, `linkStore.js`, `usersRoutes.js`, `ProfileView.vue`)

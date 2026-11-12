@@ -483,6 +483,9 @@ Bu liste, projenin geliştirme fazlarını ve önceliklendirilmiş iş paketleri
   - Kullanıcı inceleme & düzenleme modalı (`showEditUserModal`), dinamik QR kod modalı (`showUserQrModal`).
   - UTF-8 BOM destekli CSV / Excel dışa aktarma (`exportUsersAsCsv`) ve vCard indirme.
   - Ziyaretçi profilinde (`ProfileView.vue`) `👑 Platform Yöneticisi` ve `✨ Topluluk Üyesi` prestij çipleri.
+- [x] **Görev 26.7: Çoklu Kullanıcı Linktree Görüntüleme ve Canlı Telefon Önizleme Modalı (`v0.39.2`)**:
+  - Kullanıcılar ekranında (Kart veya Tablo) herhangi bir üyenin adına, avatarına veya "Profili Gör" butonuna tıklandığında iPhone çerçeveli **"Canlı Linktree Profil Önizleme Modalı"** açılması.
+  - `/:username` rotası açıldığında `fetchFromApi()` yarış koşulunun (`isViewingPublicProfile`) ve `localStorage` ezilmesinin tamamen engellenmesi; Selin Kaya (`/@selin.design`) vb. profillerin gerçek fotoğraf ve Bento/Klasik linkleriyle görüntülenmesi.
 
 ---
 
