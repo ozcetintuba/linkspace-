@@ -1376,11 +1376,7 @@ const handleDownloadVCard = async () => {
             >
               <div class="absolute -top-10 -right-10 w-24 h-24 bg-[#FFFF00]/10 rounded-full blur-xl pointer-events-none group-hover:bg-[#FFFF00]/25 transition-all"></div>
               <div class="flex items-start justify-between gap-2 w-full relative z-10">
-                <div v-if="item.link.thumbnail" class="w-10 h-10 rounded-xl overflow-hidden border border-white/20 shadow-xs flex-shrink-0 bg-black/40">
-                  <img :src="item.link.thumbnail" :alt="item.link.title" class="w-full h-full object-cover transition-transform group-hover:scale-110" />
-                </div>
                 <div 
-                  v-else
                   :class="[
                     'w-10 h-10 flex items-center justify-center flex-shrink-0 rounded-xl transition-all duration-300 shadow-xs',
                     activeTheme.id === 'pure-light' 
@@ -1506,12 +1502,8 @@ const handleDownloadVCard = async () => {
               ]"
             >
               <div class="flex items-center gap-3.5 min-w-0">
-                <!-- Thumbnail veya İkon -->
-                <div v-if="item.link.thumbnail" class="w-11 h-11 rounded-xl overflow-hidden border border-white/20 shadow-xs flex-shrink-0 bg-black/40">
-                  <img :src="item.link.thumbnail" :alt="item.link.title" class="w-full h-full object-cover transition-transform group-hover:scale-110" />
-                </div>
+                <!-- Varsayılan İkon (Simge) -->
                 <div 
-                  v-else
                   :class="[
                     'w-11 h-11 flex items-center justify-center flex-shrink-0 transition-all duration-300 shadow-xs',
                     activeTheme.id === 'pure-light' 

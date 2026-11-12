@@ -1,5 +1,5 @@
 // Linkspace Progressive Web App (PWA) Service Worker - Offline-First & Background Sync
-const CACHE_NAME = 'linkspace-static-v1.2.0'
+const CACHE_NAME = 'linkspace-static-v1.2.1'
 const API_CACHE_NAME = 'linkspace-api-cache-v1'
 
 const STATIC_ASSETS = [

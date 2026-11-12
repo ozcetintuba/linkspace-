@@ -37,7 +37,7 @@ export const getMockLinksForUser = (user) => {
 
   if (username === 'tubagul' || username === 'admin') {
     return [
-      { id: 1, title: 'Kişisel Web Sitem & Portfolyom', url: 'https://github.com/tubaaa7', isActive: true, icon: 'globe', customColor: 'default', clicks: 12, orderIndex: 0, gridSpan: 'featured', thumbnail: 'https://images.unsplash.com/photo-1517694712202-14dd9538aa97?w=600&auto=format&fit=crop&q=80', cardBadge: '⭐ Vitrin' },
+      { id: 1, title: 'Kişisel Web Sitem & Portfolyom', url: 'https://github.com/tubaaa7', isActive: true, icon: 'globe', customColor: 'default', clicks: 12, orderIndex: 0, gridSpan: 'featured', thumbnail: '', cardBadge: '⭐ Vitrin' },
       { id: 2, title: 'GitHub Açık Kaynak Projelerim', url: 'https://github.com/tubaaa7/linkspace-', isActive: true, icon: 'github', customColor: 'default', clicks: 38, orderIndex: 1, gridSpan: 'half' },
       { id: 3, title: 'Lo-Fi Chill Beats (Spotify)', url: 'https://open.spotify.com', isActive: true, icon: 'music', customColor: 'default', clicks: 19, orderIndex: 2, gridSpan: 'half' },
       { id: 4, title: 'VIP Kodlama & Discord Topluluğu', url: 'https://discord.com', isActive: true, icon: 'globe', customColor: 'purple', clicks: 44, orderIndex: 3, gridSpan: 'full' }

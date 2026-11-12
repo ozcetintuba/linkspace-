@@ -4,6 +4,17 @@ Tüm önemli mimari değişiklikler, özellik eklemeleri ve düzeltmeler bu dosy
 
 ---
 
+## [v0.39.3] - 2026-11-12 (Küçük Link Kartlarında Fotoğraf Yerine Varsayılan İkon Gösterimi ve Kart Tıklanabilirliği)
+
+### 🎨 Kart Görünümü ve İkon Tutarlılığı (`PhonePreview.vue`, `ProfileView.vue`, `linkStore.js`, `profileRoutes.js`)
+- **Küçük Kartlarda Varsayılan Simge (İkon) Koruması**:
+  - `PhonePreview.vue` ve `ProfileView.vue` içerisindeki kompakt kutu (`half`), geniş yatay (`full`) ve klasik liste kartlarında `thumbnail` görseli olsa bile sol kutudaki ikonun fotoğraf ile değiştirilmesi kaldırıldı; küçük kartlarda her zaman yüksek kontrastlı kategori/link simgesi (`🌐`, GitHub, Müzik vb.) görünür hale getirildi.
+  - Kapak fotoğrafı (`thumbnail`) yalnızca Bento Grid vitrin düzeninde büyük **"Öne Çıkan Vitrin (Hero)"** kartının üst kapak alanında gösterilmeye devam eder.
+- **Varsayılan Link Şablonu Sadeleştirmesi**:
+  - `DEFAULT_LINKS` (`linkStore.js`) ve `profileRoutes.js` içindeki ilk link (`Kişisel Web Sitem & Portfolyom`) için ön tanımlı gelen stok kapak fotoğrafı URL'si temizlendi (`thumbnail: ''`).
+
+---
+
 ## [v0.39.2] - 2026-11-10 (Çoklu Kullanıcı Linktree Profil Görüntüleme Düzeltmesi ve Yönetici Panelinde Canlı Linktree Telefon Önizleme Modalı)
 
 ### 🚀 Çoklu Kullanıcı Profil Görüntüleme & Linktree İnceleme Mimarisi (`AdminView.vue`, `linkStore.js`, `profileRoutes.js`, `ProfileView.vue`, `vite.config.js`)

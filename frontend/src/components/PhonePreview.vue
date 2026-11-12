@@ -598,11 +598,7 @@ const statusConfig = computed(() => {
                   ]"
                 >
                   <div class="flex items-start justify-between gap-1 w-full">
-                    <div v-if="item.link.thumbnail" class="w-6 h-6 rounded-md overflow-hidden border border-white/20 shrink-0 bg-black/40">
-                      <img :src="item.link.thumbnail" :alt="item.link.title" class="w-full h-full object-cover" />
-                    </div>
                     <div 
-                      v-else
                       :class="[
                         'w-6 h-6 rounded-lg flex items-center justify-center shrink-0',
                         activeTheme.id === 'pure-light' 
@@ -714,12 +710,8 @@ const statusConfig = computed(() => {
                   ]"
                 >
                   <div class="flex items-center gap-2 min-w-0 pr-1">
-                    <!-- Thumbnail veya İkon -->
-                    <div v-if="item.link.thumbnail" class="w-7 h-7 rounded-lg overflow-hidden border border-white/20 shrink-0 bg-black/40">
-                      <img :src="item.link.thumbnail" :alt="item.link.title" class="w-full h-full object-cover" />
-                    </div>
+                    <!-- Varsayılan İkon (Simge) -->
                     <div 
-                      v-else
                       :class="[
                         'flex-shrink-0 flex items-center justify-center transition-all',
                         activeTheme.id === 'pure-light' 
