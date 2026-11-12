@@ -504,9 +504,21 @@ Bu liste, projenin geliştirme fazlarını ve önceliklendirilmiş iş paketleri
 
 ---
 
+## 📌 Faz 28: Dark SaaS CRM Dashboard & Sol Sidebar Çalışma Alanı (`v0.41.0`) (TAMAMLANDI ✅)
+- [x] **Görev 28.1: Sol Sabit Sidebar & Global CRM Komut Barı (`AdminView.vue`)**:
+  - Masaüstünde sabit `w-64`, mobilde kayan çekmece sol navigasyon barı (`Genel Bakış`, `Bağlantılar`, `Görünüm & Tema`, `İstatistikler`, `Mesajlar`, Admin özel `Üyeler & Onay`, `Ayarlar & Güvenlik`) ve alt kullanıcı profil/çıkış kartı eklendi.
+  - Üst komut çubuğuna global arama (`globalCrmSearch`), tek tıkla masaüstü canlı iPhone önizleme anahtarı (`showDesktopPreview`), **+ Yeni Bağlantı** ve **Paylaş** eylemleri yerleştirildi.
+- [x] **Görev 28.2: CRM Genel Bakış Bileşeni (`CrmOverviewPanel.vue`)**:
+  - Selamlama & operasyonel durum uyarı şeridi (onay bekleyen üye ve okunmamış mesaj hızlı aksiyon çipleri).
+  - Inline SVG sparkline eğrili ve semantik yeşil/sarı/kırmızı trend rozetli 4 KPI kartı.
+  - Etkileşimli hover imleçli **Haftalık Ziyaret & Tıklama Çoklu Çizgi Grafiği** ve **Akıllı CRM Öngörüleri** paneli.
+  - Tıklama payı progress barlı karşılaştırmalı bağlantı performans tablosu, hızlı düzenleme ve trafik kaynağı / cihaz dağılımı kartı.
+
+---
+
 ## 📌 Sıradaki Aday Fazlar (Gelecek Yol Haritası)
-- **Faz 28**: Çoklu Profil / Sayfa Yönetimi (Multi-Tenant Profile Switching - Tek hesaba bağlı birden fazla sayfa).
-- **Faz 29**: Canlı Entegrasyonlar ve Webhook'lar (Discord / Telegram / Slack anlık bildirimleri).
+- **Faz 29**: Çoklu Profil / Sayfa Yönetimi (Multi-Tenant Profile Switching - Tek hesaba bağlı birden fazla sayfa).
+- **Faz 30**: Canlı Entegrasyonlar ve Webhook'lar (Discord / Telegram / Slack anlık bildirimleri).
 
 
 

@@ -1,6 +1,6 @@
 # 🔍 02 - MEVCUT DURUM VE TEKNİK BORÇ ANALİZİ (CURRENT STATE)
 
-> **Son Güncelleme**: 12 Kasım 2026 (Onaylı Çoklu Kullanıcı Üyelik Sistemi ve Rol Tabanlı Panel İzolasyonu - v0.40.0)  
+> **Son Güncelleme**: 12 Kasım 2026 (Dark SaaS CRM Dashboard, Sparkline KPI'lar & Sol Sidebar Mimarisi - v0.41.0)  
 > **Durum**: Full-Stack Çoklu Üyelik Mimarisi (Express + PostgreSQL + Vue 3 + Onaylı Kayıt Akışı + `user_id` Bazlı İzole Çalışma Alanı) + Dribbble Sales CRM (#0C0C0B, #161616, #FFFF00) Tasarım Sistemi + Render Canlı Dağıtım (`https://linkspace-app.onrender.com`)  
 > **Proje Türü**: Full-Stack Linktree & Link Hub (CRM Dark & Light Edition)
 
@@ -132,4 +132,5 @@
 | **Yapay Zeka Biyografi Asistanı (AI Bio Assistant)** | ✅ **ÇÖZÜLDÜ** | `/api/ai/tones` & `/api/ai/generate-bio` REST API motoru, 4 farklı ton (Kurumsal, Samimi, Siberpunk, Yaratıcı), rol ve uzmanlık etiketleri, anlık 160 karakter optimizasyonu, tek tıkla kopyalama, "Profile Uygula" ve çevrimdışı fallback mimarisi. |
 | **Bağlantı Kategorileri & Akordeon Link Klasörleri** | ✅ **ÇÖZÜLDÜ** | `category` PostgreSQL ve REST API desteği, Admin kategori filtre çubuğu ve kart rozetleri, ProfileView ve PhonePreview üzerinde animasyonlu akordeon klasör kartları, dinamik link sayısı rozeti, arama senkronizasyonu ve açık/koyu mod uyumu. |
 | **Onaylı Üyelik Sistemi & İzole Üye Panelleri** | ✅ **ÇÖZÜLDÜ** | Yeni kayıtlar `role='user'`, `status='pending'` olarak kaydedilir ve Admin (`role='admin'`) onayı olmadan giriş yapamaz/profili yayınlanmaz. `/` açılış Vitrini (`LandingView.vue`), `/:username` kişisel sayfalar ve `user_id` izole `/admin` (ve `/dashboard`) yönetimi. |
+| **Dark SaaS CRM Dashboard (`CrmOverviewPanel`)** | ✅ **ÇÖZÜLDÜ** | `AdminView.vue` sol sabit/mobil çekmece sidebar navigasyonu, global arama & komut çubuğu, inline SVG sparkline KPI kartları, etkileşimli çoklu çizgi trend grafiği, akıllı CRM öngörü paneli ve karşılaştırmalı bağlantı performans tablosu ile güncellendi. |
 

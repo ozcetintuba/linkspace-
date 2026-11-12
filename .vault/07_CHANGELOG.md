@@ -4,6 +4,20 @@ Tüm önemli mimari değişiklikler, özellik eklemeleri ve düzeltmeler bu dosy
 
 ---
 
+## [v0.41.0] - 2026-11-12 (Dark SaaS CRM Dashboard, Sol Sidebar ve Sparkline Trend Mimarisi)
+
+### 📊 Yönetim Paneli CRM Dönüşümü (`AdminView.vue`, `CrmOverviewPanel.vue`)
+- **Yeni CRM Genel Bakış Modülü (`frontend/src/components/CrmOverviewPanel.vue`)**:
+  - `Amanah CRM / Charity Campaigns Dashboard` yapısından esinlenerek Dark SaaS CRM renk paleti (`#0C0C0B` / `#141413` / `#242422`, zümrüt `#10B981`, gül `#F43F5E`, elektrik `#FFFF00`) ile sıfırdan Vue 3 `<script setup>` olarak oluşturuldu.
+  - **4 Sparkline KPI Kartı**: Toplam Ziyaret, Toplam Tıklama (CTR%), Aktif Link Dönüşümü ve Rol Bazlı Operasyon Kartı (Yöneticiler için Onay Bekleyen Üyeler, Üyeler için Okunmamış Mesajlar) üzerinde inline SVG mini grafikler ve semantik renkli göstergeler eklendi.
+  - **Çoklu Çizgi Trend Grafiği & Akıllı CRM Öngörüleri**: Hover detaylı 7 günlük SVG bezier trend grafiği (`Tümü` / `Ziyaret` / `Tıklama` geçişli) ile sağda öncelikli görevler ve 1-tıkla uygulanabilen akıllı öneri listesi konumlandırıldı.
+  - **Karşılaştırmalı Bağlantı Performans Tablosu**: Tıklanma, yayın durumu, pay yüzdesi barı, global arama senkronizasyonu ve tek tıkla link düzenleme (`openEditModal`) desteği eklendi.
+- **Sol Sabit CRM Sidebar & Esnek Telefon Önizleme (`AdminView.vue`)**:
+  - Önceki yüzen kapsül üst menü, masaüstünde sabit / mobilde açılır çekmeceli sol CRM sidebar + üst global arama & komut çubuğu yapısına geçirildi.
+  - Masaüstü canlı `PhonePreview` sağ sütunu `Bağlantılar` ve `Görünüm` sekmelerinde otomatik açılırken, CRM görünümünde geniş tablo/grafik alanı için isteğe bağlı (`showDesktopPreview`) geçişle sunuluyor.
+
+---
+
 ## [v0.40.0] - 2026-11-12 (Onaylı Çoklu Kullanıcı Üyelik Sistemi ve Rol Tabanlı Panel İzolasyonu)
 
 ### 🔐 Onaylı Üyelik Sistemi & Çoklu Kiracı (Multi-Tenant) Mimarisi (`backend/`, `frontend/`)

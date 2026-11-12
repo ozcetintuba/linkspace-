@@ -35,6 +35,7 @@ import {
 } from '../stores/linkStore'
 import { useAuthStore } from '../stores/authStore'
 import PhonePreview from '../components/PhonePreview.vue'
+import CrmOverviewPanel from '../components/CrmOverviewPanel.vue'
 import { 
   Plus, 
   Trash2, 
@@ -128,7 +129,10 @@ import {
   Search,
   UserPlus,
   UserCheck,
-  Shield
+  Shield,
+  LayoutDashboard,
+  Menu,
+  Link2
 } from 'lucide-vue-next'
 
 
@@ -388,8 +392,50 @@ onMounted(async () => {
   }
 })
 
-// Aktif Sekme Kontrolü: Linktree Mantığı ('links' | 'appearance' | 'analytics' | 'messages' | 'settings')
-const activeTab = ref('links')
+// Aktif Sekme Kontrolü: CRM Sidebar Navigasyonu ('overview' | 'links' | 'appearance' | 'analytics' | 'messages' | 'users' | 'settings')
+const activeTab = ref('overview')
+const isMobileSidebarOpen = ref(false)
+const globalCrmSearch = ref('')
+const showDesktopPreview = ref(false)
+
+const currentTabMeta = computed(() => {
+  const map = {
+    overview: { title: 'CRM Genel Bakış', subtitle: 'Performans özetleri, trafik trendleri ve operasyonel görevler' },
+    links: { title: 'Bağlantılar & Vitrin', subtitle: 'Linklerinizi sürükleyerek sıralayın, kategorize edin ve anlık önizleyin' },
+    appearance: { title: 'Görünüm & Tema', subtitle: 'Profil kimliği, kapak görseli ve Bento vitrin mimarisi' },
+    analytics: { title: 'İstatistikler & Cihaz Analitiği', subtitle: 'QR taramaları, ziyaret kaynakları ve cihaz kırılımı' },
+    messages: { title: 'İletişim & Gelen Kutusu', subtitle: 'Ziyaretçilerden gelen mesajları görüntüleyin ve yanıtlayın' },
+    users: { title: 'Kullanıcı & Üyelik Yönetimi', subtitle: 'Onay bekleyen başvurular, rol kontrolü ve topluluk dizini' },
+    settings: { title: 'Sistem & Güvenlik Ayarları', subtitle: 'SEO, özel alan adı, şifre değişikliği ve veri yedekleme' }
+  }
+  return map[activeTab.value] || map.overview
+})
+
+const selectNavTab = (tab) => {
+  if (tab === 'users' && !authStore.isAdmin) {
+    activeTab.value = 'overview'
+    isMobileSidebarOpen.value = false
+    return
+  }
+  activeTab.value = tab
+  isMobileSidebarOpen.value = false
+  showDesktopPreview.value = (tab === 'links' || tab === 'appearance')
+}
+
+const jumpToPendingUsers = () => {
+  if (!authStore.isAdmin) return
+  selectedUserFilter.value = 'pending'
+  selectNavTab('users')
+}
+
+const openNewLinkFromCrm = () => {
+  selectNavTab('links')
+  if (typeof window !== 'undefined') {
+    setTimeout(() => {
+      window.scrollTo({ top: 0, behavior: 'smooth' })
+    }, 60)
+  }
+}
 
 // Haftalık Trend Grafiği Maksimum Değer Çözümleyicisi
 const maxTimelineValue = computed(() => {
@@ -429,11 +475,17 @@ watch(activeTab, (newTab) => {
     }
   } else if (newTab === 'users') {
     if (!authStore.isAdmin) {
-      activeTab.value = 'links'
+      activeTab.value = 'overview'
       return
     }
     linkStore.fetchUsers()
     linkStore.fetchUserStats()
+  }
+})
+
+watch(globalCrmSearch, (q) => {
+  if (activeTab.value === 'users') {
+    searchUserQuery.value = q
   }
 })
 
@@ -2166,7 +2218,7 @@ const handleChangePassword = async () => {
 </script>
 
 <template>
-  <div :class="['min-h-screen transition-colors duration-200', themeClasses.mainBg]">
+  <div :class="['min-h-screen transition-colors duration-200 flex', themeClasses.mainBg]">
     
     <!-- Toast Bildirimi -->
     <div 
@@ -2177,294 +2229,412 @@ const handleChangePassword = async () => {
       <span>{{ toastMessage }}</span>
     </div>
 
-    <!-- ÜST DUYURU BARI (Linktree Announcement Banner) -->
-    <div 
-      v-if="showAnnouncement" 
-      class="bg-[#780016] text-white py-2 px-4 text-xs font-medium text-center relative flex items-center justify-center gap-2 shadow-sm z-50 animate-in fade-in"
+    <!-- MOBİL SIDEBAR ARKA PLAN KARARTMASI -->
+    <div
+      v-if="isMobileSidebarOpen"
+      @click="isMobileSidebarOpen = false"
+      class="fixed inset-0 z-40 bg-black/75 backdrop-blur-xs lg:hidden"
+    ></div>
+
+    <!-- ====================================================================== -->
+    <!-- SOL SABİT CRM SİDEBAR (Dark SaaS CRM Navigation Drawer)                -->
+    <!-- ====================================================================== -->
+    <aside
+      :class="[
+        'fixed lg:sticky top-0 left-0 z-50 lg:z-30 h-screen w-64 shrink-0 flex flex-col justify-between border-r transition-transform duration-200 select-none',
+        isMobileSidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0',
+        adminTheme === 'dark' ? 'bg-[#121211] border-[#242422] text-white' : 'bg-white border-slate-200 text-slate-900'
+      ]"
     >
-      <span>Amplify your reach on linkspace.</span>
-      <router-link to="/" target="_blank" class="underline font-bold hover:text-white/80">Connect today.</router-link>
-      <button 
-        type="button" 
-        @click="showAnnouncement = false" 
-        class="absolute right-4 text-white/70 hover:text-white transition-colors"
-        title="Kapat"
-      >
-        <X class="w-3.5 h-3.5" />
-      </button>
-    </div>
-
-    <!-- LINKTREE FLOATING CAPSULE APP BAR (Kapsül Üst Menü) -->
-    <header class="sticky top-3 z-40 px-3 sm:px-6 w-full max-w-6xl mx-auto my-3">
-      <div 
-        :class="[
-          'w-full rounded-full px-4 sm:px-8 py-2.5 sm:py-3.5 shadow-xl transition-all flex items-center justify-between gap-4 border backdrop-blur-md',
-          adminTheme === 'dark' 
-            ? 'bg-[#161616]/95 border-[#282828] text-white shadow-2xl shadow-black/80' 
-            : 'bg-white/95 border-slate-200/90 text-slate-900 shadow-slate-900/5'
-        ]"
-      >
-        <!-- SOL: linkspace Logo & Rol Rozeti -->
-        <div class="flex items-center gap-2.5 sm:gap-3">
-          <router-link 
-            to="/admin" 
-            class="font-black text-xl sm:text-2xl tracking-tight select-none hover:opacity-85 transition-opacity flex items-center group"
-            :class="adminTheme === 'light' ? 'text-black' : 'text-white'"
+      <!-- Üst: Marka Logosu & Menü Öğeleri -->
+      <div class="flex flex-col flex-1 overflow-y-auto px-3.5 py-5 space-y-6">
+        <!-- Marka Başlığı -->
+        <div class="flex items-center justify-between px-2">
+          <button
+            type="button"
+            @click="selectNavTab('overview')"
+            class="flex items-center gap-2.5 text-left group cursor-pointer"
           >
-            <span>linkspace</span>
-            <Zap class="w-4 h-4 sm:w-5 sm:h-5 text-[#FFFF00] fill-[#FFFF00] ml-1 inline-block drop-shadow-[0_0_8px_rgba(255,255,0,0.6)] transition-transform group-hover:scale-110" />
-          </router-link>
+            <div class="w-9 h-9 rounded-xl bg-[#FFFF00] flex items-center justify-center text-black shadow-md shadow-yellow-500/20 group-hover:scale-105 transition-transform">
+              <Zap class="w-5 h-5 fill-black" />
+            </div>
+            <div>
+              <div class="flex items-center gap-1.5">
+                <span class="font-black text-lg tracking-tight leading-none">linkspace</span>
+                <span
+                  class="px-1.5 py-0.5 rounded text-[9px] font-black uppercase tracking-wider"
+                  :class="authStore.isAdmin ? 'bg-[#FFFF00]/15 text-[#FFFF00]' : 'bg-emerald-500/15 text-emerald-400'"
+                >
+                  {{ authStore.isAdmin ? 'CRM Pro' : 'Üye' }}
+                </span>
+              </div>
+              <p :class="['text-[11px] mt-0.5', adminTheme === 'dark' ? 'text-[#8E8E93]' : 'text-slate-500']">
+                Yönetim & Analitik
+              </p>
+            </div>
+          </button>
 
-          <span
-            class="hidden lg:inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold border"
-            :class="authStore.isAdmin
-              ? 'bg-[#FFFF00]/15 text-[#FFFF00] border-[#FFFF00]/30'
-              : 'bg-emerald-500/10 text-emerald-400 border-emerald-500/25'"
+          <button
+            type="button"
+            @click="isMobileSidebarOpen = false"
+            class="lg:hidden p-1.5 rounded-lg text-[#8E8E93] hover:text-white cursor-pointer"
           >
-            {{ authStore.isAdmin ? 'Yönetici' : 'Onaylı Üye' }}
-          </span>
-
-          <router-link
-            to="/"
-            title="Ana Sayfa / Üyelik Vitrini"
-            class="hidden lg:inline-flex items-center gap-1 text-xs font-semibold px-2 py-1 rounded-lg transition-colors"
-            :class="adminTheme === 'light' ? 'text-slate-500 hover:text-black hover:bg-slate-100' : 'text-[#8E8E93] hover:text-white hover:bg-white/5'"
-          >
-            <Globe class="w-3.5 h-3.5" />
-            <span>Vitrin</span>
-          </router-link>
+            <X class="w-4 h-4" />
+          </button>
         </div>
 
-        <!-- ORTA: Linktree Sekmeleri / Navigasyon (Dribbble CRM Pill Bar) -->
-        <nav 
-          class="hidden md:flex items-center gap-1 lg:gap-1.5 p-1 rounded-full transition-colors"
-          :class="adminTheme === 'light' ? 'bg-slate-100 border border-slate-200' : 'bg-[#181818] border border-[#282828]'"
-        >
-          <button 
+        <!-- ANA MENÜ GRUBU -->
+        <div class="space-y-1">
+          <p :class="['px-3 mb-2 text-[10px] font-bold uppercase tracking-widest', adminTheme === 'dark' ? 'text-[#666664]' : 'text-slate-400']">
+            Çalışma Alanı
+          </p>
+
+          <button
             type="button"
-            @click="activeTab = 'links'"
-            class="px-4 py-1.5 rounded-full text-xs lg:text-sm transition-all flex items-center gap-1.5"
-            :class="activeTab === 'links' 
-              ? (adminTheme === 'dark' ? 'bg-white text-black font-bold shadow-md ring-1 ring-black/10' : 'bg-[#FFFF00] text-black font-bold shadow-md shadow-yellow-500/20') 
-              : (adminTheme === 'dark' ? 'text-[#8E8E93] hover:text-white font-semibold' : 'text-slate-600 hover:text-black font-semibold')"
+            @click="selectNavTab('overview')"
+            class="w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-semibold transition-all cursor-pointer"
+            :class="activeTab === 'overview'
+              ? 'bg-[#FFFF00] text-black font-bold shadow-md shadow-yellow-500/15'
+              : (adminTheme === 'dark' ? 'text-[#A1A1AA] hover:text-white hover:bg-[#1B1B19]' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100')"
           >
-            <span>Bağlantılar</span>
-            <span class="text-[10px] px-1.5 py-0.2 rounded-full font-bold" :class="activeTab === 'links' ? 'bg-black text-[#FFFF00]' : (adminTheme === 'light' ? 'bg-black/10 text-slate-800' : 'bg-[#FFFF00]/15 text-[#FFFF00]')">
+            <span class="flex items-center gap-2.5">
+              <LayoutDashboard class="w-4 h-4" />
+              <span>Genel Bakış</span>
+            </span>
+            <span
+              class="text-[10px] px-1.5 py-0.5 rounded-md font-bold"
+              :class="activeTab === 'overview' ? 'bg-black/15 text-black' : 'bg-emerald-500/15 text-emerald-400'"
+            >
+              CRM
+            </span>
+          </button>
+
+          <button
+            type="button"
+            @click="selectNavTab('links')"
+            class="w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-semibold transition-all cursor-pointer"
+            :class="activeTab === 'links'
+              ? 'bg-[#FFFF00] text-black font-bold shadow-md shadow-yellow-500/15'
+              : (adminTheme === 'dark' ? 'text-[#A1A1AA] hover:text-white hover:bg-[#1B1B19]' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100')"
+          >
+            <span class="flex items-center gap-2.5">
+              <Link2 class="w-4 h-4" />
+              <span>Bağlantılar</span>
+            </span>
+            <span
+              class="text-[10px] px-1.5 py-0.5 rounded-md font-bold"
+              :class="activeTab === 'links' ? 'bg-black text-[#FFFF00]' : (adminTheme === 'dark' ? 'bg-[#222220] text-[#E5E5E5]' : 'bg-slate-200 text-slate-800')"
+            >
               {{ links.length }}
             </span>
           </button>
 
-          <button 
+          <button
             type="button"
-            @click="activeTab = 'appearance'"
-            class="px-4 py-1.5 rounded-full text-xs lg:text-sm transition-all flex items-center gap-1.5"
-            :class="activeTab === 'appearance' 
-              ? (adminTheme === 'dark' ? 'bg-white text-black font-bold shadow-md ring-1 ring-black/10' : 'bg-[#FFFF00] text-black font-bold shadow-md shadow-yellow-500/20') 
-              : (adminTheme === 'dark' ? 'text-[#8E8E93] hover:text-white font-semibold' : 'text-slate-600 hover:text-black font-semibold')"
+            @click="selectNavTab('appearance')"
+            class="w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-semibold transition-all cursor-pointer"
+            :class="activeTab === 'appearance'
+              ? 'bg-[#FFFF00] text-black font-bold shadow-md shadow-yellow-500/15'
+              : (adminTheme === 'dark' ? 'text-[#A1A1AA] hover:text-white hover:bg-[#1B1B19]' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100')"
           >
-            <span>Görünüm</span>
+            <span class="flex items-center gap-2.5">
+              <Palette class="w-4 h-4" />
+              <span>Görünüm & Tema</span>
+            </span>
           </button>
 
-          <button 
+          <button
             type="button"
-            @click="activeTab = 'analytics'"
-            class="px-4 py-1.5 rounded-full text-xs lg:text-sm transition-all flex items-center gap-1.5"
-            :class="activeTab === 'analytics' 
-              ? (adminTheme === 'dark' ? 'bg-white text-black font-bold shadow-md ring-1 ring-black/10' : 'bg-[#FFFF00] text-black font-bold shadow-md shadow-yellow-500/20') 
-              : (adminTheme === 'dark' ? 'text-[#8E8E93] hover:text-white font-semibold' : 'text-slate-600 hover:text-black font-semibold')"
+            @click="selectNavTab('analytics')"
+            class="w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-semibold transition-all cursor-pointer"
+            :class="activeTab === 'analytics'
+              ? 'bg-[#FFFF00] text-black font-bold shadow-md shadow-yellow-500/15'
+              : (adminTheme === 'dark' ? 'text-[#A1A1AA] hover:text-white hover:bg-[#1B1B19]' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100')"
           >
-            <span>İstatistikler</span>
+            <span class="flex items-center gap-2.5">
+              <BarChart3 class="w-4 h-4" />
+              <span>İstatistikler</span>
+            </span>
           </button>
+        </div>
 
-          <button 
+        <!-- ETKİLEŞİM & TOPLULUK GRUBU -->
+        <div class="space-y-1">
+          <p :class="['px-3 mb-2 text-[10px] font-bold uppercase tracking-widest', adminTheme === 'dark' ? 'text-[#666664]' : 'text-slate-400']">
+            CRM & Topluluk
+          </p>
+
+          <button
             type="button"
-            @click="activeTab = 'messages'"
-            class="px-4 py-1.5 rounded-full text-xs lg:text-sm transition-all flex items-center gap-1.5 relative cursor-pointer"
-            :class="activeTab === 'messages' 
-              ? (adminTheme === 'dark' ? 'bg-white text-black font-bold shadow-md ring-1 ring-black/10' : 'bg-[#FFFF00] text-black font-bold shadow-md shadow-yellow-500/20') 
-              : (adminTheme === 'dark' ? 'text-[#8E8E93] hover:text-white font-semibold' : 'text-slate-600 hover:text-black font-semibold')"
+            @click="selectNavTab('messages')"
+            class="w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-semibold transition-all cursor-pointer"
+            :class="activeTab === 'messages'
+              ? 'bg-[#FFFF00] text-black font-bold shadow-md shadow-yellow-500/15'
+              : (adminTheme === 'dark' ? 'text-[#A1A1AA] hover:text-white hover:bg-[#1B1B19]' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100')"
           >
-            <span>Mesajlar</span>
-            <span 
-              v-if="unreadMessagesCount > 0" 
-              class="text-[10px] px-1.5 py-0.2 rounded-full font-black animate-pulse"
+            <span class="flex items-center gap-2.5">
+              <Inbox class="w-4 h-4" />
+              <span>Mesajlar</span>
+            </span>
+            <span
+              v-if="unreadMessagesCount > 0"
+              class="text-[10px] px-1.5 py-0.5 rounded-md font-black animate-pulse"
               :class="activeTab === 'messages' ? 'bg-black text-[#FFFF00]' : 'bg-amber-400 text-black'"
             >
               {{ unreadMessagesCount }}
             </span>
-            <span 
-              v-else 
-              class="text-[10px] px-1.5 py-0.2 rounded-full font-bold opacity-75"
-              :class="activeTab === 'messages' ? 'bg-black text-[#FFFF00]' : (adminTheme === 'light' ? 'bg-black/10 text-slate-800' : 'bg-[#FFFF00]/15 text-[#FFFF00]')"
+            <span
+              v-else
+              class="text-[10px] px-1.5 py-0.5 rounded-md font-bold"
+              :class="activeTab === 'messages' ? 'bg-black text-[#FFFF00]' : (adminTheme === 'dark' ? 'bg-[#222220] text-[#8E8E93]' : 'bg-slate-200 text-slate-700')"
             >
               {{ messages.length }}
             </span>
           </button>
 
-          <button 
+          <button
             v-if="authStore.isAdmin"
             type="button"
-            @click="activeTab = 'users'"
-            class="px-4 py-1.5 rounded-full text-xs lg:text-sm transition-all flex items-center gap-1.5"
-            :class="activeTab === 'users' 
-              ? (adminTheme === 'dark' ? 'bg-white text-black font-bold shadow-md ring-1 ring-black/10' : 'bg-[#FFFF00] text-black font-bold shadow-md shadow-yellow-500/20') 
-              : (adminTheme === 'dark' ? 'text-[#8E8E93] hover:text-white font-semibold' : 'text-slate-600 hover:text-black font-semibold')"
+            @click="selectNavTab('users')"
+            class="w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-semibold transition-all cursor-pointer"
+            :class="activeTab === 'users'
+              ? 'bg-[#FFFF00] text-black font-bold shadow-md shadow-yellow-500/15'
+              : (adminTheme === 'dark' ? 'text-[#A1A1AA] hover:text-white hover:bg-[#1B1B19]' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100')"
           >
-            <span>Kullanıcılar</span>
-            <span class="text-[10px] px-1.5 py-0.2 rounded-full font-bold" :class="activeTab === 'users' ? 'bg-black text-[#FFFF00]' : (adminTheme === 'light' ? 'bg-black/10 text-slate-800' : 'bg-[#FFFF00]/15 text-[#FFFF00]')">
+            <span class="flex items-center gap-2.5">
+              <Users class="w-4 h-4" />
+              <span>Üyeler & Onay</span>
+            </span>
+            <span
+              v-if="pendingMembersCount > 0"
+              class="text-[10px] px-1.5 py-0.5 rounded-md font-black bg-rose-500 text-white"
+            >
+              {{ pendingMembersCount }} bekliyor
+            </span>
+            <span
+              v-else
+              class="text-[10px] px-1.5 py-0.5 rounded-md font-bold"
+              :class="activeTab === 'users' ? 'bg-black text-[#FFFF00]' : (adminTheme === 'dark' ? 'bg-[#222220] text-[#E5E5E5]' : 'bg-slate-200 text-slate-800')"
+            >
               {{ usersCount }}
             </span>
           </button>
 
-          <button 
+          <button
             type="button"
-            @click="activeTab = 'settings'"
-            class="px-4 py-1.5 rounded-full text-xs lg:text-sm transition-all flex items-center gap-1.5"
-            :class="activeTab === 'settings' 
-              ? (adminTheme === 'dark' ? 'bg-white text-black font-bold shadow-md ring-1 ring-black/10' : 'bg-[#FFFF00] text-black font-bold shadow-md shadow-yellow-500/20') 
-              : (adminTheme === 'dark' ? 'text-[#8E8E93] hover:text-white font-semibold' : 'text-slate-600 hover:text-black font-semibold')"
+            @click="selectNavTab('settings')"
+            class="w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-semibold transition-all cursor-pointer"
+            :class="activeTab === 'settings'
+              ? 'bg-[#FFFF00] text-black font-bold shadow-md shadow-yellow-500/15'
+              : (adminTheme === 'dark' ? 'text-[#A1A1AA] hover:text-white hover:bg-[#1B1B19]' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100')"
           >
-            <span>Ayarlar</span>
+            <span class="flex items-center gap-2.5">
+              <Settings class="w-4 h-4" />
+              <span>Ayarlar & Güvenlik</span>
+            </span>
           </button>
-        </nav>
+        </div>
 
-        <!-- SAĞ: Aksiyonlar (Profili Gör, Çıkış Yap ve Elektrik Sarı Paylaş Butonu) -->
-        <div class="flex items-center gap-1.5 sm:gap-3">
-          
-          <!-- Sayfayı Aç (Yeni Sekme) -->
-          <router-link 
-            :to="myProfilePath" 
-            target="_blank" 
-            title="Canlı Profil Sayfasını Yeni Sekmede Aç"
-            class="hidden sm:inline-flex items-center gap-1 text-xs sm:text-sm font-semibold transition-colors px-2 py-1"
-            :class="adminTheme === 'light' ? 'text-[#8E8E93] hover:text-black' : 'text-[#8E8E93] hover:text-[#FFFF00]'"
+        <!-- HIZLI DIŞ BAĞLANTILAR -->
+        <div class="space-y-1">
+          <p :class="['px-3 mb-2 text-[10px] font-bold uppercase tracking-widest', adminTheme === 'dark' ? 'text-[#666664]' : 'text-slate-400']">
+            Kısayollar
+          </p>
+          <router-link
+            :to="myProfilePath"
+            target="_blank"
+            rel="noopener noreferrer"
+            class="w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-semibold transition-colors"
+            :class="adminTheme === 'dark' ? 'text-[#A1A1AA] hover:text-[#FFFF00] hover:bg-[#1B1B19]' : 'text-slate-600 hover:text-black hover:bg-slate-100'"
           >
-            <span>Profili Gör</span>
-            <ExternalLink class="w-3.5 h-3.5" />
+            <span class="flex items-center gap-2.5">
+              <ExternalLink class="w-4 h-4" />
+              <span>Canlı Profilim</span>
+            </span>
+            <span class="text-[10px] font-mono opacity-75">/@{{ myCleanHandle }}</span>
           </router-link>
+          <router-link
+            to="/"
+            class="w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-semibold transition-colors"
+            :class="adminTheme === 'dark' ? 'text-[#A1A1AA] hover:text-white hover:bg-[#1B1B19]' : 'text-slate-600 hover:text-black hover:bg-slate-100'"
+          >
+            <span class="flex items-center gap-2.5">
+              <Globe class="w-4 h-4" />
+              <span>Üyelik Vitrini</span>
+            </span>
+          </router-link>
+        </div>
+      </div>
 
-          <!-- Çıkış Yap ('Log in' tarzı yalın buton) -->
-          <button 
+      <!-- Alt: Oturumlu Hesap Kartı & Çıkış -->
+      <div class="p-3.5 border-t" :class="adminTheme === 'dark' ? 'border-[#242422] bg-[#0F0F0E]' : 'border-slate-200 bg-slate-50'">
+        <div class="flex items-center justify-between gap-2">
+          <div class="flex items-center gap-2.5 min-w-0">
+            <img
+              v-if="profile?.avatar"
+              :src="profile.avatar"
+              :alt="profile.name"
+              class="w-9 h-9 rounded-full object-cover border border-[#2B2B28] shrink-0"
+            />
+            <div v-else class="w-9 h-9 rounded-full bg-[#FFFF00] text-black font-black text-xs flex items-center justify-center shrink-0">
+              {{ getInitials(profile?.name) }}
+            </div>
+            <div class="min-w-0">
+              <p class="text-xs font-bold truncate">{{ profile?.name || authStore.user?.name }}</p>
+              <p :class="['text-[10px] truncate', adminTheme === 'dark' ? 'text-[#8E8E93]' : 'text-slate-500']">
+                {{ authStore.isAdmin ? 'Platform Yöneticisi' : 'Onaylı Üye' }}
+              </p>
+            </div>
+          </div>
+          <button
             type="button"
             @click="handleLogout"
             title="Oturumu Kapat"
-            class="text-xs sm:text-sm font-semibold transition-colors px-2.5 py-1.5"
-            :class="adminTheme === 'light' ? 'text-[#8E8E93] hover:text-rose-500' : 'text-[#8E8E93] hover:text-rose-400'"
+            class="p-2 rounded-xl border transition-colors cursor-pointer shrink-0"
+            :class="adminTheme === 'dark' ? 'border-[#282828] text-[#8E8E93] hover:text-rose-400 hover:border-rose-500/40' : 'border-slate-200 text-slate-500 hover:text-rose-600'"
           >
-            <span>Çıkış Yap</span>
+            <LogOut class="w-4 h-4" />
           </button>
-
-          <!-- Paylaş Butonu (Dribbble İkonik Elektrik Sarı Kapsül Butonu) -->
-          <button 
-            type="button"
-            @click="showShareModal = true"
-            class="inline-flex items-center gap-1.5 px-4 sm:px-5 py-2 sm:py-2.5 rounded-full text-xs sm:text-sm font-bold bg-[#FFFF00] hover:bg-[#EEFF00] text-black shadow-md shadow-yellow-500/20 transition-all hover:scale-105 active:scale-95"
-          >
-            <Share2 class="w-3.5 h-3.5 text-black stroke-[2.2]" />
-            <span>Paylaş</span>
-          </button>
-
         </div>
       </div>
-    </header>
+    </aside>
 
-    <!-- ANA İÇERİK: LINKTREE İKİ SÜTUNLU DÜZEN (Two-Column Layout) -->
-    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-      <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-        
-        <!-- ========================================== -->
-        <!-- SOL SÜTUN: KONTROLLER VE AYARLAR (Cols 1-7/8) -->
-        <!-- ========================================== -->
-        <div class="lg:col-span-7 xl:col-span-8 space-y-6">
+    <!-- ====================================================================== -->
+    <!-- SAĞ ANA ÇALIŞMA ALANI (Top CRM Command Header + Content Grid)          -->
+    <!-- ====================================================================== -->
+    <div class="flex-1 min-w-0 flex flex-col">
+
+      <!-- TOP CRM KOMUT ÇUBUĞU -->
+      <header
+        :class="[
+          'sticky top-0 z-30 border-b px-4 sm:px-6 lg:px-8 py-3.5 backdrop-blur-md transition-colors',
+          adminTheme === 'dark' ? 'bg-[#0C0C0B]/90 border-[#242422] text-white' : 'bg-white/90 border-slate-200 text-slate-900'
+        ]"
+      >
+        <div class="max-w-[1440px] mx-auto flex items-center justify-between gap-3">
+          <!-- Sol: Mobil Menü + Aktif Sayfa Başlığı -->
+          <div class="flex items-center gap-3 min-w-0">
+            <button
+              type="button"
+              @click="isMobileSidebarOpen = true"
+              class="lg:hidden p-2 rounded-xl border cursor-pointer"
+              :class="adminTheme === 'dark' ? 'border-[#282828] bg-[#161615] text-white' : 'border-slate-200 bg-slate-100 text-slate-800'"
+            >
+              <Menu class="w-4 h-4" />
+            </button>
+            <div class="min-w-0">
+              <h1 class="text-sm sm:text-base font-extrabold tracking-tight truncate">
+                {{ currentTabMeta.title }}
+              </h1>
+              <p :class="['hidden sm:block text-[11px] truncate', adminTheme === 'dark' ? 'text-[#8E8E93]' : 'text-slate-500']">
+                {{ currentTabMeta.subtitle }}
+              </p>
+            </div>
+          </div>
+
+          <!-- Orta/Sağ: Global Arama + Önizleme Switch + Hızlı Aksiyonlar -->
+          <div class="flex items-center gap-2 sm:gap-2.5 shrink-0">
+            <div class="hidden md:flex relative items-center w-56 xl:w-64">
+              <Search class="w-3.5 h-3.5 absolute left-3 text-[#8E8E93] pointer-events-none" />
+              <input
+                v-model="globalCrmSearch"
+                type="text"
+                placeholder="Bağlantı veya üye ara..."
+                :class="[
+                  'w-full pl-8 pr-7 py-1.5 rounded-xl text-xs border transition-colors focus:outline-none',
+                  adminTheme === 'dark'
+                    ? 'bg-[#161615] border-[#282825] text-white placeholder-[#666664] focus:border-[#FFFF00]/60'
+                    : 'bg-slate-100 border-slate-200 text-slate-900 focus:border-slate-400'
+                ]"
+              />
+              <button
+                v-if="globalCrmSearch"
+                type="button"
+                @click="globalCrmSearch = ''"
+                class="absolute right-2.5 text-[#8E8E93] hover:text-white cursor-pointer"
+              >
+                <X class="w-3 h-3" />
+              </button>
+            </div>
+
+            <!-- Masaüstü Canlı iPhone Önizleme Aç/Kapat -->
+            <button
+              type="button"
+              @click="showDesktopPreview = !showDesktopPreview"
+              class="hidden lg:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold border transition-colors cursor-pointer"
+              :class="showDesktopPreview
+                ? 'bg-emerald-500/15 border-emerald-500/40 text-emerald-400'
+                : (adminTheme === 'dark' ? 'bg-[#161615] border-[#282825] text-[#A1A1AA] hover:text-white' : 'bg-slate-100 border-slate-200 text-slate-700')"
+            >
+              <Smartphone class="w-3.5 h-3.5" />
+              <span>{{ showDesktopPreview ? 'Önizlemeyi Gizle' : 'Telefon Önizleme' }}</span>
+            </button>
+
+            <!-- Yeni Bağlantı Hızlı Buton -->
+            <button
+              type="button"
+              @click="openNewLinkFromCrm"
+              class="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold border transition-colors cursor-pointer"
+              :class="adminTheme === 'dark' ? 'bg-[#1B1B19] border-[#2F2F2A] text-white hover:border-[#FFFF00]/60' : 'bg-slate-100 border-slate-200 text-slate-900 hover:bg-slate-200'"
+            >
+              <Plus class="w-3.5 h-3.5 text-[#FFFF00]" />
+              <span>Yeni Bağlantı</span>
+            </button>
+
+            <!-- Paylaş Butonu -->
+            <button 
+              type="button"
+              @click="showShareModal = true"
+              class="inline-flex items-center gap-1.5 px-3.5 sm:px-4 py-1.5 sm:py-2 rounded-xl text-xs font-bold bg-[#FFFF00] hover:bg-[#EEFF00] text-black shadow-md shadow-yellow-500/15 transition-all active:scale-95 cursor-pointer"
+            >
+              <Share2 class="w-3.5 h-3.5 text-black stroke-[2.2]" />
+              <span>Paylaş</span>
+            </button>
+          </div>
+        </div>
+      </header>
+
+      <!-- ANA İÇERİK (12 Sütunlu CRM Bento Grid + Opsiyonel Sağ Telefon Önizleme) -->
+      <main class="flex-1 w-full max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8 py-6">
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 xl:gap-8 items-start">
           
-          <!-- MOBİL SEKME NAVİGASYONU (md:hidden ekranlar için) -->
-          <nav :class="['md:hidden flex items-center gap-1 p-1.5 border rounded-2xl transition-colors overflow-x-auto scrollbar-none', themeClasses.navBg]">
-            <button 
-              @click="activeTab = 'links'"
-              class="px-4 py-2.5 rounded-xl text-xs font-semibold transition-all flex items-center gap-2 whitespace-nowrap"
-              :class="activeTab === 'links' ? 'bg-[#FFFF00] text-black font-bold shadow-md shadow-yellow-500/20' : themeClasses.navInactive"
-            >
-              <Globe class="w-3.5 h-3.5" />
-              <span>Bağlantılar</span>
-              <span 
-                class="px-1.5 py-0.2 rounded-full text-[10px] font-bold"
-                :class="activeTab === 'links' ? 'bg-black text-[#FFFF00]' : (adminTheme === 'light' ? 'bg-black/10 text-slate-800' : 'bg-[#FFFF00]/15 text-[#FFFF00]')"
-              >
-                {{ links.length }}
-              </span>
-            </button>
-
-            <button 
-              @click="activeTab = 'appearance'"
-              class="px-4 py-2.5 rounded-xl text-xs font-semibold transition-all flex items-center gap-2 whitespace-nowrap"
-              :class="activeTab === 'appearance' ? 'bg-[#FFFF00] text-black font-bold shadow-md shadow-yellow-500/20' : themeClasses.navInactive"
-            >
-              <Palette class="w-3.5 h-3.5" />
-              <span>Görünüm & Tema</span>
-            </button>
-
-            <button 
-              @click="activeTab = 'analytics'"
-              class="px-4 py-2.5 rounded-xl text-xs font-semibold transition-all flex items-center gap-2 whitespace-nowrap"
-              :class="activeTab === 'analytics' ? 'bg-[#FFFF00] text-black font-bold shadow-md shadow-yellow-500/20' : themeClasses.navInactive"
-            >
-              <BarChart3 class="w-3.5 h-3.5" />
-              <span>İstatistikler</span>
-            </button>
-
-            <button 
-              @click="activeTab = 'messages'"
-              class="px-4 py-2.5 rounded-xl text-xs font-semibold transition-all flex items-center gap-2 whitespace-nowrap cursor-pointer"
-              :class="activeTab === 'messages' ? 'bg-[#FFFF00] text-black font-bold shadow-md shadow-yellow-500/20' : themeClasses.navInactive"
-            >
-              <MessageSquare class="w-3.5 h-3.5" />
-              <span>Mesajlar</span>
-              <span 
-                v-if="unreadMessagesCount > 0" 
-                class="px-1.5 py-0.2 rounded-full text-[10px] font-black animate-pulse"
-                :class="activeTab === 'messages' ? 'bg-black text-[#FFFF00]' : 'bg-amber-400 text-black'"
-              >
-                {{ unreadMessagesCount }}
-              </span>
-              <span 
-                v-else 
-                class="px-1.5 py-0.2 rounded-full text-[10px] font-bold opacity-75"
-                :class="activeTab === 'messages' ? 'bg-black text-[#FFFF00]' : (adminTheme === 'light' ? 'bg-black/10 text-slate-800' : 'bg-[#FFFF00]/15 text-[#FFFF00]')"
-              >
-                {{ messages.length }}
-              </span>
-            </button>
-
-            <button 
-              v-if="authStore.isAdmin"
-              @click="activeTab = 'users'"
-              class="px-4 py-2.5 rounded-xl text-xs font-semibold transition-all flex items-center gap-2 whitespace-nowrap"
-              :class="activeTab === 'users' ? 'bg-[#FFFF00] text-black font-bold shadow-md shadow-yellow-500/20' : themeClasses.navInactive"
-            >
-              <Users class="w-3.5 h-3.5" />
-              <span>Kullanıcılar</span>
-              <span 
-                class="px-1.5 py-0.2 rounded-full text-[10px] font-bold"
-                :class="activeTab === 'users' ? 'bg-black text-[#FFFF00]' : (adminTheme === 'light' ? 'bg-black/10 text-slate-800' : 'bg-[#FFFF00]/15 text-[#FFFF00]')"
-              >
-                {{ usersCount }}
-              </span>
-            </button>
-
-            <button 
-              @click="activeTab = 'settings'"
-              class="px-4 py-2.5 rounded-xl text-xs font-semibold transition-all flex items-center gap-2 whitespace-nowrap"
-              :class="activeTab === 'settings' ? 'bg-[#FFFF00] text-black font-bold shadow-md shadow-yellow-500/20' : themeClasses.navInactive"
-            >
-              <Settings class="w-3.5 h-3.5" />
-              <span>Ayarlar</span>
-            </button>
-          </nav>
-
           <!-- ========================================== -->
-          <!-- SEKME 1: BAĞLANTILAR (LINKS) -->
+          <!-- SOL / ANA ÇALIŞMA SÜTUNU                   -->
           <!-- ========================================== -->
-          <div v-if="activeTab === 'links'" class="space-y-6">
+          <div :class="[showDesktopPreview ? 'lg:col-span-7 xl:col-span-8' : 'lg:col-span-12', 'space-y-6 min-w-0']">
+            
+            <!-- ========================================== -->
+            <!-- SEKME 0: CRM GENEL BAKIŞ (AMANAH CRM HUB)  -->
+            <!-- ========================================== -->
+            <CrmOverviewPanel
+              v-if="activeTab === 'overview'"
+              :profile="profile"
+              :links="links"
+              :analytics="analytics"
+              :messages="messages"
+              :unread-messages-count="unreadMessagesCount"
+              :total-clicks="totalClicks"
+              :active-count="activeCount"
+              :top-link="topLink"
+              :smart-insights="smartInsights"
+              :is-loading-insights="isLoadingInsights"
+              :is-admin="authStore.isAdmin"
+              :users-count="usersCount"
+              :pending-members-count="pendingMembersCount"
+              :is-dark="adminTheme === 'dark'"
+              :search-query="globalCrmSearch"
+              @navigate="selectNavTab"
+              @filter-users-pending="jumpToPendingUsers"
+              @open-new-link="openNewLinkFromCrm"
+              @edit-link="openEditModal"
+              @apply-insight="applyInsightAction"
+              @refresh-insights="loadSmartInsights"
+            />
+
+            <!-- ========================================== -->
+            <!-- SEKME 1: BAĞLANTILAR (LINKS) -->
+            <!-- ========================================== -->
+            <div v-else-if="activeTab === 'links'" class="space-y-6">
 
             <!-- 1.0 TELEFONDAN PAYLAŞILAN BAĞLANTI BANNERI (Web Share Target API) -->
             <div 
@@ -7994,9 +8164,9 @@ const handleChangePassword = async () => {
         </div>
 
         <!-- ========================================== -->
-        <!-- SAĞ SÜTUN: LINKTREE CANLI TELEFON ÖNİZLEME (Cols 9-12) -->
+        <!-- SAĞ SÜTUN: LINKTREE CANLI TELEFON ÖNİZLEME -->
         <!-- ========================================== -->
-        <div class="hidden lg:flex lg:col-span-5 xl:col-span-4 sticky top-24 flex-col items-center">
+        <div v-if="showDesktopPreview" class="hidden lg:flex lg:col-span-5 xl:col-span-4 sticky top-20 flex-col items-center">
           
           <!-- Önizleme Başlığı -->
           <div class="w-full mb-3 flex items-center justify-between px-2">
@@ -8009,6 +8179,7 @@ const handleChangePassword = async () => {
             <a 
               :href="profilePublicUrl" 
               target="_blank" 
+              rel="noopener noreferrer"
               class="text-[11px] text-cyan-400 hover:underline flex items-center gap-1 font-medium"
             >
               <span>Tam Ekran</span>
@@ -8028,6 +8199,7 @@ const handleChangePassword = async () => {
 
       </div>
     </main>
+    </div>
 
     <!-- MOBİL İÇİN YÜZEN ÖNİZLEME BUTONU (Floating Preview Trigger) -->
     <div class="lg:hidden fixed bottom-6 right-6 z-40">

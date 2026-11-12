@@ -380,3 +380,4 @@ export const formatUserSummary = (u) => {
     lastSeen: u.lastSeen || u.createdAt || new Date().toISOString()
   }
 }
+
