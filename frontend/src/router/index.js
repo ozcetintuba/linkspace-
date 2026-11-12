@@ -23,6 +23,12 @@ const routes = [
     component: AdminView,
     meta: { requiresAuth: true }
   },
+  {
+    path: '/admin/users',
+    name: 'admin-users',
+    component: AdminView,
+    meta: { requiresAuth: true, adminOnly: true }
+  },
   { 
     path: '/dashboard', 
     name: 'dashboard',
@@ -47,6 +53,10 @@ router.beforeEach((to) => {
   if (to.meta.requiresAuth && !authStore.isAuthenticated) {
     // Giriş yapılmamışsa oturum açma sayfasına yönlendir
     return { path: '/login', query: { redirect: to.fullPath } }
+  }
+
+  if (to.meta.adminOnly && !authStore.isAdmin) {
+    return { path: '/admin' }
   }
 
   if (to.meta.guestOnly && authStore.isAuthenticated) {

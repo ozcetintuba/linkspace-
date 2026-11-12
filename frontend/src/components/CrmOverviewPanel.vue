@@ -33,6 +33,7 @@ const props = defineProps({
   smartInsights: { type: Array, default: () => [] },
   isLoadingInsights: { type: Boolean, default: false },
   isAdmin: { type: Boolean, default: false },
+  users: { type: Array, default: () => [] },
   usersCount: { type: Number, default: 0 },
   pendingMembersCount: { type: Number, default: 0 },
   isDark: { type: Boolean, default: true },
@@ -233,6 +234,26 @@ const subtleInner = computed(() =>
 const mutedText = computed(() =>
   props.isDark ? 'text-[#8E8E93]' : 'text-slate-500'
 )
+
+const overviewUsers = computed(() => {
+  const q = (props.searchQuery || '').trim().toLowerCase()
+  let list = Array.isArray(props.users) ? [...props.users] : []
+  if (q) {
+    list = list.filter(u =>
+      (u.name || '').toLowerCase().includes(q) ||
+      (u.username || '').toLowerCase().includes(q) ||
+      (u.email || '').toLowerCase().includes(q)
+    )
+  }
+  // Önce onay bekleyen üyeler, sonra en yeni / aktif kullanıcılar
+  list.sort((a, b) => {
+    const aPend = a.status === 'pending' ? 1 : 0
+    const bPend = b.status === 'pending' ? 1 : 0
+    if (aPend !== bPend) return bPend - aPend
+    return (b.id || 0) - (a.id || 0)
+  })
+  return list.slice(0, 6)
+})
 </script>
 
 <template>
@@ -915,5 +936,101 @@ const mutedText = computed(() =>
         </div>
       </div>
     </div>
+
+    <!-- ========================================================= -->
+    <!-- 5. KAYITLI KULLANICILAR & ÜYELİK ÖZETİ (Yönetici Görünümü) -->
+    <!-- ========================================================= -->
+    <div v-if="isAdmin" :class="['rounded-2xl border p-5 sm:p-6', surfaceCard]">
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b" :class="isDark ? 'border-[#262624]' : 'border-slate-200'">
+        <div class="flex items-center gap-3">
+          <div class="w-9 h-9 rounded-xl bg-[#FFFF00]/15 border border-[#FFFF00]/30 flex items-center justify-center text-[#FFFF00] shrink-0">
+            <Users class="w-4 h-4" />
+          </div>
+          <div>
+            <h3 class="text-sm sm:text-base font-bold tracking-tight flex items-center gap-2">
+              <span>Kayıtlı Kullanıcılar</span>
+              <span class="text-[11px] font-extrabold px-2 py-0.5 rounded-full" :class="isDark ? 'bg-[#222220] text-[#FFFF00]' : 'bg-slate-200 text-slate-800'">
+                {{ users.length || usersCount }}
+              </span>
+              <span v-if="pendingMembersCount > 0" class="text-[11px] font-bold px-2 py-0.5 rounded-full bg-rose-500/15 text-rose-400 border border-rose-500/30">
+                {{ pendingMembersCount }} onay bekliyor
+              </span>
+            </h3>
+            <p :class="['text-xs mt-0.5', mutedText]">Platformdaki tüm profillerin üyelik ve onay durumu</p>
+          </div>
+        </div>
+
+        <button
+          type="button"
+          @click="emit('navigate', 'users')"
+          class="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold bg-[#FFFF00] hover:bg-[#EEFF00] text-black shadow-md shadow-yellow-500/15 transition-all cursor-pointer shrink-0"
+        >
+          <span>Tüm Kullanıcıları Yönet</span>
+          <ArrowUpRight class="w-3.5 h-3.5" />
+        </button>
+      </div>
+
+      <div class="mt-4 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
+        <div
+          v-for="u in overviewUsers"
+          :key="u.id || u.username"
+          @click="emit('navigate', 'users')"
+          :class="['p-3.5 rounded-xl border flex items-center justify-between gap-3 transition-all cursor-pointer hover:border-[#FFFF00]/50', subtleInner]"
+        >
+          <div class="flex items-center gap-3 min-w-0">
+            <img
+              v-if="u.avatar"
+              :src="u.avatar"
+              :alt="u.name || u.username"
+              class="w-10 h-10 rounded-full object-cover border shrink-0"
+              :class="isDark ? 'border-[#333330]' : 'border-slate-300'"
+            />
+            <div
+              v-else
+              class="w-10 h-10 rounded-full flex items-center justify-center font-extrabold text-xs shrink-0"
+              :class="isDark ? 'bg-[#252522] text-[#FFFF00]' : 'bg-slate-200 text-slate-800'"
+            >
+              {{ (u.name || u.username || 'U').slice(0, 2).toUpperCase() }}
+            </div>
+            <div class="min-w-0">
+              <div class="flex items-center gap-1.5">
+                <p class="text-xs font-bold truncate">{{ u.name || u.username }}</p>
+                <span
+                  v-if="u.role === 'admin' || u.id === 1"
+                  class="text-[9px] font-black uppercase px-1.5 py-0.5 rounded bg-[#FFFF00]/15 text-[#FFFF00]"
+                >
+                  Admin
+                </span>
+              </div>
+              <p :class="['text-[11px] truncate font-mono', mutedText]">@{{ u.username }}</p>
+            </div>
+          </div>
+
+          <div class="flex flex-col items-end gap-1 shrink-0">
+            <span
+              class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold border"
+              :class="u.status === 'pending'
+                ? 'bg-rose-500/15 text-rose-400 border-rose-500/30'
+                : (u.status === 'suspended'
+                  ? 'bg-zinc-500/15 text-zinc-400 border-zinc-500/30'
+                  : 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30')"
+            >
+              {{ u.status === 'pending' ? 'Onay Bekliyor' : (u.status === 'suspended' ? 'Askıda' : 'Aktif') }}
+            </span>
+            <span :class="['text-[10px] font-mono', mutedText]">
+              {{ u.linkCount ?? (Array.isArray(u.links) ? u.links.length : 0) }} link
+            </span>
+          </div>
+        </div>
+
+        <div
+          v-if="overviewUsers.length === 0"
+          :class="['md:col-span-2 xl:col-span-3 py-6 text-center text-xs rounded-xl border border-dashed', isDark ? 'border-[#2B2B28]' : 'border-slate-300', mutedText]"
+        >
+          Henüz kullanıcı listesi yüklenmedi veya arama sonucu bulunamadı.
+        </div>
+      </div>
+    </div>
   </div>
 </template>
+

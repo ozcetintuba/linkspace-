@@ -4,6 +4,18 @@ Tüm önemli mimari değişiklikler, özellik eklemeleri ve düzeltmeler bu dosy
 
 ---
 
+## [v0.41.1] - 2026-11-12 (CRM Kullanıcılar Sayfası, `/admin/users` Rotası & Legacy Yönetici Oturum Uyumluluğu)
+
+### 👥 Kullanıcılar Sayfası Görünürlüğü & Hızlı Erişim (`authStore.js`, `authMiddleware.js`, `router/index.js`, `AdminView.vue`, `CrmOverviewPanel.vue`)
+- **Oturum Tazeleme & Legacy Yönetici Uyumluluğu**:
+  - `AdminView.vue` `onMounted` içerisinde `await authStore.checkAuth()` çağrısı eklenerek önceki sürümlerden `localStorage`'da kalan oturumların sunucudan tazelenmesi sağlandı.
+  - `authStore.isAdmin` ve `backend/src/middleware/authMiddleware.js` (`requireAdmin`), birincil sistem yöneticisi hesaplarını (`role === 'admin'` veya `id === 1` / `'admin'` / `'tubagul'`) geriye dönük uyumlu tanıyacak şekilde güncellendi (standart `role: 'user'` üyeler engellenmeye devam eder).
+- **Doğrudan `/admin/users` Rotası & CRM Kısayolları**:
+  - `frontend/src/router/index.js` dosyasına `{ path: '/admin/users', meta: { requiresAuth: true, adminOnly: true } }` rotası ve navigasyon koruması eklendi.
+  - Sol CRM sidebar etiketi `Kullanıcılar` olarak netleştirildi, üst CRM komut barına **Kullanıcılar** hızlı geçiş butonu eklendi ve `CrmOverviewPanel.vue` içine yöneticiye özel **Kayıtlı Kullanıcılar** özet kartı (durum rozetleri, link sayacı ve **Tüm Kullanıcıları Yönet** butonu) yerleştirildi.
+
+---
+
 ## [v0.41.0] - 2026-11-12 (Dark SaaS CRM Dashboard, Sol Sidebar ve Sparkline Trend Mimarisi)
 
 ### 📊 Yönetim Paneli CRM Dönüşümü (`AdminView.vue`, `CrmOverviewPanel.vue`)

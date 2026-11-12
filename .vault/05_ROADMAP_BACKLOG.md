@@ -513,6 +513,7 @@ Bu liste, projenin geliştirme fazlarını ve önceliklendirilmiş iş paketleri
   - Inline SVG sparkline eğrili ve semantik yeşil/sarı/kırmızı trend rozetli 4 KPI kartı.
   - Etkileşimli hover imleçli **Haftalık Ziyaret & Tıklama Çoklu Çizgi Grafiği** ve **Akıllı CRM Öngörüleri** paneli.
   - Tıklama payı progress barlı karşılaştırmalı bağlantı performans tablosu, hızlı düzenleme ve trafik kaynağı / cihaz dağılımı kartı.
+  - (`v0.41.1`) Yönetici erişimi (`/admin/users` rotası, üst bar `Kullanıcılar` kısayolu, `CrmOverviewPanel` içinde **Kayıtlı Kullanıcılar** özet kartı, `AdminView` `onMounted` `checkAuth()` session tazeleme ve legacy ana yönetici uyumluluğu) eklendi.
 
 ---
 

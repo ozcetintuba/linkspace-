@@ -1,6 +1,6 @@
 # 🔍 02 - MEVCUT DURUM VE TEKNİK BORÇ ANALİZİ (CURRENT STATE)
 
-> **Son Güncelleme**: 12 Kasım 2026 (Dark SaaS CRM Dashboard, Sparkline KPI'lar & Sol Sidebar Mimarisi - v0.41.0)  
+> **Son Güncelleme**: 12 Kasım 2026 (CRM Kullanıcılar Sayfası `/admin/users`, Legacy Admin Session Tazeleme & Kayıtlı Kullanıcı Özeti - v0.41.1)  
 > **Durum**: Full-Stack Çoklu Üyelik Mimarisi (Express + PostgreSQL + Vue 3 + Onaylı Kayıt Akışı + `user_id` Bazlı İzole Çalışma Alanı) + Dribbble Sales CRM (#0C0C0B, #161616, #FFFF00) Tasarım Sistemi + Render Canlı Dağıtım (`https://linkspace-app.onrender.com`)  
 > **Proje Türü**: Full-Stack Linktree & Link Hub (CRM Dark & Light Edition)
 

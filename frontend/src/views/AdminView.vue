@@ -376,7 +376,8 @@ onMounted(async () => {
     router.replace({ path: '/admin', query: {} })
   }
 
-  // İlk veri yüklemeleri
+  // İlk veri yüklemeleri ve oturum tazeleme
+  await authStore.checkAuth()
   if (linkStore.isViewingPublicProfile) {
     linkStore.clearPublicProfile()
   }
@@ -386,7 +387,7 @@ onMounted(async () => {
   if (authStore.isAdmin) {
     linkStore.fetchUsers()
     linkStore.fetchUserStats()
-    if (route.query.tab === 'users') {
+    if (route.path === '/admin/users' || route.query.tab === 'users') {
       activeTab.value = 'users'
     }
   }
@@ -420,7 +421,21 @@ const selectNavTab = (tab) => {
   activeTab.value = tab
   isMobileSidebarOpen.value = false
   showDesktopPreview.value = (tab === 'links' || tab === 'appearance')
+  if (tab === 'users' && route.path !== '/admin/users') {
+    router.replace('/admin/users')
+  } else if (tab !== 'users' && route.path === '/admin/users') {
+    router.replace('/admin')
+  }
 }
+
+watch(() => route.path, (newPath) => {
+  if (newPath === '/admin/users' && authStore.isAdmin) {
+    activeTab.value = 'users'
+    showDesktopPreview.value = false
+  } else if (newPath === '/admin' && activeTab.value === 'users') {
+    activeTab.value = 'overview'
+  }
+})
 
 const jumpToPendingUsers = () => {
   if (!authStore.isAdmin) return
@@ -2403,7 +2418,7 @@ const handleChangePassword = async () => {
           >
             <span class="flex items-center gap-2.5">
               <Users class="w-4 h-4" />
-              <span>Üyeler & Onay</span>
+              <span>Kullanıcılar</span>
             </span>
             <span
               v-if="pendingMembersCount > 0"
@@ -2570,6 +2585,26 @@ const handleChangePassword = async () => {
               <span>{{ showDesktopPreview ? 'Önizlemeyi Gizle' : 'Telefon Önizleme' }}</span>
             </button>
 
+            <!-- Kullanıcılar Hızlı Buton (Sadece Admin) -->
+            <button
+              v-if="authStore.isAdmin"
+              type="button"
+              @click="selectNavTab('users')"
+              class="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold border transition-colors cursor-pointer"
+              :class="activeTab === 'users'
+                ? 'bg-[#FFFF00] border-[#FFFF00] text-black'
+                : (adminTheme === 'dark' ? 'bg-[#161615] border-[#282825] text-[#D4D4D8] hover:text-white hover:border-[#FFFF00]/50' : 'bg-slate-100 border-slate-200 text-slate-800 hover:bg-slate-200')"
+            >
+              <Users class="w-3.5 h-3.5" :class="activeTab === 'users' ? 'text-black' : 'text-[#FFFF00]'" />
+              <span>Kullanıcılar</span>
+              <span
+                v-if="pendingMembersCount > 0"
+                class="ml-0.5 px-1.5 py-0.2 rounded-md text-[10px] font-black bg-rose-500 text-white"
+              >
+                {{ pendingMembersCount }}
+              </span>
+            </button>
+
             <!-- Yeni Bağlantı Hızlı Buton -->
             <button
               type="button"
@@ -2619,6 +2654,7 @@ const handleChangePassword = async () => {
               :smart-insights="smartInsights"
               :is-loading-insights="isLoadingInsights"
               :is-admin="authStore.isAdmin"
+              :users="users"
               :users-count="usersCount"
               :pending-members-count="pendingMembersCount"
               :is-dark="adminTheme === 'dark'"
