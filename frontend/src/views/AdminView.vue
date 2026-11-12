@@ -570,7 +570,6 @@ const selectedUserFilter = ref('all') // 'all' | 'pending' | 'verified' | 'admin
 const selectedUserSort = ref('newest') // 'newest' | 'oldest' | 'links_desc' | 'name_asc'
 const userFeedback = ref('')
 const isUserActionLoading = ref(false)
-const userViewMode = ref('table') // 'table' | 'grid'
 const selectedUserIds = ref([])
 
 // Modallar
@@ -6444,7 +6443,7 @@ const handleChangePassword = async () => {
                   </button>
                 </div>
 
-                <!-- Sıralama ve Görünüm Seçimi (Grid / Tablo) -->
+                <!-- Sıralama -->
                 <div class="flex items-center gap-2.5 shrink-0">
                   <div class="flex items-center gap-1.5">
                     <span class="text-xs text-[#8E8E93] hidden sm:inline">Sırala:</span>
@@ -6458,30 +6457,6 @@ const handleChangePassword = async () => {
                       <option value="links_desc">En Çok Linki Olanlar</option>
                       <option value="name_asc">İsme Göre (A-Z)</option>
                     </select>
-                  </div>
-
-                  <!-- Görünüm Değiştirici Buton Grubu -->
-                  <div class="flex items-center p-1 rounded-xl border" :class="themeClasses.boxInner">
-                    <button 
-                      type="button"
-                      @click="userViewMode = 'table'"
-                      title="Alt Alta Sıralı Liste Görünümü"
-                      class="px-2.5 py-1 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer"
-                      :class="userViewMode === 'table' ? 'bg-[#FFFF00] text-black shadow-xs' : 'text-[#8E8E93] hover:text-white'"
-                    >
-                      <Table class="w-3.5 h-3.5" />
-                      <span class="hidden sm:inline">Liste</span>
-                    </button>
-                    <button 
-                      type="button"
-                      @click="userViewMode = 'grid'"
-                      title="Bento Kart Izgarası Görünümü"
-                      class="px-2.5 py-1 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer"
-                      :class="userViewMode === 'grid' ? 'bg-[#FFFF00] text-black shadow-xs' : 'text-[#8E8E93] hover:text-white'"
-                    >
-                      <LayoutGrid class="w-3.5 h-3.5" />
-                      <span class="hidden sm:inline">Kart</span>
-                    </button>
                   </div>
                 </div>
               </div>
@@ -6628,367 +6603,101 @@ const handleChangePassword = async () => {
             </div>
 
             <!-- ======================================================== -->
-            <!-- GÖRÜNÜM 1: DETAYLI VERİ TABLOSU (TABLE VIEW) -->
+            <!-- ALT ALTA SIRALI KULLANICI LİSTESİ                        -->
             <!-- ======================================================== -->
             <div 
-              v-if="userViewMode === 'table' && filteredUsers.length > 0"
-              :class="['border rounded-3xl overflow-hidden shadow-xl transition-all', themeClasses.cardBg]"
+              v-if="filteredUsers.length > 0"
+              :class="['border rounded-2xl overflow-hidden shadow-xl transition-all', themeClasses.cardBg]"
             >
-              <div class="overflow-x-auto">
-                <table class="w-full text-left text-xs border-collapse">
-                  <thead>
-                    <tr class="border-b" :class="[adminTheme === 'light' ? 'bg-slate-50 border-slate-200 text-slate-700' : 'bg-[#141414] border-[#242424] text-zinc-400']">
-                      <th class="p-4 w-12 text-center">
-                        <input 
-                          type="checkbox" 
-                          :checked="isAllUsersSelected" 
-                          @change="toggleSelectAllUsers"
-                          class="w-4 h-4 accent-[#FFFF00] rounded cursor-pointer"
-                          title="Tümünü Seç / Kaldır"
-                        />
-                      </th>
-                      <th class="p-4 w-12 font-bold text-center">#</th>
-                      <th class="p-4 font-bold">Kullanıcı & Profil</th>
-                      <th class="p-4 font-bold">E-Posta & İletişim</th>
-                      <th class="p-4 font-bold">Rol</th>
-                      <th class="p-4 font-bold">Düzen</th>
-                      <th class="p-4 font-bold">Bağlantılar</th>
-                      <th class="p-4 font-bold">Durum</th>
-                      <th class="p-4 font-bold">Rozet</th>
-                      <th class="p-4 font-bold">Katılım</th>
-                      <th class="p-4 font-bold text-right pr-6">İşlemler</th>
-                    </tr>
-                  </thead>
-                  <tbody class="divide-y" :class="adminTheme === 'light' ? 'divide-slate-200' : 'divide-[#202020]'">
-                    <tr 
-                      v-for="(u, idx) in filteredUsers" 
-                      :key="u.id"
-                      @click="openUserProfilePreview(u)"
-                      class="transition-colors hover:bg-white/[0.03] cursor-pointer"
-                      :class="[
-                        selectedUserIds.includes(u.id) ? (adminTheme === 'light' ? 'bg-yellow-50/50' : 'bg-[#FFFF00]/5') : '',
-                        u.status === 'suspended' ? 'opacity-60' : ''
-                      ]"
-                    >
-                      <!-- Seçim Checkbox -->
-                      <td class="p-4 text-center" @click.stop>
-                        <input 
-                          type="checkbox" 
-                          :checked="selectedUserIds.includes(u.id)"
-                          @change="toggleSelectUser(u.id)"
-                          class="w-4 h-4 accent-[#FFFF00] rounded cursor-pointer"
-                        />
-                      </td>
-
-                      <!-- Sıra Numarası -->
-                      <td class="p-4 text-center font-mono text-[11px] font-bold text-[#8E8E93]">
-                        {{ idx + 1 }}
-                      </td>
-
-                      <!-- Kullanıcı & Avatar -->
-                      <td class="p-4">
-                        <div class="flex items-center gap-3">
-                          <div 
-                            @click.stop="openUserProfilePreview(u)"
-                            class="relative shrink-0 cursor-pointer hover:scale-105 transition-transform"
-                            title="Linktree Profilini İncele"
-                          >
-                            <img 
-                              v-if="u.avatar" 
-                              :src="u.avatar" 
-                              :alt="u.name"
-                              class="w-9 h-9 rounded-full object-cover border"
-                              :class="u.role === 'admin' ? 'border-[#FFFF00]' : 'border-zinc-700'"
-                              @error="(e) => { e.target.style.display = 'none'; if (e.target.nextElementSibling) e.target.nextElementSibling.style.display = 'flex'; }"
-                            />
-                            <div 
-                              class="w-9 h-9 rounded-full items-center justify-center font-bold text-xs border text-white bg-gradient-to-br from-zinc-700 to-zinc-900"
-                              :class="[u.avatar ? 'hidden' : 'flex', u.role === 'admin' ? 'border-[#FFFF00]' : 'border-zinc-700']"
-                            >
-                              {{ getInitials(u.name) }}
-                            </div>
-                            <span 
-                              v-if="u.isVerified" 
-                              class="absolute -bottom-1 -right-1 w-3.5 h-3.5 rounded-full bg-[#FFFF00] text-black flex items-center justify-center text-[9px] font-bold"
-                            >
-                              ✓
-                            </span>
-                          </div>
-                          <div class="min-w-0">
-                            <div 
-                              class="font-bold truncate max-w-[150px] hover:text-[#FFFF00] transition-colors flex items-center gap-1" 
-                              :class="themeClasses.titleText"
-                              title="Linktree Profilini İncele"
-                            >
-                              <span>{{ u.name }}</span>
-                              <Eye class="w-3 h-3 text-[#FFFF00] opacity-80" />
-                            </div>
-                            <a 
-                              :href="'/@' + u.username.replace(/^@/, '')" 
-                              target="_blank"
-                              @click.stop
-                              class="text-[11px] text-[#FFFF00] font-mono hover:underline truncate block"
-                            >
-                              @{{ u.username.replace(/^@/, '') }}
-                            </a>
-                          </div>
-                        </div>
-                      </td>
-
-                      <!-- E-posta -->
-                      <td class="p-4 text-[#8E8E93] max-w-[160px]">
-                        <div class="flex items-center gap-1.5 truncate">
-                          <span class="truncate">{{ u.email || '—' }}</span>
-                          <button 
-                            v-if="u.email"
-                            type="button" 
-                            @click.stop="handleCopyUserUrl(u.username)"
-                            class="text-[10px] text-[#FFFF00] hover:underline shrink-0" 
-                            title="Profil linkini kopyala"
-                          >
-                            <Copy class="w-3 h-3" />
-                          </button>
-                        </div>
-                      </td>
-
-                      <!-- Rol -->
-                      <td class="p-4">
-                        <span 
-                          v-if="u.role === 'admin'"
-                          class="px-2 py-0.5 text-[10px] font-black uppercase tracking-wider rounded-full bg-[#FFFF00]/15 text-[#FFFF00] border border-[#FFFF00]/30"
-                        >
-                          Yönetici
-                        </span>
-                        <span 
-                          v-else
-                          class="px-2 py-0.5 text-[10px] font-semibold rounded-full bg-zinc-800 text-zinc-300 border border-zinc-700"
-                        >
-                          Üye
-                        </span>
-                      </td>
-
-                      <!-- Düzen -->
-                      <td class="p-4 font-mono text-[11px] text-[#8E8E93]">
-                        <span class="px-2 py-0.5 rounded-md bg-zinc-900 border border-zinc-800">
-                          {{ u.layoutStyle === 'bento' ? '🍱 Bento' : '📋 Liste' }}
-                        </span>
-                      </td>
-
-                      <!-- Bağlantılar -->
-                      <td class="p-4 font-mono font-bold" :class="themeClasses.titleText">
-                        {{ u.linkCount ?? (u.links?.length || 0) }} Link
-                      </td>
-
-                      <!-- Durum (Aktif / Onay Bekliyor / Askıda) -->
-                      <td class="p-4" @click.stop>
-                        <button 
-                          type="button"
-                          @click="u.status === 'pending' ? handleApproveUser(u) : handleQuickToggleStatus(u)"
-                          :disabled="u.id === 1"
-                          :title="u.status === 'pending' ? 'Üyelik başvurusunu onaylamak için tıklayın' : 'Hesap durumunu değiştirmek için tıklayın'"
-                          class="px-2.5 py-1 rounded-full text-[10px] font-bold transition-all flex items-center gap-1.5 cursor-pointer"
-                          :class="u.status === 'pending' 
-                            ? 'bg-amber-500/15 text-amber-300 border border-amber-500/40 hover:bg-amber-500/25' 
-                            : (u.status === 'suspended' 
-                                ? 'bg-rose-500/15 text-rose-400 border border-rose-500/30' 
-                                : 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30')"
-                        >
-                          <span 
-                            class="w-1.5 h-1.5 rounded-full" 
-                            :class="u.status === 'pending' ? 'bg-amber-400 animate-ping' : (u.status === 'suspended' ? 'bg-rose-500' : 'bg-emerald-400 animate-pulse')"
-                          ></span>
-                          <span>{{ u.status === 'pending' ? 'Onay Bekliyor' : (u.status === 'suspended' ? 'Askıda' : 'Aktif') }}</span>
-                        </button>
-                      </td>
-
-                      <!-- Doğrulanmış Rozet -->
-                      <td class="p-4" @click.stop>
-                        <button 
-                          type="button"
-                          @click="handleQuickToggleVerify(u)"
-                          title="Doğrulama rozetini aç/kapat"
-                          class="w-7 h-7 rounded-lg border flex items-center justify-center transition-transform active:scale-90 cursor-pointer"
-                          :class="u.isVerified ? 'bg-[#FFFF00] text-black border-[#FFFF00]' : 'bg-zinc-900 border-zinc-700 text-zinc-500 hover:text-white'"
-                        >
-                          ✓
-                        </button>
-                      </td>
-
-                      <!-- Katılım Tarihi -->
-                      <td class="p-4 text-[11px] text-[#8E8E93] whitespace-nowrap">
-                        {{ formatRelativeTime(u.createdAt) }}
-                      </td>
-
-                      <!-- Aksiyon Butonları -->
-                      <td class="p-4 text-right pr-6" @click.stop>
-                        <div class="flex items-center justify-end gap-1.5">
-                          <!-- Başvuru Onayla Butonu -->
-                          <button
-                            v-if="u.status === 'pending'"
-                            type="button"
-                            @click="handleApproveUser(u)"
-                            title="Üyelik Başvurusunu Onayla"
-                            class="px-2.5 py-1.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-black font-bold text-[11px] transition-all active:scale-95 cursor-pointer flex items-center gap-1"
-                          >
-                            <Check class="w-3.5 h-3.5" />
-                            <span>Onayla</span>
-                          </button>
-
-                          <!-- Linktree Önizleme / Profili Gör -->
-                          <button 
-                            type="button"
-                            @click="openUserProfilePreview(u)"
-                            title="Linktree Profil Önizlemesini Aç"
-                            class="p-2 rounded-xl bg-[#FFFF00] hover:bg-[#EEFF00] text-black font-bold transition-all active:scale-95 cursor-pointer shadow-sm"
-                          >
-                            <Eye class="w-3.5 h-3.5" />
-                          </button>
-
-                          <!-- Yeni Sekmede Canlı Aç -->
-                          <a 
-                            :href="'/@' + u.username.replace(/^@/, '')" 
-                            target="_blank"
-                            title="Yeni Sekmede Canlı Aç"
-                            class="p-2 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-[#FFFF00] transition-colors"
-                          >
-                            <ExternalLink class="w-3.5 h-3.5" />
-                          </a>
-
-                          <!-- Düzenle -->
-                          <button 
-                            type="button"
-                            @click="openEditUserModal(u)"
-                            title="Kullanıcı Bilgilerini Düzenle"
-                            class="p-2 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-white transition-colors cursor-pointer"
-                          >
-                            <Pencil class="w-3.5 h-3.5" />
-                          </button>
-
-                          <!-- QR Kod -->
-                          <button 
-                            type="button"
-                            @click="openUserQrModal(u)"
-                            title="Profil QR Kodunu Görüntüle"
-                            class="p-2 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-cyan-400 transition-colors cursor-pointer"
-                          >
-                            <QrCode class="w-3.5 h-3.5" />
-                          </button>
-
-                          <!-- Sil -->
-                          <button 
-                            type="button"
-                            @click="handleDeleteUserClick(u)"
-                            :disabled="u.id === 1 || u.username === 'tubagul'"
-                            :title="u.id === 1 ? 'Ana yönetici hesabı silinemez' : 'Kullanıcıyı Sil'"
-                            class="p-2 rounded-xl border transition-colors"
-                            :class="[
-                              u.id === 1 || u.username === 'tubagul' 
-                                ? 'opacity-20 cursor-not-allowed border-zinc-800 text-zinc-600' 
-                                : 'cursor-pointer hover:border-rose-500/50 hover:bg-rose-500/10 text-rose-400 border-zinc-800 bg-zinc-900'
-                            ]"
-                          >
-                            <Trash2 class="w-3.5 h-3.5" />
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  </tbody>
-                </table>
-              </div>
-            </div>
-
-            <!-- ======================================================== -->
-            <!-- GÖRÜNÜM 2: KART IZGARASI (GRID VIEW) -->
-            <!-- ======================================================== -->
-            <div 
-              v-else-if="userViewMode === 'grid' && filteredUsers.length > 0" 
-              class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4"
-            >
-              <div 
-                v-for="u in filteredUsers" 
-                :key="u.id"
-                @click="openUserProfilePreview(u)"
-                class="rounded-3xl border transition-all duration-200 p-5 flex flex-col justify-between group hover:border-[#FFFF00]/70 hover:shadow-xl hover:shadow-yellow-500/5 relative cursor-pointer"
-                :class="[
-                  themeClasses.cardBg, 
-                  u.role === 'admin' ? 'ring-1 ring-[#FFFF00]/25' : '',
-                  selectedUserIds.includes(u.id) ? 'ring-2 ring-[#FFFF00] bg-[#FFFF00]/5' : '',
-                  u.status === 'suspended' ? 'opacity-65' : ''
-                ]"
+              <!-- Üst Başlık Satırı -->
+              <div
+                class="px-4 py-3 border-b flex items-center justify-between gap-3 text-[11px] font-bold uppercase tracking-wider"
+                :class="[adminTheme === 'light' ? 'bg-slate-50 border-slate-200 text-slate-600' : 'bg-[#141414] border-[#242424] text-zinc-400']"
               >
-                <!-- Üst Bilgi: Seçim Checkbox, Avatar, İsim, Rozet, Rol -->
-                <div>
-                  <div class="flex items-start justify-between gap-2.5">
-                    <div class="flex items-center gap-2.5 min-w-0 flex-1">
-                      <!-- Seçim Checkbox -->
-                      <input 
-                        type="checkbox"
-                        :checked="selectedUserIds.includes(u.id)"
-                        @click.stop
-                        @change="toggleSelectUser(u.id)"
-                        class="w-4 h-4 accent-[#FFFF00] rounded cursor-pointer shrink-0"
-                        title="Toplu işlem için seç"
+                <div class="flex items-center gap-3">
+                  <input 
+                    type="checkbox" 
+                    :checked="isAllUsersSelected" 
+                    @change="toggleSelectAllUsers"
+                    class="w-4 h-4 accent-[#FFFF00] rounded cursor-pointer"
+                    title="Tümünü Seç / Kaldır"
+                  />
+                  <span class="w-6 text-center">#</span>
+                  <span>Kullanıcılar ({{ filteredUsers.length }})</span>
+                </div>
+                <div class="hidden lg:flex items-center gap-6 pr-2">
+                  <span>Durum &amp; Bağlantı</span>
+                  <span class="w-48 text-right">İşlemler</span>
+                </div>
+              </div>
+
+              <!-- Alt Alta Sıralı Satırlar -->
+              <div class="divide-y" :class="adminTheme === 'light' ? 'divide-slate-200' : 'divide-[#202020]'">
+                <div 
+                  v-for="(u, idx) in filteredUsers" 
+                  :key="u.id"
+                  @click="openUserProfilePreview(u)"
+                  class="px-4 py-3.5 flex flex-col lg:flex-row lg:items-center justify-between gap-3 transition-colors hover:bg-white/[0.03] cursor-pointer"
+                  :class="[
+                    selectedUserIds.includes(u.id) ? (adminTheme === 'light' ? 'bg-yellow-50/50' : 'bg-[#FFFF00]/5') : '',
+                    u.status === 'suspended' ? 'opacity-65' : ''
+                  ]"
+                >
+                  <!-- Sol Taraf: Seçim + Sıra No + Avatar + İsim/Kullanıcı Adı/E-posta -->
+                  <div class="flex items-center gap-3 min-w-0 flex-1">
+                    <input 
+                      type="checkbox" 
+                      :checked="selectedUserIds.includes(u.id)"
+                      @click.stop
+                      @change="toggleSelectUser(u.id)"
+                      class="w-4 h-4 accent-[#FFFF00] rounded cursor-pointer shrink-0"
+                    />
+
+                    <span class="w-6 text-center font-mono text-xs font-bold text-[#8E8E93] shrink-0">
+                      {{ idx + 1 }}
+                    </span>
+
+                    <div 
+                      @click.stop="openUserProfilePreview(u)"
+                      class="relative shrink-0 cursor-pointer hover:scale-105 transition-transform"
+                      title="Linktree Profilini İncele"
+                    >
+                      <img 
+                        v-if="u.avatar" 
+                        :src="u.avatar" 
+                        :alt="u.name"
+                        class="w-10 h-10 rounded-full object-cover border"
+                        :class="u.role === 'admin' ? 'border-[#FFFF00]' : 'border-zinc-700'"
+                        @error="(e) => { e.target.style.display = 'none'; if (e.target.nextElementSibling) e.target.nextElementSibling.style.display = 'flex'; }"
                       />
-
-                      <!-- Avatar -->
                       <div 
-                        @click.stop="openUserProfilePreview(u)"
-                        class="relative shrink-0 cursor-pointer"
-                        title="Linktree Profilini İncele"
+                        class="w-10 h-10 rounded-full items-center justify-center font-bold text-xs border text-white bg-gradient-to-br from-zinc-700 to-zinc-900"
+                        :class="[u.avatar ? 'hidden' : 'flex', u.role === 'admin' ? 'border-[#FFFF00]' : 'border-zinc-700']"
                       >
-                        <img 
-                          v-if="u.avatar" 
-                          :src="u.avatar" 
-                          :alt="u.name"
-                          class="w-11 h-11 rounded-full object-cover border-2 transition-transform group-hover:scale-105"
-                          :class="u.role === 'admin' ? 'border-[#FFFF00]' : 'border-zinc-700'"
-                          @error="(e) => { e.target.style.display = 'none'; if (e.target.nextElementSibling) e.target.nextElementSibling.style.display = 'flex'; }"
-                        />
-                        <div 
-                          class="w-11 h-11 rounded-full items-center justify-center font-bold text-sm border-2 text-white bg-gradient-to-br from-zinc-700 to-zinc-900"
-                          :class="[u.avatar ? 'hidden' : 'flex', u.role === 'admin' ? 'border-[#FFFF00]' : 'border-zinc-700']"
-                        >
-                          {{ getInitials(u.name) }}
-                        </div>
-                        <button 
-                          type="button"
-                          @click.stop="handleQuickToggleVerify(u)"
-                          class="absolute -bottom-1 -right-1 w-4 h-4 rounded-full flex items-center justify-center text-[10px] font-bold shadow-sm transition-transform active:scale-90 cursor-pointer"
-                          :class="u.isVerified ? 'bg-[#FFFF00] text-black' : 'bg-zinc-800 text-zinc-500 border border-zinc-700'"
-                          title="Doğrulama durumunu değiştir"
-                        >
-                          ✓
-                        </button>
+                        {{ getInitials(u.name) }}
                       </div>
-
-                      <!-- İsim & Kullanıcı Adı -->
-                      <div class="min-w-0 flex-1">
-                        <div class="flex items-center gap-1">
-                          <h3 
-                            class="font-bold text-sm truncate group-hover:text-[#FFFF00] transition-colors" 
-                            :class="themeClasses.titleText"
-                            :title="u.name + ' - Linktree Profilini İncele'"
-                          >
-                            {{ u.name }}
-                          </h3>
-                        </div>
-                        <div class="flex items-center gap-1.5 mt-0.5">
-                          <a 
-                            :href="'/@' + u.username.replace(/^@/, '')" 
-                            target="_blank" 
-                            @click.stop
-                            class="text-xs text-[#FFFF00] font-mono hover:underline truncate"
-                            title="Canlı Profil Sayfasını Yeni Sekmede Aç"
-                          >
-                            @{{ u.username.replace(/^@/, '') }}
-                          </a>
-                        </div>
-                      </div>
+                      <span 
+                        v-if="u.isVerified" 
+                        class="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full bg-[#FFFF00] text-black flex items-center justify-center text-[9px] font-bold"
+                      >
+                        ✓
+                      </span>
                     </div>
 
-                    <!-- Rol, Durum & Düzen Çipleri -->
-                    <div class="flex flex-col items-end gap-1 shrink-0">
-                      <div class="flex items-center gap-1">
+                    <div class="min-w-0 flex-1">
+                      <div class="flex items-center gap-2 flex-wrap">
+                        <span class="font-bold text-sm truncate max-w-[200px] hover:text-[#FFFF00] transition-colors" :class="themeClasses.titleText">
+                          {{ u.name || u.username }}
+                        </span>
+                        <a 
+                          :href="'/@' + u.username.replace(/^@/, '')" 
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          @click.stop
+                          class="text-xs text-[#FFFF00] font-mono hover:underline truncate"
+                        >
+                          @{{ u.username.replace(/^@/, '') }}
+                        </a>
                         <span 
                           v-if="u.role === 'admin'"
                           class="px-2 py-0.5 text-[10px] font-black uppercase tracking-wider rounded-full bg-[#FFFF00]/15 text-[#FFFF00] border border-[#FFFF00]/30"
@@ -6997,158 +6706,128 @@ const handleChangePassword = async () => {
                         </span>
                         <span 
                           v-else
-                          class="px-2 py-0.5 text-[10px] font-semibold rounded-full bg-zinc-800 text-zinc-300 border border-zinc-700"
+                          class="px-2 py-0.5 text-[10px] font-semibold rounded-full bg-zinc-800/80 text-zinc-300 border border-zinc-700"
                         >
                           Üye
                         </span>
-                        <button 
-                          type="button"
-                          @click.stop="u.status === 'pending' ? handleApproveUser(u) : handleQuickToggleStatus(u)"
-                          :disabled="u.id === 1"
-                          class="px-2 py-0.5 text-[10px] font-bold rounded-full cursor-pointer"
-                          :class="u.status === 'pending' 
-                            ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40' 
-                            : (u.status === 'suspended' 
-                                ? 'bg-rose-500/20 text-rose-400 border border-rose-500/40' 
-                                : 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30')"
-                          :title="u.status === 'pending' ? 'Başvuruyu onaylamak için tıklayın' : 'Durumu değiştir'"
-                        >
-                          {{ u.status === 'pending' ? '⏳ Onay Bekliyor' : (u.status === 'suspended' ? 'Askıda' : 'Aktif') }}
-                        </button>
                       </div>
-                      <span class="text-[10px] px-1.5 py-0.2 rounded font-mono text-[#8E8E93] bg-zinc-900/60 border border-zinc-800">
-                        {{ u.layoutStyle === 'bento' ? '🍱 Bento' : '📋 Liste' }}
-                      </span>
+                      <div class="flex items-center gap-2.5 text-[11px] text-[#8E8E93] mt-0.5 flex-wrap">
+                        <span class="truncate max-w-[220px]">{{ u.email || '—' }}</span>
+                        <span>•</span>
+                        <span>{{ formatRelativeTime(u.createdAt) }}</span>
+                      </div>
                     </div>
                   </div>
 
-                  <!-- Biyografi -->
-                  <p class="text-xs mt-3 line-clamp-2" :class="themeClasses.subText">
-                    {{ u.bio || 'Henüz biyografi eklenmemiş.' }}
-                  </p>
+                  <!-- Sağ Taraf: Durum + Link Sayısı + Rozet + Aksiyon Butonları -->
+                  <div class="flex items-center justify-between lg:justify-end gap-2.5 flex-wrap shrink-0 pl-9 lg:pl-0" @click.stop>
+                    <!-- Link Sayısı -->
+                    <span class="px-2.5 py-1 rounded-lg text-[11px] font-mono font-bold border" :class="themeClasses.boxInner">
+                      {{ u.linkCount ?? (u.links?.length || 0) }} Link
+                    </span>
 
-                  <!-- Detaylar / Rozetler (Bağlantı Sayısı, E-posta, Tarih) -->
-                  <div class="mt-4 pt-3 border-t space-y-2 text-xs" :class="themeClasses.headerBorder">
-                    <div class="flex items-center justify-between text-[#8E8E93]">
-                      <span class="flex items-center gap-1.5">
-                        <MousePointerClick class="w-3.5 h-3.5 text-[#FFFF00]" />
-                        <span>Bağlantılar:</span>
-                      </span>
-                      <span class="font-bold font-mono px-2 py-0.5 rounded-full text-[11px]" :class="adminTheme === 'light' ? 'bg-slate-100 text-slate-800' : 'bg-black text-[#FFFF00]'">
-                        {{ u.linkCount ?? (u.links?.length || 0) }} Link
-                      </span>
-                    </div>
+                    <!-- Durum Rozeti (Tıklanabilir Onay / Durum Değiştirme) -->
+                    <button 
+                      type="button"
+                      @click="u.status === 'pending' ? handleApproveUser(u) : handleQuickToggleStatus(u)"
+                      :disabled="u.id === 1"
+                      :title="u.status === 'pending' ? 'Üyelik başvurusunu onaylamak için tıklayın' : 'Hesap durumunu değiştirmek için tıklayın'"
+                      class="px-2.5 py-1 rounded-full text-[11px] font-bold transition-all flex items-center gap-1.5 cursor-pointer"
+                      :class="u.status === 'pending' 
+                        ? 'bg-amber-500/15 text-amber-300 border border-amber-500/40 hover:bg-amber-500/25' 
+                        : (u.status === 'suspended' 
+                            ? 'bg-rose-500/15 text-rose-400 border border-rose-500/30' 
+                            : 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30')"
+                    >
+                      <span>{{ u.status === 'pending' ? 'Onay Bekliyor' : (u.status === 'suspended' ? 'Askıda' : 'Aktif') }}</span>
+                    </button>
 
-                    <div class="flex items-center justify-between text-[#8E8E93]">
-                      <span class="flex items-center gap-1.5">
-                        <Clock class="w-3.5 h-3.5 text-blue-400" />
-                        <span>Katılım:</span>
-                      </span>
-                      <span class="text-[11px]">
-                        {{ formatRelativeTime(u.createdAt) }} ({{ formatUserDate(u.createdAt) }})
-                      </span>
-                    </div>
+                    <!-- Doğrulama Rozeti -->
+                    <button 
+                      type="button"
+                      @click="handleQuickToggleVerify(u)"
+                      title="Doğrulama rozetini aç/kapat"
+                      class="w-7 h-7 rounded-lg border flex items-center justify-center transition-transform active:scale-90 cursor-pointer text-xs font-bold"
+                      :class="u.isVerified ? 'bg-[#FFFF00] text-black border-[#FFFF00]' : 'bg-zinc-900 border-zinc-700 text-zinc-500 hover:text-white'"
+                    >
+                      ✓
+                    </button>
 
-                    <div class="flex items-center justify-between text-[#8E8E93]">
-                      <span class="flex items-center gap-1.5 truncate max-w-[180px]">
-                        <Mail class="w-3.5 h-3.5 text-slate-400 shrink-0" />
-                        <span class="truncate">{{ u.email || '—' }}</span>
-                      </span>
-                      <button 
-                        v-if="u.email"
+                    <!-- Aksiyon Butonları -->
+                    <div class="flex items-center gap-1.5">
+                      <button
+                        v-if="u.status === 'pending'"
                         type="button"
-                        @click.stop="handleCopyUserUrl(u.username)"
-                        class="text-[10px] text-[#FFFF00] hover:underline cursor-pointer"
-                        title="Profil bağlantısını kopyala"
+                        @click="handleApproveUser(u)"
+                        title="Üyelik Başvurusunu Onayla"
+                        class="px-2.5 py-1.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-black font-bold text-[11px] transition-all active:scale-95 cursor-pointer flex items-center gap-1"
                       >
-                        Link Kopyala
+                        <Check class="w-3.5 h-3.5" />
+                        <span>Onayla</span>
+                      </button>
+
+                      <button 
+                        type="button"
+                        @click="openUserProfilePreview(u)"
+                        title="Linktree Profil Önizlemesini Aç"
+                        class="p-2 rounded-xl bg-[#FFFF00] hover:bg-[#EEFF00] text-black font-bold transition-all active:scale-95 cursor-pointer shadow-sm"
+                      >
+                        <Eye class="w-3.5 h-3.5" />
+                      </button>
+
+                      <a 
+                        :href="'/@' + u.username.replace(/^@/, '')" 
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        title="Yeni Sekmede Canlı Aç"
+                        class="p-2 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-[#FFFF00] transition-colors"
+                      >
+                        <ExternalLink class="w-3.5 h-3.5" />
+                      </a>
+
+                      <button 
+                        type="button"
+                        @click="openEditUserModal(u)"
+                        title="Kullanıcı Bilgilerini Düzenle"
+                        class="p-2 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-white transition-colors cursor-pointer"
+                      >
+                        <Pencil class="w-3.5 h-3.5" />
+                      </button>
+
+                      <button 
+                        type="button"
+                        @click="openUserQrModal(u)"
+                        title="Profil QR Kodunu Görüntüle"
+                        class="p-2 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-cyan-400 transition-colors cursor-pointer"
+                      >
+                        <QrCode class="w-3.5 h-3.5" />
+                      </button>
+
+                      <button 
+                        type="button"
+                        @click="handleCopyUserUrl(u.username)"
+                        title="Profil Linkini Kopyala"
+                        class="p-2 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-zinc-300 transition-colors cursor-pointer"
+                      >
+                        <Copy class="w-3.5 h-3.5" />
+                      </button>
+
+                      <button 
+                        type="button"
+                        @click="handleDeleteUserClick(u)"
+                        :disabled="u.id === 1 || u.username === 'tubagul'"
+                        :title="u.id === 1 ? 'Ana yönetici hesabı silinemez' : 'Kullanıcıyı Sil'"
+                        class="p-2 rounded-xl border transition-colors"
+                        :class="[
+                          u.id === 1 || u.username === 'tubagul' 
+                            ? 'opacity-20 cursor-not-allowed border-zinc-800 text-zinc-600' 
+                            : 'cursor-pointer hover:border-rose-500/50 hover:bg-rose-500/10 text-rose-400 border-zinc-800 bg-zinc-900'
+                        ]"
+                      >
+                        <Trash2 class="w-3.5 h-3.5" />
                       </button>
                     </div>
                   </div>
-                </div>
-
-                <!-- Alt Aksiyon Butonları -->
-                <div class="mt-4 pt-3 border-t flex items-center justify-between gap-1.5" :class="themeClasses.headerBorder">
-                  <button
-                    v-if="u.status === 'pending'"
-                    type="button"
-                    @click.stop="handleApproveUser(u)"
-                    class="flex-1 py-1.5 px-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1 text-black bg-emerald-400 hover:bg-emerald-300 shadow-sm active:scale-95 text-center cursor-pointer"
-                    title="Üyelik Başvurusunu Onayla"
-                  >
-                    <Check class="w-3.5 h-3.5" />
-                    <span>Onayla</span>
-                  </button>
-
-                  <button 
-                    type="button"
-                    @click.stop="openUserProfilePreview(u)"
-                    class="flex-1 py-1.5 px-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 text-black bg-[#FFFF00] hover:bg-[#EEFF00] shadow-sm active:scale-95 text-center cursor-pointer"
-                    title="Linktree Profilini Görüntüle"
-                  >
-                    <Eye class="w-3.5 h-3.5" />
-                    <span>{{ u.status === 'pending' ? 'Önizle' : 'Profili Gör' }}</span>
-                  </button>
-
-                  <a 
-                    :href="'/@' + u.username.replace(/^@/, '')" 
-                    target="_blank"
-                    @click.stop
-                    title="Yeni Sekmede Canlı Aç"
-                    class="p-2 rounded-xl border transition-colors cursor-pointer"
-                    :class="adminTheme === 'light' ? 'bg-slate-50 border-slate-200 hover:bg-slate-100 text-slate-700' : 'bg-[#141414] border-[#282828] hover:border-[#444] text-[#FFFF00] hover:text-white'"
-                  >
-                    <ExternalLink class="w-3.5 h-3.5" />
-                  </a>
-
-                  <!-- Düzenle Butonu -->
-                  <button 
-                    type="button"
-                    @click.stop="openEditUserModal(u)"
-                    title="Kullanıcı Bilgilerini Düzenle"
-                    class="p-2 rounded-xl border transition-colors cursor-pointer"
-                    :class="adminTheme === 'light' ? 'bg-slate-50 border-slate-200 hover:bg-slate-100 text-slate-700' : 'bg-[#141414] border-[#282828] hover:border-[#444] text-[#8E8E93] hover:text-white'"
-                  >
-                    <Pencil class="w-3.5 h-3.5" />
-                  </button>
-
-                  <!-- QR Kod Butonu -->
-                  <button 
-                    type="button"
-                    @click.stop="openUserQrModal(u)"
-                    title="Profil QR Kodunu Aç"
-                    class="p-2 rounded-xl border transition-colors cursor-pointer"
-                    :class="adminTheme === 'light' ? 'bg-slate-50 border-slate-200 hover:bg-slate-100 text-slate-700' : 'bg-[#141414] border-[#282828] hover:border-[#444] text-cyan-400'"
-                  >
-                    <QrCode class="w-3.5 h-3.5" />
-                  </button>
-
-                  <!-- Link Kopyala Butonu -->
-                  <button 
-                    type="button"
-                    @click.stop="handleCopyUserUrl(u.username)"
-                    title="Profil URL'ini Kopyala"
-                    class="p-2 rounded-xl border transition-colors cursor-pointer"
-                    :class="adminTheme === 'light' ? 'bg-slate-50 border-slate-200 hover:bg-slate-100 text-slate-700' : 'bg-[#141414] border-[#282828] hover:border-[#444] text-[#8E8E93] hover:text-white'"
-                  >
-                    <Copy class="w-3.5 h-3.5" />
-                  </button>
-
-                  <!-- Sil Butonu -->
-                  <button 
-                    type="button"
-                    @click.stop="handleDeleteUserClick(u)"
-                    :disabled="u.id === 1 || u.username === 'tubagul'"
-                    :title="u.id === 1 ? 'Ana yönetici hesabı silinemez' : 'Kullanıcıyı Sil'"
-                    class="p-2 rounded-xl border transition-colors"
-                    :class="[
-                      u.id === 1 || u.username === 'tubagul' 
-                        ? 'opacity-30 cursor-not-allowed border-zinc-800 text-zinc-600' 
-                        : 'cursor-pointer hover:border-rose-500/50 hover:bg-rose-500/10 text-rose-400 border-[#282828] bg-[#141414]'
-                    ]"
-                  >
-                    <Trash2 class="w-3.5 h-3.5" />
-                  </button>
                 </div>
               </div>
             </div>

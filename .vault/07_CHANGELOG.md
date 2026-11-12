@@ -13,7 +13,7 @@ Tüm önemli mimari değişiklikler, özellik eklemeleri ve düzeltmeler bu dosy
 - **Doğrudan `/admin/users` Rotası & CRM Kısayolları**:
   - `frontend/src/router/index.js` dosyasına `{ path: '/admin/users', meta: { requiresAuth: true, adminOnly: true } }` rotası ve navigasyon koruması eklendi.
   - Sol CRM sidebar etiketi `Kullanıcılar` olarak netleştirildi, üst CRM komut barına **Kullanıcılar** hızlı geçiş butonu eklendi ve `CrmOverviewPanel.vue` içine yöneticiye özel **Kayıtlı Kullanıcılar** alt alta sıralı liste tablosu (`#`, sıralama seçici, rol, link sayacı, durum rozeti ve **Kullanıcıları Yönet** butonu) yerleştirildi.
-  - `AdminView.vue` `Kullanıcılar` sekmesinde varsayılan görünüm **Liste** (`userViewMode: 'table'`) olarak ayarlandı ve sıra numarası (`#`) sütunu ile doğru `linkCount` sıralaması eklendi.
+  - `AdminView.vue` `Kullanıcılar` sekmesinde kart ızgarası (`grid`) tamamen kaldırılarak yalnızca `#` sıra numaralı, tüm genişlikte **alt alta sıralı satır listesi** (`divide-y` dikey liste görünümü) ve doğru `linkCount` sıralaması uygulanmıştır.
 
 ---
 
