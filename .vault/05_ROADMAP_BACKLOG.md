@@ -489,9 +489,24 @@ Bu liste, projenin geliştirme fazlarını ve önceliklendirilmiş iş paketleri
 
 ---
 
+## 📌 Faz 27: Onaylı Üyelik Sistemi & Çoklu Kullanıcı İzole Çalışma Alanları (`v0.40.0`) (TAMAMLANDI ✅)
+- [x] **Görev 27.1: Veritabanı Şeması ve Çoklu Üye İzolasyonu (`initDb.js`, `mockState.js`)**:
+  - `users` tablosuna `role` (`'admin' | 'user'`) ve `status` (`'pending' | 'active' | 'suspended'`) eklendi.
+  - `profiles`, `links`, `settings` `(user_id, key)`, `visit_stats`, `click_events` ve `messages` tabloları `user_id` ile kullanıcı bazlı izole edildi; DB çevrimdışı durumları için `backend/src/mockState.js` oluşturuldu.
+- [x] **Görev 27.2: Onaylı Kayıt Akışı ve RBAC (`authRoutes.js`, `authMiddleware.js`, `usersRoutes.js`, `cacheService.js`)**:
+  - `/api/auth/register` yeni başvuruları `status='pending'` olarak oluşturur (`201 { pendingApproval: true }`, JWT üretmez).
+  - `/api/auth/login` bekleyen/askıdaki hesapları `403` ile engeller; yetkili `requireAdmin` middleware'i ile `/api/users/*` ve `/api/settings/cache/*` yalnızca yöneticilere açıldı.
+  - `PUT /api/users/:id/approve` ve toplu `'approve'` aksiyonu eklendi; `cacheService` JWT'li oturum isteklerini atlayacak şekilde güncellendi.
+- [x] **Görev 27.3: Ana Sayfa Üyelik Vitrini & Ön Yüz Üyelik Deneyimi (`LandingView.vue`, `LoginView.vue`, `ProfileView.vue`, `AdminView.vue`, `linkStore.js`, `authStore.js`, `router/index.js`)**:
+  - `/` rotasına **"Kendi Linktree Sayfanı Oluştur"** açılış vitrini ve aktif üye dizini (`GET /api/profile/directory`) yerleştirildi; kişisel Linktree sayfaları `/:username` (`/@kullanici`) rotasında sunuluyor.
+  - `ProfileView.vue` bekleyen/askıdaki profiller için `403` kısıtlama ekranı ve oturumlu üyeler için `Panelim` hızlı geçişini sunar.
+  - `AdminView.vue` üzerinde `authStore.isAdmin` kontrolü ile standart üyelerin kendi bağlantıları/teması/mesajları/istatistikleriyle sınırlı paneli, yöneticiler için **Onay Bekleyenler** filtresi, kart/tablo üzerinden tek tıkla **Onayla** ve toplu onay aksiyonları eklendi.
+
+---
+
 ## 📌 Sıradaki Aday Fazlar (Gelecek Yol Haritası)
-- **Faz 27**: Çoklu Profil / Sayfa Yönetimi (Multi-Tenant Profile Switching - Tek hesaba bağlı birden fazla sayfa).
-- **Faz 28**: Canlı Entegrasyonlar ve Webhook'lar (Discord / Telegram / Slack anlık bildirimleri).
+- **Faz 28**: Çoklu Profil / Sayfa Yönetimi (Multi-Tenant Profile Switching - Tek hesaba bağlı birden fazla sayfa).
+- **Faz 29**: Canlı Entegrasyonlar ve Webhook'lar (Discord / Telegram / Slack anlık bildirimleri).
 
 
 

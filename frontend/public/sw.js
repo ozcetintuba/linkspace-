@@ -1,6 +1,6 @@
 // Linkspace Progressive Web App (PWA) Service Worker - Offline-First & Background Sync
-const CACHE_NAME = 'linkspace-static-v1.2.1'
-const API_CACHE_NAME = 'linkspace-api-cache-v1'
+const CACHE_NAME = 'linkspace-static-v1.3.0'
+const API_CACHE_NAME = 'linkspace-api-cache-v2'
 
 const STATIC_ASSETS = [
   '/',
@@ -48,8 +48,8 @@ self.addEventListener('fetch', (event) => {
   if (request.method !== 'GET') return
   if (!url.protocol.startsWith('http')) return
 
-  // 1. API İstekleri: Network-First with Cache Fallback (Profil, Linkler, Ayarlar)
-  if (url.pathname.startsWith('/api/profile') || url.pathname.startsWith('/api/settings')) {
+  // 1. API İstekleri: Network-First with Cache Fallback (yalnızca anonim/herkese açık profil & ayar istekleri)
+  if ((url.pathname.startsWith('/api/profile') || url.pathname.startsWith('/api/settings')) && !request.headers.has('authorization')) {
     event.respondWith(
       fetch(request)
         .then((networkResponse) => {

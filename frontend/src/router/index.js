@@ -1,4 +1,5 @@
 import { createRouter, createWebHistory } from 'vue-router'
+import LandingView from '../views/LandingView.vue'
 import ProfileView from '../views/ProfileView.vue'
 import AdminView from '../views/AdminView.vue'
 import LoginView from '../views/LoginView.vue'
@@ -7,8 +8,8 @@ import { useAuthStore } from '../stores/authStore'
 const routes = [
   { 
     path: '/', 
-    name: 'profile',
-    component: ProfileView 
+    name: 'landing',
+    component: LandingView 
   },
   { 
     path: '/login', 
@@ -21,6 +22,11 @@ const routes = [
     name: 'admin',
     component: AdminView,
     meta: { requiresAuth: true }
+  },
+  { 
+    path: '/dashboard', 
+    name: 'dashboard',
+    redirect: '/admin'
   },
   { 
     path: '/:username', 

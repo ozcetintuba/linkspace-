@@ -1,9 +1,36 @@
 import express from 'express'
 import { query } from '../db.js'
+import { requireAuth, optionalAuth } from '../middleware/authMiddleware.js'
+import { findMockUserByIdentifier } from '../mockState.js'
 
 const router = express.Router()
+const mockVisitsByUserId = new Map()
 
-// Cihaz, İşletim Sistemi ve Tarayıcı Çözümleme Yardımcısı
+const buildOfflineAnalyticsForUser = (userId) => {
+  const list = mockVisitsByUserId.get(userId) || []
+  if (list.length === 0) {
+    return userId === 1 ? FALLBACK_ANALYTICS : EMPTY_MEMBER_ANALYTICS
+  }
+  const base = userId === 1 ? FALLBACK_ANALYTICS : EMPTY_MEMBER_ANALYTICS
+  const qr = list.filter(v => v.source === 'qr').length
+  const direct = list.length - qr
+  const mob = list.filter(v => v.device === 'mobile').length
+  const desk = list.length - mob
+  const qrMob = list.filter(v => v.source === 'qr' && v.device === 'mobile').length
+  const totalQr = (base.qrVisits || 0) + qr
+  const totalQrMob = (base.qrMobile || 0) + qrMob
+  return {
+    ...base,
+    totalVisits: (base.totalVisits || 0) + list.length,
+    qrVisits: totalQr,
+    directVisits: (base.directVisits || 0) + direct,
+    qrMobile: totalQrMob,
+    qrDesktop: Math.max(0, totalQr - totalQrMob),
+    totalMobile: (base.totalMobile || 0) + mob,
+    totalDesktop: (base.totalDesktop || 0) + desk
+  }
+}
+
 export const parseDeviceInfo = (uaStr = '', clientData = {}) => {
   let os = clientData.os || ''
   let model = clientData.model || ''
@@ -40,7 +67,31 @@ export const parseDeviceInfo = (uaStr = '', clientData = {}) => {
   return { os, model, browser }
 }
 
-// Varsayılan Çevrimdışı İstatistik Verisi
+const EMPTY_MEMBER_ANALYTICS = {
+  totalVisits: 0,
+  qrVisits: 0,
+  directVisits: 0,
+  qrMobile: 0,
+  qrDesktop: 0,
+  totalMobile: 0,
+  totalDesktop: 0,
+  qrMobilePercent: 0,
+  qrDesktopPercent: 0,
+  referrerDistribution: [],
+  dailyTimeline: [
+    { date: 'Pzt', dayName: 'Pzt', visits: 0, clicks: 0 },
+    { date: 'Sal', dayName: 'Sal', visits: 0, clicks: 0 },
+    { date: 'Çar', dayName: 'Çar', visits: 0, clicks: 0 },
+    { date: 'Per', dayName: 'Per', visits: 0, clicks: 0 },
+    { date: 'Cum', dayName: 'Cum', visits: 0, clicks: 0 },
+    { date: 'Cmt', dayName: 'Cmt', visits: 0, clicks: 0 },
+    { date: 'Paz', dayName: 'Paz', visits: 0, clicks: 0 }
+  ],
+  qrDeviceStats: { iosPercent: 0, androidPercent: 0, desktopPercent: 0, iosCount: 0, androidCount: 0, desktopCount: 0 },
+  topDeviceModels: [],
+  recentQrScans: []
+}
+
 const FALLBACK_ANALYTICS = {
   totalVisits: 142,
   qrVisits: 84,
@@ -90,15 +141,36 @@ const FALLBACK_ANALYTICS = {
   ]
 }
 
-// 1. Ziyaretçi & QR Kod İstatistiklerini Getir
-router.get('/', async (req, res) => {
+const resolveVisitOwnerId = async (username, explicitUserId) => {
+  if (explicitUserId && !isNaN(parseInt(explicitUserId, 10))) {
+    return parseInt(explicitUserId, 10)
+  }
+  if (!username) return 1
+  const clean = String(username).replace(/^@/, '').trim().toLowerCase()
   try {
-    const totalResult = await query('SELECT COUNT(*) FROM visit_stats')
-    const qrResult = await query("SELECT COUNT(*) FROM visit_stats WHERE source = 'qr'")
-    const qrMobileResult = await query("SELECT COUNT(*) FROM visit_stats WHERE source = 'qr' AND device = 'mobile'")
-    const qrDesktopResult = await query("SELECT COUNT(*) FROM visit_stats WHERE source = 'qr' AND device = 'desktop'")
-    const totalMobileResult = await query("SELECT COUNT(*) FROM visit_stats WHERE device = 'mobile'")
-    const totalDesktopResult = await query("SELECT COUNT(*) FROM visit_stats WHERE device = 'desktop'")
+    const res = await query(`
+      SELECT COALESCE(p.user_id, u.id) AS "userId"
+      FROM users u
+      LEFT JOIN profiles p ON p.user_id = u.id
+      WHERE LOWER(u.username) = $1 OR LOWER(REPLACE(COALESCE(p.username, ''), '@', '')) = $1
+      LIMIT 1
+    `, [clean])
+    if (res.rows[0]?.userId) return res.rows[0].userId
+  } catch (e) {}
+  const m = findMockUserByIdentifier(clean)
+  return m ? m.id : 1
+}
+
+// 1. Ziyaretçi & QR Kod İstatistiklerini Getir (Oturumlu kullanıcıya özel)
+router.get('/', optionalAuth, async (req, res) => {
+  const userId = req.user?.id || 1
+  try {
+    const totalResult = await query('SELECT COUNT(*) FROM visit_stats WHERE user_id = $1', [userId])
+    const qrResult = await query("SELECT COUNT(*) FROM visit_stats WHERE user_id = $1 AND source = 'qr'", [userId])
+    const qrMobileResult = await query("SELECT COUNT(*) FROM visit_stats WHERE user_id = $1 AND source = 'qr' AND device = 'mobile'", [userId])
+    const qrDesktopResult = await query("SELECT COUNT(*) FROM visit_stats WHERE user_id = $1 AND source = 'qr' AND device = 'desktop'", [userId])
+    const totalMobileResult = await query("SELECT COUNT(*) FROM visit_stats WHERE user_id = $1 AND device = 'mobile'", [userId])
+    const totalDesktopResult = await query("SELECT COUNT(*) FROM visit_stats WHERE user_id = $1 AND device = 'desktop'", [userId])
 
     const totalVisits = parseInt(totalResult.rows[0]?.count || 0, 10)
     const qrVisits = parseInt(qrResult.rows[0]?.count || 0, 10)
@@ -111,15 +183,15 @@ router.get('/', async (req, res) => {
     const qrMobilePercent = qrVisits > 0 ? Math.round((qrMobile / qrVisits) * 100) : 0
     const qrDesktopPercent = qrVisits > 0 ? Math.round((qrDesktop / qrVisits) * 100) : 0
 
-    // Yönlendiren Kaynaklar Dağılımı (Referrer Distribution)
-    let referrerDistribution = FALLBACK_ANALYTICS.referrerDistribution
+    let referrerDistribution = []
     try {
       const refRes = await query(`
         SELECT referrer, COUNT(*) as count 
         FROM click_events 
+        WHERE user_id = $1
         GROUP BY referrer 
         ORDER BY count DESC
-      `)
+      `, [userId])
       if (refRes.rows.length > 0) {
         const totalRefClicks = refRes.rows.reduce((sum, r) => sum + parseInt(r.count, 10), 0)
         referrerDistribution = refRes.rows.map(r => {
@@ -135,12 +207,9 @@ router.get('/', async (req, res) => {
           return { source: name, rawSource: r.referrer, count: c, percent: p, color }
         })
       }
-    } catch (e) {
-      console.warn('⚠️ Referrer dağılımı sorgulanamadı:', e.message)
-    }
+    } catch (e) {}
 
-    // Son 7 Günlük Aktivite Zaman Çizelgesi (Daily Timeline)
-    let dailyTimeline = FALLBACK_ANALYTICS.dailyTimeline
+    let dailyTimeline = EMPTY_MEMBER_ANALYTICS.dailyTimeline
     try {
       const dayLabels = ['Paz', 'Pzt', 'Sal', 'Çar', 'Per', 'Cum', 'Cmt']
       const timelineRes = await query(`
@@ -150,11 +219,11 @@ router.get('/', async (req, res) => {
           COALESCE(COUNT(DISTINCT v.id), 0) AS visits,
           COALESCE(COUNT(DISTINCT c.id), 0) AS clicks
         FROM generate_series(CURRENT_DATE - INTERVAL '6 days', CURRENT_DATE, '1 day'::interval) d(day)
-        LEFT JOIN visit_stats v ON DATE(v.created_at) = DATE(d.day)
-        LEFT JOIN click_events c ON DATE(c.created_at) = DATE(d.day)
+        LEFT JOIN visit_stats v ON DATE(v.created_at) = DATE(d.day) AND v.user_id = $1
+        LEFT JOIN click_events c ON DATE(c.created_at) = DATE(d.day) AND c.user_id = $1
         GROUP BY d.day
         ORDER BY d.day ASC
-      `)
+      `, [userId])
       if (timelineRes.rows.length > 0) {
         dailyTimeline = timelineRes.rows.map(row => ({
           date: row.date,
@@ -163,24 +232,20 @@ router.get('/', async (req, res) => {
           clicks: parseInt(row.clicks, 10)
         }))
       }
-    } catch (e) {
-      console.warn('⚠️ Günlük analitik zaman çizelgesi sorgulanamadı:', e.message)
-    }
+    } catch (e) {}
 
-    // QR Okutan Cihazlar & İşletim Sistemi İstatistikleri (Granular Device Detection)
-    let qrDeviceStats = FALLBACK_ANALYTICS.qrDeviceStats
-    let topDeviceModels = FALLBACK_ANALYTICS.topDeviceModels
-    let recentQrScans = FALLBACK_ANALYTICS.recentQrScans
+    let qrDeviceStats = { iosCount: 0, androidCount: 0, desktopCount: 0, iosPercent: 0, androidPercent: 0, desktopPercent: 0 }
+    let topDeviceModels = []
+    let recentQrScans = []
 
     try {
-      // OS Dağılımı (QR ziyaretleri için)
       const osRes = await query(`
         SELECT COALESCE(os, 'iOS') as os, COUNT(*) as count 
         FROM visit_stats 
-        WHERE source = 'qr' 
+        WHERE user_id = $1 AND source = 'qr' 
         GROUP BY os 
         ORDER BY count DESC
-      `)
+      `, [userId])
       if (osRes.rows.length > 0) {
         let iosC = 0, androidC = 0, deskC = 0
         osRes.rows.forEach(r => {
@@ -200,15 +265,14 @@ router.get('/', async (req, res) => {
         }
       }
 
-      // Cihaz Modelleri
       const modelRes = await query(`
         SELECT COALESCE(device_model, 'Apple iPhone') as model, COUNT(*) as count 
         FROM visit_stats 
-        WHERE source = 'qr' 
+        WHERE user_id = $1 AND source = 'qr' 
         GROUP BY device_model 
         ORDER BY count DESC 
         LIMIT 5
-      `)
+      `, [userId])
       if (modelRes.rows.length > 0) {
         const totalModels = modelRes.rows.reduce((sum, r) => sum + parseInt(r.count, 10), 0)
         topDeviceModels = modelRes.rows.map(r => ({
@@ -219,7 +283,6 @@ router.get('/', async (req, res) => {
         }))
       }
 
-      // Son QR Taramaları Canlı Akışı
       const recentRes = await query(`
         SELECT 
           id, 
@@ -229,10 +292,10 @@ router.get('/', async (req, res) => {
           device, 
           created_at
         FROM visit_stats 
-        WHERE source = 'qr' 
+        WHERE user_id = $1 AND source = 'qr' 
         ORDER BY created_at DESC 
         LIMIT 6
-      `)
+      `, [userId])
       if (recentRes.rows.length > 0) {
         const now = Date.now()
         recentQrScans = recentRes.rows.map(r => {
@@ -252,9 +315,7 @@ router.get('/', async (req, res) => {
           }
         })
       }
-    } catch (e) {
-      console.warn('⚠️ QR cihaz analitiği sorgulanamadı:', e.message)
-    }
+    } catch (e) {}
 
     return res.json({
       totalVisits,
@@ -274,23 +335,27 @@ router.get('/', async (req, res) => {
     })
   } catch (error) {
     console.warn('⚠️ Veritabanı sorgusu başarısız oldu, çevrimdışı analitik dönülüyor:', error.message)
-    return res.json(FALLBACK_ANALYTICS)
+    return res.json(buildOfflineAnalyticsForUser(userId))
   }
 })
 
-// 2. Yeni Ziyaret Kaydet (Sayfa yüklendiğinde ProfileView tarafından çağrılır)
+// 2. Yeni Ziyaret Kaydet (Ziyaret edilen profil sahibinin user_id bilgisiyle)
 router.post('/visit', async (req, res) => {
+  let ownerUserId = 1
+  let validDevice = 'desktop'
+  let validSource = 'direct'
   try {
-    const { device, source, os, model, browser } = req.body
-    const validDevice = device === 'mobile' ? 'mobile' : 'desktop'
-    const validSource = source === 'qr' ? 'qr' : 'direct'
+    const { device, source, os, model, browser, username, userId } = req.body
+    validDevice = device === 'mobile' ? 'mobile' : 'desktop'
+    validSource = source === 'qr' ? 'qr' : 'direct'
     const userAgent = req.headers['user-agent'] || ''
 
     const parsed = parseDeviceInfo(userAgent, { os, model, browser })
+    ownerUserId = await resolveVisitOwnerId(username, userId)
 
     await query(
-      'INSERT INTO visit_stats (device, source, user_agent, os, device_model, browser) VALUES ($1, $2, $3, $4, $5, $6)',
-      [validDevice, validSource, userAgent, parsed.os, parsed.model, parsed.browser]
+      'INSERT INTO visit_stats (user_id, device, source, user_agent, os, device_model, browser) VALUES ($1, $2, $3, $4, $5, $6, $7)',
+      [ownerUserId, validDevice, validSource, userAgent, parsed.os, parsed.model, parsed.browser]
     )
 
     return res.status(201).json({
@@ -299,7 +364,9 @@ router.post('/visit', async (req, res) => {
       data: { device: validDevice, source: validSource, os: parsed.os, model: parsed.model, browser: parsed.browser }
     })
   } catch (error) {
-    console.warn('⚠️ Ziyaret kaydedilemedi (çevrimdışı mod):', error.message)
+    const list = mockVisitsByUserId.get(ownerUserId) || []
+    list.push({ device: validDevice, source: validSource })
+    mockVisitsByUserId.set(ownerUserId, list)
     return res.status(200).json({
       success: true,
       offline: true,
@@ -308,16 +375,17 @@ router.post('/visit', async (req, res) => {
   }
 })
 
-// 3. Test / Simülasyon Ziyareti Ekle (Admin panelinden hızlı test için)
-router.post('/simulate', async (req, res) => {
+// 3. Test / Simülasyon Ziyareti Ekle (Oturumlu Kullanıcıya Özel)
+router.post('/simulate', requireAuth, async (req, res) => {
   try {
+    const userId = req.user.id
     const { device = 'mobile', source = 'qr', os = 'iOS', model = 'Apple iPhone 15 Pro', browser = 'Apple Safari' } = req.body
     const validDevice = device === 'mobile' ? 'mobile' : 'desktop'
     const validSource = source === 'qr' ? 'qr' : 'direct'
 
     await query(
-      'INSERT INTO visit_stats (device, source, user_agent, os, device_model, browser) VALUES ($1, $2, $3, $4, $5, $6)',
-      [validDevice, validSource, 'Simulated Visit via Admin', os, model, browser]
+      'INSERT INTO visit_stats (user_id, device, source, user_agent, os, device_model, browser) VALUES ($1, $2, $3, $4, $5, $6, $7)',
+      [userId, validDevice, validSource, 'Simulated Visit via Dashboard', os, model, browser]
     )
 
     return res.json({
@@ -333,19 +401,20 @@ router.post('/simulate', async (req, res) => {
   }
 })
 
-// 4. Analitik Verilerini Sıfırla (Yalnızca Yönetici)
-router.post('/reset', async (req, res) => {
+// 4. Analitik Verilerini Sıfırla (Yalnızca Oturumlu Kullanıcının Kendi Verisi)
+router.post('/reset', requireAuth, async (req, res) => {
   try {
-    await query('TRUNCATE TABLE visit_stats RESTART IDENTITY')
-    await query('TRUNCATE TABLE click_events RESTART IDENTITY')
-    await query('UPDATE links SET clicks = 0')
+    const userId = req.user.id
+    mockVisitsByUserId.delete(userId)
+    await query('DELETE FROM visit_stats WHERE user_id = $1', [userId])
+    await query('DELETE FROM click_events WHERE user_id = $1', [userId])
+    await query('UPDATE links SET clicks = 0 WHERE user_id = $1', [userId])
 
     return res.json({
       success: true,
-      message: 'Tüm analitik, ziyaret ve tıklama verileri başarıyla sıfırlandı.'
+      message: 'Tüm analitik, ziyaret ve tıklama verileriniz sıfırlandı.'
     })
   } catch (error) {
-    console.warn('⚠️ Analitik sıfırlanamadı:', error.message)
     return res.json({
       success: true,
       offline: true,

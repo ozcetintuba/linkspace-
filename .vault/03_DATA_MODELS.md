@@ -185,20 +185,25 @@ Yönetim paneline erişim ve JWT oturum yapısını tanımlar.
 ```typescript
 interface AdminUser {
   id: number;               // Benzersiz kullanıcı kimliği
-  username: string;         // Yönetici kullanıcı adı (örn: "admin")
-  email?: string;           // Kullanıcı e-posta adresi (örn: "admin@linktree.local")
+  username: string;         // Giriş kullanıcı adı (örn: "admin", "selin.design")
+  email?: string;           // Kullanıcı e-posta adresi
   passwordHash?: string;    // Bcrypt ile hashlenmiş parola (veritabanında)
-  name: string;             // Yönetici tam adı (örn: "Tuba Gül")
+  name: string;             // Kullanıcı tam adı (örn: "Tuba Gül")
+  role: 'admin' | 'user';   // Yetki rolü ('admin' yönetici sekmesine erişir, 'user' izole üye)
+  status: 'pending' | 'active' | 'suspended'; // Üyelik onay ve hesap durumu
   createdAt: string;        // Kayıt tarihi
 }
 
 interface AuthSession {
-  token: string;            // JWT Bearer Token
+  token: string;            // JWT Bearer Token (id, username, name, role, status)
   user: {
     id: number;
     username: string;
     email?: string;
     name: string;
+    role: 'admin' | 'user';
+    status: 'pending' | 'active' | 'suspended';
+    profileUsername?: string;
   };
 }
 

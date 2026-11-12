@@ -5,6 +5,7 @@ import ThreeBackground from '../components/ThreeBackground.vue'
 import ThreeAvatarMascot from '../components/ThreeAvatarMascot.vue'
 import { storeToRefs } from 'pinia'
 import QRCode from 'qrcode'
+import { useAuthStore } from '../stores/authStore'
 import { 
   useLinkStore, 
   BUTTON_STYLES, 
@@ -76,6 +77,7 @@ import {
 } from 'lucide-vue-next'
 
 const linkStore = useLinkStore()
+const authStore = useAuthStore()
 const { profile, links, activeTheme, currentTheme, seoSettings } = storeToRefs(linkStore)
 
 // 3D WebGL Avatar ve Maskot Durumu (Varsayılan olarak 3D Siber Karakter gösterilir)
@@ -180,7 +182,9 @@ const handleSendContactMessage = async () => {
     const res = await linkStore.sendMessage({
       name: contactForm.value.name,
       email: contactForm.value.email,
-      message: contactForm.value.message
+      message: contactForm.value.message,
+      targetUsername: requestedUsername.value || profile.value?.username,
+      userId: profile.value?.userId
     })
 
     if (res.success) {
@@ -524,6 +528,8 @@ watch(qrTargetUrl, (url) => {
 
 const isLoadingProfile = ref(false)
 const profileNotFound = ref(false)
+const profileRestrictedStatus = ref('')
+const profileRestrictedMessage = ref('')
 const requestedUsername = ref('')
 
 // Dinamik /:username Rotası Dinleyici ve Profil Yükleme
@@ -532,12 +538,22 @@ const loadProfileData = async (usernameParam) => {
     requestedUsername.value = usernameParam
     isLoadingProfile.value = true
     profileNotFound.value = false
+    profileRestrictedStatus.value = ''
+    profileRestrictedMessage.value = ''
     try {
       const res = await linkStore.fetchPublicProfile(usernameParam)
       if (!res.success) {
-        profileNotFound.value = true
-        if (typeof document !== 'undefined') {
-          document.title = '404 - Profil Bulunamadı | linkspace'
+        if (res.restricted) {
+          profileRestrictedStatus.value = res.status || 'pending'
+          profileRestrictedMessage.value = res.error || 'Bu profil şu anda görüntülenemiyor.'
+          if (typeof document !== 'undefined') {
+            document.title = 'Profil Onay Bekliyor | linkspace'
+          }
+        } else {
+          profileNotFound.value = true
+          if (typeof document !== 'undefined') {
+            document.title = '404 - Profil Bulunamadı | linkspace'
+          }
         }
       } else {
         if (typeof document !== 'undefined') {
@@ -554,6 +570,7 @@ const loadProfileData = async (usernameParam) => {
     }
   } else {
     profileNotFound.value = false
+    profileRestrictedStatus.value = ''
     isLoadingProfile.value = false
     linkStore.clearPublicProfile()
     if (typeof document !== 'undefined') {
@@ -621,12 +638,14 @@ const recordCurrentVisit = () => {
     source, 
     os: devInfo.os, 
     model: devInfo.model, 
-    browser: devInfo.browser 
+    browser: devInfo.browser,
+    username: route.params.username || profile.value?.username,
+    userId: profile.value?.userId
   })
 }
 
-onMounted(() => {
-  loadProfileData(route.params.username)
+onMounted(async () => {
+  await loadProfileData(route.params.username)
   generateQrCode(qrTargetUrl.value)
   recordCurrentVisit()
   syncSeoMetaTags()
@@ -1024,14 +1043,14 @@ const handleDownloadVCard = async () => {
             <span class="hidden sm:inline">İletişim</span>
           </button>
 
-          <!-- Yönetici Giriş Linki ('Çıkış Yap' tarzı yalın zarif buton) -->
+          <!-- Panel / Giriş Linki -->
           <router-link 
-            to="/admin" 
+            :to="authStore.isAuthenticated ? '/admin' : '/login'" 
             class="text-xs sm:text-sm font-semibold transition-colors px-2.5 py-1.5"
             :class="activeTheme.id === 'pure-light' ? 'text-[#8E8E93] hover:text-black' : 'text-[#8E8E93] hover:text-[#FFFF00]'"
-            title="Yönetici Paneline Git"
+            :title="authStore.isAuthenticated ? 'Yönetim Panelime Git' : 'Üye Girişi / Başvuru'"
           >
-            <span>Yönetici</span>
+            <span>{{ authStore.isAuthenticated ? 'Panelim' : 'Giriş Yap' }}</span>
           </router-link>
 
           <!-- Paylaş Butonu (Dribbble İkonik Elektrik Sarı Kapsül Butonu - Kullanıcı Görseliyle Birebir) -->
@@ -1052,6 +1071,58 @@ const handleDownloadVCard = async () => {
     <div v-if="isLoadingProfile" class="w-full max-w-2xl py-24 flex flex-col items-center justify-center text-center relative z-10">
       <div class="w-10 h-10 border-3 border-[#FFFF00] border-t-transparent rounded-full animate-spin mb-4"></div>
       <p class="text-sm font-semibold tracking-wide text-neutral-400">Profil yükleniyor...</p>
+    </div>
+
+    <!-- Onay Bekleyen veya Askıya Alınan Hesap Durumu -->
+    <div 
+      v-else-if="profileRestrictedStatus"
+      :class="[
+        'w-full max-w-lg rounded-[36px] border p-8 sm:p-12 text-center backdrop-blur-2xl shadow-2xl relative z-10 flex flex-col items-center my-auto transition-colors',
+        activeTheme.id === 'pure-light'
+          ? 'bg-white/95 border-slate-200 shadow-slate-300/40 text-slate-800'
+          : 'bg-[#161616]/95 border-[#282828] text-white shadow-2xl shadow-black/80'
+      ]"
+    >
+      <div
+        class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-mono font-bold mb-6"
+        :class="profileRestrictedStatus === 'suspended' ? 'bg-rose-500/10 border border-rose-500/25 text-rose-400' : 'bg-amber-500/10 border border-amber-500/25 text-amber-400'"
+      >
+        <span>{{ profileRestrictedStatus === 'suspended' ? 'HESAP ASKIDA' : 'ONAY BEKLİYOR' }}</span>
+      </div>
+
+      <div
+        class="w-20 h-20 rounded-3xl flex items-center justify-center mb-5 shadow-xl"
+        :class="profileRestrictedStatus === 'suspended' ? 'bg-rose-500/10 border border-rose-500/25 text-rose-400' : 'bg-amber-500/10 border border-amber-500/25 text-amber-400'"
+      >
+        <ShieldAlert v-if="profileRestrictedStatus === 'suspended'" class="w-10 h-10" />
+        <Clock v-else class="w-10 h-10" />
+      </div>
+
+      <h2 :class="['text-2xl sm:text-3xl font-black mb-2 tracking-tight', activeTheme.id === 'pure-light' ? 'text-slate-900' : 'text-white']">
+        {{ profileRestrictedStatus === 'suspended' ? 'Profil Askıya Alındı' : 'Üyelik Onayı Bekleniyor' }}
+      </h2>
+
+      <p :class="['text-sm max-w-sm mb-6 leading-relaxed', activeTheme.id === 'pure-light' ? 'text-slate-600' : 'text-neutral-400']">
+        {{ profileRestrictedMessage }}
+      </p>
+
+      <div class="flex flex-col sm:flex-row items-center gap-3 w-full justify-center">
+        <router-link 
+          to="/" 
+          class="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-6 py-3 rounded-full font-bold text-sm bg-[#FFFF00] text-black hover:bg-[#EEFF00] transition-all hover:scale-105 active:scale-95 shadow-lg shadow-yellow-500/20"
+        >
+          <span>Ana Sayfaya Dön</span>
+        </router-link>
+        <router-link 
+          to="/login" 
+          :class="[
+            'w-full sm:w-auto inline-flex items-center justify-center gap-2 px-6 py-3 rounded-full font-semibold text-sm border transition-all hover:scale-105 active:scale-95',
+            activeTheme.id === 'pure-light' ? 'border-slate-300 text-slate-700 hover:bg-slate-100' : 'border-white/10 text-neutral-300 hover:bg-white/5'
+          ]"
+        >
+          <span>Giriş Yap</span>
+        </router-link>
+      </div>
     </div>
 
     <!-- 404 - Profil Bulunamadı Durumu -->
@@ -1942,11 +2013,11 @@ const handleDownloadVCard = async () => {
           <Zap class="w-2.5 h-2.5 text-[#FFFF00] fill-[#FFFF00]" />
         </span>
         <router-link 
-          to="/admin" 
+          :to="authStore.isAuthenticated ? '/admin' : '/login'" 
           :class="['text-[11px] transition-colors flex items-center gap-1.5 mt-1', activeTheme.id === 'pure-light' ? 'text-slate-500 hover:text-black font-semibold' : 'text-neutral-400 hover:text-[#FFFF00] font-semibold']"
         >
           <Lock class="w-3 h-3 text-[#FFFF00]" />
-          <span>Yönetici Paneli</span>
+          <span>{{ authStore.isAuthenticated ? 'Panelime Git' : 'Üye Girişi / Başvuru' }}</span>
         </router-link>
       </footer>
 

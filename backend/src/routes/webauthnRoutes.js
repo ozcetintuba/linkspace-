@@ -198,7 +198,7 @@ router.post('/login-verify', async (req, res) => {
     // Demo/Simülasyon modunda toleranslı eşleşme
     if (!matchedPasskey) {
       matchedPasskey = {
-        userId: '1',
+        userId: 1,
         username: 'admin',
         deviceName: 'Biyometrik Cihaz'
       }
@@ -207,12 +207,14 @@ router.post('/login-verify', async (req, res) => {
     matchedPasskey.lastUsedAt = new Date().toISOString()
     inMemoryPasskeys.set(credential.id, matchedPasskey)
 
+    const resolvedUserId = parseInt(matchedPasskey.userId, 10) || 1
     // JWT Token Üret
     const token = jwt.sign(
       {
-        id: matchedPasskey.userId || '1',
+        id: resolvedUserId,
         username: matchedPasskey.username || 'admin',
         role: 'admin',
+        status: 'active',
         authMethod: 'webauthn_biometric'
       },
       JWT_SECRET,
@@ -224,9 +226,12 @@ router.post('/login-verify', async (req, res) => {
       message: 'Biyometrik kimlik başarıyla doğrulandı! Hoş geldiniz.',
       token,
       user: {
-        id: matchedPasskey.userId || '1',
+        id: resolvedUserId,
         username: matchedPasskey.username || 'admin',
+        profileUsername: 'tubagul',
         name: 'Tuba Gül',
+        role: 'admin',
+        status: 'active',
         authMethod: 'webauthn_passkey'
       }
     })

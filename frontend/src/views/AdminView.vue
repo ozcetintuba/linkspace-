@@ -378,11 +378,13 @@ onMounted(async () => {
   }
   loadSmartInsights()
   linkStore.fetchPasskeys()
-  linkStore.fetchUsers()
-  linkStore.fetchUserStats()
 
-  if (route.query.tab === 'users') {
-    activeTab.value = 'users'
+  if (authStore.isAdmin) {
+    linkStore.fetchUsers()
+    linkStore.fetchUserStats()
+    if (route.query.tab === 'users') {
+      activeTab.value = 'users'
+    }
   }
 })
 
@@ -422,8 +424,14 @@ const handleClearCache = async () => {
 
 watch(activeTab, (newTab) => {
   if (newTab === 'settings') {
-    linkStore.fetchCacheStats()
+    if (authStore.isAdmin) {
+      linkStore.fetchCacheStats()
+    }
   } else if (newTab === 'users') {
+    if (!authStore.isAdmin) {
+      activeTab.value = 'links'
+      return
+    }
     linkStore.fetchUsers()
     linkStore.fetchUserStats()
   }
@@ -491,7 +499,7 @@ const getInitials = (name) => {
 // KULLANICI & TOPLULUK YÖNETİMİ (Faz 26 - User Management)
 // ========================================================
 const searchUserQuery = ref('')
-const selectedUserFilter = ref('all') // 'all' | 'verified' | 'admin' | 'has_links' | 'suspended'
+const selectedUserFilter = ref('all') // 'all' | 'pending' | 'verified' | 'admin' | 'has_links' | 'suspended'
 const selectedUserSort = ref('newest') // 'newest' | 'oldest' | 'links_desc' | 'name_asc'
 const userFeedback = ref('')
 const isUserActionLoading = ref(false)
@@ -578,7 +586,9 @@ const filteredUsers = computed(() => {
   }
 
   // Segment filtreleri
-  if (selectedUserFilter.value === 'verified') {
+  if (selectedUserFilter.value === 'pending') {
+    list = list.filter(u => u.status === 'pending')
+  } else if (selectedUserFilter.value === 'verified') {
     list = list.filter(u => u.isVerified)
   } else if (selectedUserFilter.value === 'admin') {
     list = list.filter(u => u.role === 'admin')
@@ -617,6 +627,10 @@ const verifiedMembersCount = computed(() => {
 
 const adminMembersCount = computed(() => {
   return (users.value || []).filter(u => u.role === 'admin').length
+})
+
+const pendingMembersCount = computed(() => {
+  return (users.value || []).filter(u => u.status === 'pending').length
 })
 
 const suspendedMembersCount = computed(() => {
@@ -786,6 +800,19 @@ const handleQuickToggleVerify = async (u) => {
   setTimeout(() => { userFeedback.value = '' }, 3000)
 }
 
+const handleApproveUser = async (u) => {
+  isUserActionLoading.value = true
+  const res = await linkStore.approveUser(u.id)
+  isUserActionLoading.value = false
+  if (res.success) {
+    userFeedback.value = `@${u.username} üyelik başvurusu onaylandı! ✓ Artık giriş yapabilir ve profili yayında.`
+    setTimeout(() => { userFeedback.value = '' }, 4000)
+  } else {
+    userFeedback.value = res.message || 'Onaylama sırasında hata oluştu.'
+    setTimeout(() => { userFeedback.value = '' }, 4000)
+  }
+}
+
 const handleQuickToggleStatus = async (u) => {
   if (u.id === 1) {
     alert('Ana yönetici hesabı askıya alınamaz.')
@@ -816,6 +843,7 @@ const handleBatchAction = async (action) => {
   selectedUserIds.value = []
 
   let actionText = 'güncellendi'
+  if (action === 'approve') actionText = 'onaylandı'
   if (action === 'verify') actionText = 'doğrulandı'
   if (action === 'unverify') actionText = 'doğrulaması kaldırıldı'
   if (action === 'suspend') actionText = 'askıya alındı'
@@ -1102,18 +1130,25 @@ if (typeof window !== 'undefined') {
     .catch(() => {})
 }
 
-const liveCloudUrl = computed(() => 'https://linkspace-app.onrender.com/')
-const wifiUrl = computed(() => `http://${localWifiIp.value}:3000/`)
+const myCleanHandle = computed(() => {
+  const raw = profile.value?.username || authStore.user?.profileUsername || authStore.user?.username || 'tubagul'
+  return raw.replace(/^@/, '').trim().toLowerCase()
+})
+
+const myProfilePath = computed(() => `/@${myCleanHandle.value}`)
+
+const liveCloudUrl = computed(() => `https://linkspace-app.onrender.com/@${myCleanHandle.value}`)
+const wifiUrl = computed(() => `http://${localWifiIp.value}:3000/@${myCleanHandle.value}`)
 const localhostUrl = computed(() => {
   if (typeof window !== 'undefined') {
-    return `${window.location.origin}/`
+    return `${window.location.origin}/@${myCleanHandle.value}`
   }
-  return 'http://localhost:3000/'
+  return `http://localhost:3000/@${myCleanHandle.value}`
 })
 
 const activeShareUrl = computed(() => {
   if (isPublicWeb) {
-    return `${window.location.origin}/`
+    return `${window.location.origin}/@${myCleanHandle.value}`
   }
   if (networkMode.value === 'live') {
     return liveCloudUrl.value
@@ -1728,6 +1763,7 @@ const handleToggleStatusBadge = async () => {
 // Oturumu Kapatma (Logout)
 const handleLogout = () => {
   if (confirm('Yönetim panelinden çıkış yapmak istediğinizden emin misiniz?')) {
+    linkStore.resetWorkspace()
     authStore.logout()
     router.push('/login')
   }
@@ -2168,8 +2204,8 @@ const handleChangePassword = async () => {
             : 'bg-white/95 border-slate-200/90 text-slate-900 shadow-slate-900/5'
         ]"
       >
-        <!-- SOL: linkspace Logo -->
-        <div class="flex items-center gap-3">
+        <!-- SOL: linkspace Logo & Rol Rozeti -->
+        <div class="flex items-center gap-2.5 sm:gap-3">
           <router-link 
             to="/admin" 
             class="font-black text-xl sm:text-2xl tracking-tight select-none hover:opacity-85 transition-opacity flex items-center group"
@@ -2177,6 +2213,25 @@ const handleChangePassword = async () => {
           >
             <span>linkspace</span>
             <Zap class="w-4 h-4 sm:w-5 sm:h-5 text-[#FFFF00] fill-[#FFFF00] ml-1 inline-block drop-shadow-[0_0_8px_rgba(255,255,0,0.6)] transition-transform group-hover:scale-110" />
+          </router-link>
+
+          <span
+            class="hidden lg:inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold border"
+            :class="authStore.isAdmin
+              ? 'bg-[#FFFF00]/15 text-[#FFFF00] border-[#FFFF00]/30'
+              : 'bg-emerald-500/10 text-emerald-400 border-emerald-500/25'"
+          >
+            {{ authStore.isAdmin ? 'Yönetici' : 'Onaylı Üye' }}
+          </span>
+
+          <router-link
+            to="/"
+            title="Ana Sayfa / Üyelik Vitrini"
+            class="hidden lg:inline-flex items-center gap-1 text-xs font-semibold px-2 py-1 rounded-lg transition-colors"
+            :class="adminTheme === 'light' ? 'text-slate-500 hover:text-black hover:bg-slate-100' : 'text-[#8E8E93] hover:text-white hover:bg-white/5'"
+          >
+            <Globe class="w-3.5 h-3.5" />
+            <span>Vitrin</span>
           </router-link>
         </div>
 
@@ -2247,6 +2302,7 @@ const handleChangePassword = async () => {
           </button>
 
           <button 
+            v-if="authStore.isAdmin"
             type="button"
             @click="activeTab = 'users'"
             class="px-4 py-1.5 rounded-full text-xs lg:text-sm transition-all flex items-center gap-1.5"
@@ -2277,7 +2333,7 @@ const handleChangePassword = async () => {
           
           <!-- Sayfayı Aç (Yeni Sekme) -->
           <router-link 
-            to="/" 
+            :to="myProfilePath" 
             target="_blank" 
             title="Canlı Profil Sayfasını Yeni Sekmede Aç"
             class="hidden sm:inline-flex items-center gap-1 text-xs sm:text-sm font-semibold transition-colors px-2 py-1"
@@ -2380,6 +2436,7 @@ const handleChangePassword = async () => {
             </button>
 
             <button 
+              v-if="authStore.isAdmin"
               @click="activeTab = 'users'"
               class="px-4 py-2.5 rounded-xl text-xs font-semibold transition-all flex items-center gap-2 whitespace-nowrap"
               :class="activeTab === 'users' ? 'bg-[#FFFF00] text-black font-bold shadow-md shadow-yellow-500/20' : themeClasses.navInactive"
@@ -5927,9 +5984,9 @@ const handleChangePassword = async () => {
           </div>
 
           <!-- ========================================== -->
-          <!-- SEKME 6: KULLANICILAR & TOPLULUK (USERS) -->
-          <!-- ========================================== -->
-          <div v-else-if="activeTab === 'users'" class="space-y-6">
+          <!-- SEKME 6: KULLANICILAR & TOPLULUK (USERS - SADECE ADMIN) -->
+          <!-- ======================================================== -->
+          <div v-else-if="authStore.isAdmin && activeTab === 'users'" class="space-y-6">
 
             <!-- ÜST BİLGİ & AKSİYON BARI -->
             <div :class="['border rounded-3xl p-6 transition-colors', themeClasses.cardBg]">
@@ -6269,6 +6326,19 @@ const handleChangePassword = async () => {
                   <span>Aktif Linki Olanlar ({{ activeProfilesCount }})</span>
                 </button>
                 <button 
+                  type="button"
+                  @click="selectedUserFilter = 'pending'"
+                  class="px-3 py-1.5 rounded-lg font-semibold transition-all shrink-0 flex items-center gap-1.5 cursor-pointer"
+                  :class="selectedUserFilter === 'pending' 
+                    ? 'bg-amber-400 text-black font-bold shadow-xs' 
+                    : (pendingMembersCount > 0 
+                        ? (adminTheme === 'light' ? 'bg-amber-50 text-amber-800 border border-amber-300' : 'bg-amber-500/10 text-amber-300 hover:bg-amber-500/20 border border-amber-500/40') 
+                        : (adminTheme === 'light' ? 'bg-slate-100 text-slate-700 hover:bg-slate-200' : 'bg-[#121212] text-[#8E8E93] hover:text-white border border-[#282828]'))"
+                >
+                  <Clock class="w-3 h-3 text-amber-400" />
+                  <span>Onay Bekleyenler ({{ pendingMembersCount }})</span>
+                </button>
+                <button 
                   v-if="suspendedMembersCount > 0"
                   type="button"
                   @click="selectedUserFilter = 'suspended'"
@@ -6312,6 +6382,13 @@ const handleChangePassword = async () => {
                   class="px-3 py-1.5 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-zinc-300 text-xs font-semibold cursor-pointer"
                 >
                   ✕ Rozeti Kaldır
+                </button>
+                <button 
+                  type="button"
+                  @click="handleBatchAction('approve')"
+                  class="px-3 py-1.5 rounded-xl bg-[#FFFF00] hover:bg-[#EEFF00] text-black text-xs font-bold cursor-pointer shadow-sm"
+                >
+                  ✓ Başvuruları Onayla
                 </button>
                 <button 
                   type="button"
@@ -6490,18 +6567,25 @@ const handleChangePassword = async () => {
                         {{ u.linkCount ?? (u.links?.length || 0) }} Link
                       </td>
 
-                      <!-- Durum (Aktif / Askıda) -->
+                      <!-- Durum (Aktif / Onay Bekliyor / Askıda) -->
                       <td class="p-4" @click.stop>
                         <button 
                           type="button"
-                          @click="handleQuickToggleStatus(u)"
+                          @click="u.status === 'pending' ? handleApproveUser(u) : handleQuickToggleStatus(u)"
                           :disabled="u.id === 1"
-                          title="Hesap durumunu değiştirmek için tıklayın"
+                          :title="u.status === 'pending' ? 'Üyelik başvurusunu onaylamak için tıklayın' : 'Hesap durumunu değiştirmek için tıklayın'"
                           class="px-2.5 py-1 rounded-full text-[10px] font-bold transition-all flex items-center gap-1.5 cursor-pointer"
-                          :class="u.status === 'suspended' ? 'bg-rose-500/15 text-rose-400 border border-rose-500/30' : 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30'"
+                          :class="u.status === 'pending' 
+                            ? 'bg-amber-500/15 text-amber-300 border border-amber-500/40 hover:bg-amber-500/25' 
+                            : (u.status === 'suspended' 
+                                ? 'bg-rose-500/15 text-rose-400 border border-rose-500/30' 
+                                : 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30')"
                         >
-                          <span class="w-1.5 h-1.5 rounded-full" :class="u.status === 'suspended' ? 'bg-rose-500' : 'bg-emerald-400 animate-pulse'"></span>
-                          <span>{{ u.status === 'suspended' ? 'Askıda' : 'Aktif' }}</span>
+                          <span 
+                            class="w-1.5 h-1.5 rounded-full" 
+                            :class="u.status === 'pending' ? 'bg-amber-400 animate-ping' : (u.status === 'suspended' ? 'bg-rose-500' : 'bg-emerald-400 animate-pulse')"
+                          ></span>
+                          <span>{{ u.status === 'pending' ? 'Onay Bekliyor' : (u.status === 'suspended' ? 'Askıda' : 'Aktif') }}</span>
                         </button>
                       </td>
 
@@ -6526,6 +6610,18 @@ const handleChangePassword = async () => {
                       <!-- Aksiyon Butonları -->
                       <td class="p-4 text-right pr-6" @click.stop>
                         <div class="flex items-center justify-end gap-1.5">
+                          <!-- Başvuru Onayla Butonu -->
+                          <button
+                            v-if="u.status === 'pending'"
+                            type="button"
+                            @click="handleApproveUser(u)"
+                            title="Üyelik Başvurusunu Onayla"
+                            class="px-2.5 py-1.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-black font-bold text-[11px] transition-all active:scale-95 cursor-pointer flex items-center gap-1"
+                          >
+                            <Check class="w-3.5 h-3.5" />
+                            <span>Onayla</span>
+                          </button>
+
                           <!-- Linktree Önizleme / Profili Gör -->
                           <button 
                             type="button"
@@ -6695,13 +6791,17 @@ const handleChangePassword = async () => {
                         </span>
                         <button 
                           type="button"
-                          @click.stop="handleQuickToggleStatus(u)"
+                          @click.stop="u.status === 'pending' ? handleApproveUser(u) : handleQuickToggleStatus(u)"
                           :disabled="u.id === 1"
                           class="px-2 py-0.5 text-[10px] font-bold rounded-full cursor-pointer"
-                          :class="u.status === 'suspended' ? 'bg-rose-500/20 text-rose-400 border border-rose-500/40' : 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30'"
-                          title="Durumu değiştir"
+                          :class="u.status === 'pending' 
+                            ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40' 
+                            : (u.status === 'suspended' 
+                                ? 'bg-rose-500/20 text-rose-400 border border-rose-500/40' 
+                                : 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30')"
+                          :title="u.status === 'pending' ? 'Başvuruyu onaylamak için tıklayın' : 'Durumu değiştir'"
                         >
-                          {{ u.status === 'suspended' ? 'Askıda' : 'Aktif' }}
+                          {{ u.status === 'pending' ? '⏳ Onay Bekliyor' : (u.status === 'suspended' ? 'Askıda' : 'Aktif') }}
                         </button>
                       </div>
                       <span class="text-[10px] px-1.5 py-0.2 rounded font-mono text-[#8E8E93] bg-zinc-900/60 border border-zinc-800">
@@ -6757,6 +6857,17 @@ const handleChangePassword = async () => {
 
                 <!-- Alt Aksiyon Butonları -->
                 <div class="mt-4 pt-3 border-t flex items-center justify-between gap-1.5" :class="themeClasses.headerBorder">
+                  <button
+                    v-if="u.status === 'pending'"
+                    type="button"
+                    @click.stop="handleApproveUser(u)"
+                    class="flex-1 py-1.5 px-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1 text-black bg-emerald-400 hover:bg-emerald-300 shadow-sm active:scale-95 text-center cursor-pointer"
+                    title="Üyelik Başvurusunu Onayla"
+                  >
+                    <Check class="w-3.5 h-3.5" />
+                    <span>Onayla</span>
+                  </button>
+
                   <button 
                     type="button"
                     @click.stop="openUserProfilePreview(u)"
@@ -6764,7 +6875,7 @@ const handleChangePassword = async () => {
                     title="Linktree Profilini Görüntüle"
                   >
                     <Eye class="w-3.5 h-3.5" />
-                    <span>Profili Gör</span>
+                    <span>{{ u.status === 'pending' ? 'Önizle' : 'Profili Gör' }}</span>
                   </button>
 
                   <a 
@@ -7474,10 +7585,10 @@ const handleChangePassword = async () => {
 
             </div>
 
-            <!-- ======================================================== -->
-            <!-- GÜVENLİK KALKANI & PERFORMANS ÖNBELLEĞİ (SECURITY & CACHE) -->
-            <!-- ======================================================== -->
-            <div :class="['border rounded-3xl p-6 transition-colors space-y-6', themeClasses.cardBg]">
+            <!-- ====================================================================== -->
+            <!-- GÜVENLİK KALKANI & PERFORMANS ÖNBELLEĞİ (SECURITY & CACHE - ADMIN)   -->
+            <!-- ====================================================================== -->
+            <div v-if="authStore.isAdmin" :class="['border rounded-3xl p-6 transition-colors space-y-6', themeClasses.cardBg]">
               
               <!-- Üst Başlık & Açıklama -->
               <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pb-4 border-b" :class="themeClasses.headerBorder">

@@ -1,7 +1,7 @@
 # 🔍 02 - MEVCUT DURUM VE TEKNİK BORÇ ANALİZİ (CURRENT STATE)
 
-> **Son Güncelleme**: 11 Kasım 2026 (Çoklu Kullanıcı Linktree Görüntüleme ve Canlı Telefon Önizleme Modalı - v0.39.2)  
-> **Durum**: Full-Stack Mimari (Express + PostgreSQL + Vue 3 + Three.js WebGL + FIDO2 WebAuthn + PWA Background Sync) + Dribbble Sales CRM (#0C0C0B, #161616, #FFFF00) Tasarım Sistemi + Render Canlı Dağıtım (`https://linkspace-app.onrender.com`)  
+> **Son Güncelleme**: 12 Kasım 2026 (Onaylı Çoklu Kullanıcı Üyelik Sistemi ve Rol Tabanlı Panel İzolasyonu - v0.40.0)  
+> **Durum**: Full-Stack Çoklu Üyelik Mimarisi (Express + PostgreSQL + Vue 3 + Onaylı Kayıt Akışı + `user_id` Bazlı İzole Çalışma Alanı) + Dribbble Sales CRM (#0C0C0B, #161616, #FFFF00) Tasarım Sistemi + Render Canlı Dağıtım (`https://linkspace-app.onrender.com`)  
 > **Proje Türü**: Full-Stack Linktree & Link Hub (CRM Dark & Light Edition)
 
 ---
@@ -131,4 +131,5 @@
 | **Zaman Ayarlı / Süresi Dolan Bağlantılar & Geri Sayım** | ✅ **ÇÖZÜLDÜ** | `is_scheduled`, `schedule_start`, `schedule_end`, `show_countdown` PostgreSQL ve REST API alanları, hızlı önayarlar (+24s, +3g, +1h), liste içi durum etiketleri ve ziyaretçi kartlarında canlı geri sayım rozetleri. |
 | **Yapay Zeka Biyografi Asistanı (AI Bio Assistant)** | ✅ **ÇÖZÜLDÜ** | `/api/ai/tones` & `/api/ai/generate-bio` REST API motoru, 4 farklı ton (Kurumsal, Samimi, Siberpunk, Yaratıcı), rol ve uzmanlık etiketleri, anlık 160 karakter optimizasyonu, tek tıkla kopyalama, "Profile Uygula" ve çevrimdışı fallback mimarisi. |
 | **Bağlantı Kategorileri & Akordeon Link Klasörleri** | ✅ **ÇÖZÜLDÜ** | `category` PostgreSQL ve REST API desteği, Admin kategori filtre çubuğu ve kart rozetleri, ProfileView ve PhonePreview üzerinde animasyonlu akordeon klasör kartları, dinamik link sayısı rozeti, arama senkronizasyonu ve açık/koyu mod uyumu. |
+| **Onaylı Üyelik Sistemi & İzole Üye Panelleri** | ✅ **ÇÖZÜLDÜ** | Yeni kayıtlar `role='user'`, `status='pending'` olarak kaydedilir ve Admin (`role='admin'`) onayı olmadan giriş yapamaz/profili yayınlanmaz. `/` açılış Vitrini (`LandingView.vue`), `/:username` kişisel sayfalar ve `user_id` izole `/admin` (ve `/dashboard`) yönetimi. |
 

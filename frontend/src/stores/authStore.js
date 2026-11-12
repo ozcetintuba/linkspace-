@@ -22,6 +22,22 @@ export const useAuthStore = defineStore('auth', () => {
   const authError = ref('')
 
   const isAuthenticated = computed(() => !!token.value)
+  const isAdmin = computed(() => user.value?.role === 'admin')
+
+  const clearDashboardCache = () => {
+    const keysToClear = [
+      'linktree_profile',
+      'linktree_links',
+      'linktree_theme',
+      'linktree_analytics',
+      'linktree_messages',
+      'linktree_seo',
+      'linktree_users'
+    ]
+    keysToClear.forEach(k => {
+      try { localStorage.removeItem(k) } catch (e) {}
+    })
+  }
 
   // Oturum Başlatma (Giriş)
   const login = async (username, password) => {
@@ -74,6 +90,15 @@ export const useAuthStore = defineStore('auth', () => {
         throw new Error(data.error || 'Kayıt işlemi başarısız oldu')
       }
 
+      if (data.pendingApproval || !data.token) {
+        return {
+          success: true,
+          pendingApproval: true,
+          message: data.message || 'Üyelik başvurunuz alındı! Yönetici onayından sonra giriş yapabilirsiniz.',
+          user: data.user
+        }
+      }
+
       token.value = data.token
       user.value = data.user
 
@@ -96,6 +121,7 @@ export const useAuthStore = defineStore('auth', () => {
     authError.value = ''
     localStorage.removeItem(TOKEN_KEY)
     localStorage.removeItem(USER_KEY)
+    clearDashboardCache()
   }
 
   // Mevcut Token Geçerliliğini Kontrol Etme
@@ -160,6 +186,7 @@ export const useAuthStore = defineStore('auth', () => {
     isLoading,
     authError,
     isAuthenticated,
+    isAdmin,
     login,
     register,
     logout,

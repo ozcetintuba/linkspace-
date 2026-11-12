@@ -4,6 +4,25 @@ Tüm önemli mimari değişiklikler, özellik eklemeleri ve düzeltmeler bu dosy
 
 ---
 
+## [v0.40.0] - 2026-11-12 (Onaylı Çoklu Kullanıcı Üyelik Sistemi ve Rol Tabanlı Panel İzolasyonu)
+
+### 🔐 Onaylı Üyelik Sistemi & Çoklu Kiracı (Multi-Tenant) Mimarisi (`backend/`, `frontend/`)
+- **Onaylı Başvuru & Giriş Akışı (`authRoutes.js`, `LoginView.vue`, `authStore.js`)**:
+  - Yeni üyelik kayıtları (`POST /api/auth/register`) `role: 'user'`, `status: 'pending'` olarak oluşturulur; yanıt olarak JWT dönülmez (`pendingApproval: true`) ve kullanıcı bilgilendirme ekranına alınır.
+  - Yönetici onayı olmayan (`pending`) veya askıya alınan (`suspended`) hesapların girişleri (`POST /api/auth/login`) `403 Forbidden` ile reddedilir.
+  - Onaysız profillerin ziyaretçi sayfaları (`GET /api/profile/:username`) yönetici veya hesap sahibi dışındaki ziyaretçilere `403` kısıtlaması döndürür (`ProfileView.vue` üzerinde özel durum kartı gösterilir).
+- **Veritabanı & Çevrimdışı Bellek İzolasyonu (`initDb.js`, `mockState.js`, Tüm Backend Rotaları)**:
+  - `users` (`role`, `status`) ve tüm veri tabloları (`profiles`, `links`, `settings`, `messages`, `visit_stats`, `click_events`) `user_id` üzerinden birbirinden tamamen izole edildi.
+  - PostgreSQL çevrimdışıyken de çoklu üye kayıt, onay, link, tema, mesaj ve ziyaret verilerini kullanıcı bazlı tutan paylaşımlı `backend/src/mockState.js` katmanı oluşturuldu (`analyticsRoutes.js` dahil).
+  - `authRoutes.js` içerisindeki rate limiter içe aktarma uyuşmazlığı (`loginLimiter` -> `authLimiter`) düzeltildi ve `cacheService.js` + `sw.js` kimlik doğrulamalı (`Authorization`) istekleri önbelleğe almayacak şekilde güncellendi.
+- **Yönetici Onay Araçları & Rol Tabanlı Erişim (`usersRoutes.js`, `authMiddleware.js`, `AdminView.vue`, `linkStore.js`)**:
+  - Tüm `/api/users/*` ve `/api/settings/cache/*` rotaları `requireAdmin` middleware'i ile korundu; onay için `PUT /api/users/:id/approve` ve toplu `'approve'` aksiyonu eklendi.
+  - `AdminView.vue` içerisinde standart onaylı üyeler `Kullanıcılar` sekmesini görmeden yalnızca kendi verilerini yönetirken, `Yönetici` (`admin`) rolü **Onay Bekleyenler** filtresi, kart/tablo **✓ Onayla** butonu ve toplu başvuru onay çubuğuna erişir.
+- **Açılış Vitrini & Dinamik Rota Ayrımı (`LandingView.vue`, `router/index.js`)**:
+  - `/` ana sayfasına *"Kendi Linktree Sayfanı Oluştur"*, hızlı `@kullaniciadi` arama ve onaylı topluluk profilleri dizinini (`GET /api/profile/directory`) sunan `LandingView.vue` vitrini yerleştirildi; üye profilleri `/:username` (`/@handle`) rotasında sergilenir (`/dashboard` -> `/admin`).
+
+---
+
 ## [v0.39.3] - 2026-11-12 (Küçük Link Kartlarında Fotoğraf Yerine Varsayılan İkon Gösterimi ve Kart Tıklanabilirliği)
 
 ### 🎨 Kart Görünümü ve İkon Tutarlılığı (`PhonePreview.vue`, `ProfileView.vue`, `linkStore.js`, `profileRoutes.js`)

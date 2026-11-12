@@ -2,43 +2,61 @@ import { Router } from 'express'
 import { query } from '../db.js'
 import { requireAuth } from '../middleware/authMiddleware.js'
 import { messagesLimiter } from '../middleware/rateLimiter.js'
+import {
+  mockMessagesByUserId,
+  allocateMockMessageId,
+  findMockUserByIdentifier,
+  ensureMockUserState,
+  mockUsers
+} from '../mockState.js'
 
 const router = Router()
 
-// E-posta doğrulama regex'i
 const isValidEmail = (email) => {
   if (!email || typeof email !== 'string') return false
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
   return emailRegex.test(email.trim())
 }
 
-// Çevrimdışı / DB erişilemediğinde yedek bellek içi (In-Memory) deposu
-let mockMessages = [
-  {
-    id: 1,
-    name: 'Elif Kaya',
-    email: 'elif.kaya@startup.io',
-    message: 'Harika bir profil! Önümüzdeki ay düzenleyeceğimiz Web & Mobil Teknoloji Zirvesi\'nde konuşmacı olarak yer almak ister misiniz?',
-    isRead: false,
-    createdAt: new Date(Date.now() - 3600000 * 2).toISOString()
-  },
-  {
-    id: 2,
-    name: 'Burak Yılmaz',
-    email: 'burak@agency.com',
-    message: 'Selamlar, freelance web geliştirme projelerimiz için portfolyonuzu inceledik. Müsaitlik durumunuz nedir?',
-    isRead: true,
-    createdAt: new Date(Date.now() - 86400000).toISOString()
+const getUserMockMessages = (userId = 1) => {
+  if (!mockMessagesByUserId.has(userId)) {
+    const u = mockUsers.find(x => x.id === userId)
+    if (u) ensureMockUserState(u)
+    else mockMessagesByUserId.set(userId, [])
   }
-]
-let nextMockId = 3
+  return mockMessagesByUserId.get(userId) || []
+}
 
-// 1. POST /api/messages - Ziyaretçilerin mesaj göndermesi (Açık Uç Nokta, Spam Korumalı)
+const resolveTargetUserId = async (targetUsername, explicitUserId) => {
+  if (explicitUserId && !isNaN(parseInt(explicitUserId, 10))) {
+    return parseInt(explicitUserId, 10)
+  }
+  if (!targetUsername) return 1
+
+  const clean = String(targetUsername).replace(/^@/, '').trim().toLowerCase()
+  try {
+    const res = await query(`
+      SELECT COALESCE(p.user_id, u.id) AS "userId"
+      FROM users u
+      LEFT JOIN profiles p ON p.user_id = u.id
+      WHERE LOWER(u.username) = $1
+         OR LOWER(REPLACE(COALESCE(p.username, ''), '@', '')) = $1
+      LIMIT 1
+    `, [clean])
+    if (res.rows.length > 0 && res.rows[0].userId) {
+      return res.rows[0].userId
+    }
+  } catch (e) {}
+
+  const mock = findMockUserByIdentifier(clean)
+  return mock ? mock.id : 1
+}
+
+// 1. POST /api/messages - Ziyaretçilerin hedef profil sahibine mesaj göndermesi
 router.post('/', messagesLimiter, async (req, res) => {
   try {
-    const { name, email, message } = req.body
+    const { name, email, message, targetUsername, userId } = req.body
 
-    // Validasyon
     if (!name || typeof name !== 'string' || name.trim().length < 2) {
       return res.status(400).json({ error: 'Lütfen geçerli bir ad soyad girin (en az 2 karakter).' })
     }
@@ -58,18 +76,17 @@ router.post('/', messagesLimiter, async (req, res) => {
     const trimmedName = name.trim().slice(0, 100)
     const trimmedEmail = email.trim().toLowerCase().slice(0, 255)
     const trimmedMessage = message.trim().slice(0, 2000)
+    const recipientUserId = await resolveTargetUserId(targetUsername, userId)
 
     try {
       const result = await query(
-        `INSERT INTO messages (name, email, message, is_read)
-         VALUES ($1, $2, $3, false)
-         RETURNING id, name, email, message, is_read AS "isRead", created_at AS "createdAt"`,
-        [trimmedName, trimmedEmail, trimmedMessage]
+        `INSERT INTO messages (user_id, name, email, message, is_read)
+         VALUES ($1, $2, $3, $4, false)
+         RETURNING id, user_id AS "userId", name, email, message, is_read AS "isRead", created_at AS "createdAt"`,
+        [recipientUserId, trimmedName, trimmedEmail, trimmedMessage]
       )
 
       const created = result.rows[0]
-      console.log(`📬 [DB] Yeni iletişim mesajı alındı: ${trimmedName} (${trimmedEmail})`)
-
       return res.status(201).json({
         success: true,
         message: 'Mesajınız başarıyla iletildi! En kısa sürede geri dönüş yapılacaktır.',
@@ -77,16 +94,18 @@ router.post('/', messagesLimiter, async (req, res) => {
       })
     } catch (dbErr) {
       console.warn('⚠️ [DB Çevrimdışı] Mesaj belleğe kaydediliyor:', dbErr.message)
+      const list = getUserMockMessages(recipientUserId)
       const offlineMsg = {
-        id: nextMockId++,
+        id: allocateMockMessageId(),
+        userId: recipientUserId,
         name: trimmedName,
         email: trimmedEmail,
         message: trimmedMessage,
         isRead: false,
         createdAt: new Date().toISOString()
       }
-      mockMessages.unshift(offlineMsg)
-      console.log(`📬 [Memory] Yeni iletişim mesajı kaydedildi: ${trimmedName}`)
+      list.unshift(offlineMsg)
+      mockMessagesByUserId.set(recipientUserId, list)
 
       return res.status(201).json({
         success: true,
@@ -100,9 +119,10 @@ router.post('/', messagesLimiter, async (req, res) => {
   }
 })
 
-// 2. GET /api/messages - Admin mesaj listesi (Auth Korumalı)
+// 2. GET /api/messages - Oturumlu kullanıcının kendi gelen mesajları
 router.get('/', requireAuth, async (req, res) => {
   try {
+    const userId = req.user.id
     let list = []
     try {
       const result = await query(`
@@ -114,12 +134,13 @@ router.get('/', requireAuth, async (req, res) => {
           is_read AS "isRead", 
           created_at AS "createdAt"
         FROM messages
+        WHERE user_id = $1
         ORDER BY created_at DESC
-      `)
+      `, [userId])
       list = result.rows
     } catch (dbErr) {
       console.warn('⚠️ [DB Çevrimdışı] Bellek içi mesajlar dönülüyor:', dbErr.message)
-      list = mockMessages
+      list = getUserMockMessages(userId)
     }
 
     const unreadCount = list.filter(m => !m.isRead).length
@@ -136,9 +157,10 @@ router.get('/', requireAuth, async (req, res) => {
   }
 })
 
-// 3. PATCH /api/messages/:id/read - Okundu / Okunmadı Durumunu Güncelleme (Auth Korumalı)
+// 3. PATCH /api/messages/:id/read - Okundu / Okunmadı Durumunu Güncelleme (Yalnızca Sahibi)
 router.patch('/:id/read', requireAuth, async (req, res) => {
   try {
+    const userId = req.user.id
     const id = parseInt(req.params.id, 10)
     const isRead = req.body.isRead !== undefined ? Boolean(req.body.isRead) : true
 
@@ -146,9 +168,9 @@ router.patch('/:id/read', requireAuth, async (req, res) => {
       const result = await query(
         `UPDATE messages 
          SET is_read = $1 
-         WHERE id = $2 
+         WHERE id = $2 AND user_id = $3
          RETURNING id, name, email, message, is_read AS "isRead", created_at AS "createdAt"`,
-        [isRead, id]
+        [isRead, id, userId]
       )
 
       if (result.rows.length === 0) {
@@ -160,16 +182,13 @@ router.patch('/:id/read', requireAuth, async (req, res) => {
         data: result.rows[0]
       })
     } catch (dbErr) {
-      console.warn('⚠️ [DB Çevrimdışı] Bellek içi mesaj güncelleniyor:', dbErr.message)
-      const target = mockMessages.find(m => m.id === id)
+      const list = getUserMockMessages(userId)
+      const target = list.find(m => m.id === id)
       if (!target) {
         return res.status(404).json({ error: 'Mesaj bulunamadı' })
       }
       target.isRead = isRead
-      return res.json({
-        success: true,
-        data: target
-      })
+      return res.json({ success: true, data: target })
     }
   } catch (error) {
     console.error('Mesaj okundu durumu güncelleme hatası:', error)
@@ -177,13 +196,14 @@ router.patch('/:id/read', requireAuth, async (req, res) => {
   }
 })
 
-// 4. DELETE /api/messages/:id - Mesaj Silme (Auth Korumalı)
+// 4. DELETE /api/messages/:id - Mesaj Silme (Yalnızca Sahibi)
 router.delete('/:id', requireAuth, async (req, res) => {
   try {
+    const userId = req.user.id
     const id = parseInt(req.params.id, 10)
 
     try {
-      const result = await query('DELETE FROM messages WHERE id = $1 RETURNING id', [id])
+      const result = await query('DELETE FROM messages WHERE id = $1 AND user_id = $2 RETURNING id', [id, userId])
 
       if (result.rows.length === 0) {
         return res.status(404).json({ error: 'Silinecek mesaj bulunamadı' })
@@ -195,17 +215,13 @@ router.delete('/:id', requireAuth, async (req, res) => {
         id: result.rows[0].id
       })
     } catch (dbErr) {
-      console.warn('⚠️ [DB Çevrimdışı] Bellek içi mesaj siliniyor:', dbErr.message)
-      const index = mockMessages.findIndex(m => m.id === id)
+      const list = getUserMockMessages(userId)
+      const index = list.findIndex(m => m.id === id)
       if (index === -1) {
         return res.status(404).json({ error: 'Silinecek mesaj bulunamadı' })
       }
-      mockMessages.splice(index, 1)
-      return res.json({
-        success: true,
-        message: 'Mesaj başarıyla silindi',
-        id
-      })
+      list.splice(index, 1)
+      return res.json({ success: true, message: 'Mesaj başarıyla silindi', id })
     }
   } catch (error) {
     console.error('Mesaj silme hatası:', error)
@@ -213,23 +229,25 @@ router.delete('/:id', requireAuth, async (req, res) => {
   }
 })
 
-// 5. POST /api/messages/simulate - Hızlı Demo/Test İçin Örnek Lead Üretici (Auth Korumalı)
+// 5. POST /api/messages/simulate - Oturumlu Kullanıcı İçin Örnek Lead Üretici
 router.post('/simulate', requireAuth, async (req, res) => {
   try {
+    const userId = req.user.id
+    const recipientName = req.user.name || req.user.username
     const sampleLeads = [
-      { name: 'Mert Aksoy', email: 'mert@fintechlabs.co', message: 'Merhaba Tuba Hanım, yeni başlattığımız mobil cüzdan projesi için Vue 3 bilen bir yazılımcı arıyoruz. Görüşmek isteriz.' },
-      { name: 'Selin Demir', email: 'selin.demir@designagency.com', message: 'Tasarım sisteminiz ve renk uyumunuz mükemmel! Ekibimizle birlikte bir dashboard projesinde danışmanlık verebilir misiniz?' },
-      { name: 'Canberk Özkan', email: 'canberk@ventures.capital', message: 'Projenizi demo gününde inceleme fırsatı bulduk, full-stack link hub yaklaşımınız çok başarılı. Tebrikler!' }
+      { name: 'Mert Aksoy', email: 'mert@fintechlabs.co', message: `Merhaba ${recipientName}, yeni başlattığımız projede iş birliği yapmak isteriz.` },
+      { name: 'Selin Demir', email: 'selin.demir@designagency.com', message: 'Profil sayfanız ve içerikleriniz harika! Detaylı görüşmek için dönüş bekliyoruz.' },
+      { name: 'Canberk Özkan', email: 'canberk@ventures.capital', message: 'Bağlantılarınızı inceledik, yeni çalışmanız hakkında bilgi almak isteriz.' }
     ]
 
     const randomLead = sampleLeads[Math.floor(Math.random() * sampleLeads.length)]
 
     try {
       const result = await query(
-        `INSERT INTO messages (name, email, message, is_read)
-         VALUES ($1, $2, $3, false)
+        `INSERT INTO messages (user_id, name, email, message, is_read)
+         VALUES ($1, $2, $3, $4, false)
          RETURNING id, name, email, message, is_read AS "isRead", created_at AS "createdAt"`,
-        [randomLead.name, randomLead.email, randomLead.message]
+        [userId, randomLead.name, randomLead.email, randomLead.message]
       )
 
       return res.status(201).json({
@@ -238,16 +256,18 @@ router.post('/simulate', requireAuth, async (req, res) => {
         data: result.rows[0]
       })
     } catch (dbErr) {
-      console.warn('⚠️ [DB Çevrimdışı] Örnek mesaj belleğe ekleniyor:', dbErr.message)
+      const list = getUserMockMessages(userId)
       const offlineMsg = {
-        id: nextMockId++,
+        id: allocateMockMessageId(),
+        userId,
         name: randomLead.name,
         email: randomLead.email,
         message: randomLead.message,
         isRead: false,
         createdAt: new Date().toISOString()
       }
-      mockMessages.unshift(offlineMsg)
+      list.unshift(offlineMsg)
+      mockMessagesByUserId.set(userId, list)
       return res.status(201).json({
         success: true,
         message: 'Örnek mesaj simüle edildi',

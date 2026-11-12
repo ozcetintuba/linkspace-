@@ -1522,7 +1522,47 @@ export const useLinkStore = defineStore('links', () => {
     return headers
   }
 
-  // Backend API Senkronizasyonu
+  const getStoredAuthUser = () => {
+    try {
+      const raw = localStorage.getItem('linktree_auth_user')
+      return raw ? JSON.parse(raw) : null
+    } catch (e) {
+      return null
+    }
+  }
+
+  const resetWorkspace = () => {
+    profile.value = { ...DEFAULT_PROFILE, badges: [] }
+    links.value = []
+    messages.value = []
+    users.value = []
+    analytics.value = {
+      totalVisits: 0,
+      qrVisits: 0,
+      directVisits: 0,
+      qrMobile: 0,
+      qrDesktop: 0,
+      totalMobile: 0,
+      totalDesktop: 0,
+      qrMobilePercent: 0,
+      qrDesktopPercent: 0
+    }
+  }
+
+  const fetchDirectory = async () => {
+    try {
+      const res = await fetch(`${API_BASE}/profile/directory`)
+      if (res.ok) {
+        const json = await res.json()
+        if (json.success && Array.isArray(json.data)) {
+          return json.data
+        }
+      }
+    } catch (e) {}
+    return DEFAULT_USERS.filter(u => (u.status || 'active') === 'active')
+  }
+
+  // Backend API Senkronizasyonu (Oturumlu kullanıcıya özel veriler)
   const fetchFromApi = async (force = false) => {
     if (isViewingPublicProfile.value && !force) return
     try {
@@ -1531,41 +1571,42 @@ export const useLinkStore = defineStore('links', () => {
       if (isViewingPublicProfile.value && !force) return
 
       isBackendConnected.value = true
+      const headers = getAuthHeaders()
+      const currentAuthUser = getStoredAuthUser()
+      const hasToken = Boolean(localStorage.getItem('linktree_auth_token'))
 
-      // Paralel veri çekme
+      // Paralel veri çekme (Auth Header ile kullanıcıya özel)
       const [profileRes, linksRes, themeRes] = await Promise.all([
-        fetch(`${API_BASE}/profile`),
-        fetch(`${API_BASE}/links`),
-        fetch(`${API_BASE}/settings/theme`)
+        fetch(`${API_BASE}/profile`, { headers }),
+        fetch(`${API_BASE}/links`, { headers }),
+        fetch(`${API_BASE}/settings/theme`, { headers })
       ])
       if (isViewingPublicProfile.value && !force) return
 
       if (profileRes.ok) {
         const profileData = await profileRes.json()
+        const isPrimaryAdmin = profileData.userId === 1 || profileData.role === 'admin'
         profile.value = {
           ...DEFAULT_PROFILE,
-          ...profile.value,
           ...profileData,
-          avatarShape: profileData.avatarShape || profile.value?.avatarShape || 'circle',
-          avatarGlow: profileData.avatarGlow || profile.value?.avatarGlow || 'yellow',
-          statusText: profileData.statusText !== undefined ? profileData.statusText : (profile.value?.statusText || 'Yeni Projelere & Fırsatlara Açık'),
-          statusColor: profileData.statusColor || profile.value?.statusColor || 'emerald',
-          isVerified: profileData.isVerified !== undefined ? profileData.isVerified : (profile.value?.isVerified !== undefined ? profile.value.isVerified : true),
-          badges: Array.isArray(profileData.badges) && profileData.badges.length > 0
-            ? profileData.badges
-            : (profile.value?.badges || DEFAULT_PROFILE.badges),
+          avatarShape: profileData.avatarShape || 'circle',
+          avatarGlow: profileData.avatarGlow || 'yellow',
+          avatarMode: profileData.avatarMode || (isPrimaryAdmin ? 'switchable' : 'photo'),
+          statusText: profileData.statusText !== undefined ? profileData.statusText : 'Yeni Projelere & Fırsatlara Açık',
+          statusColor: profileData.statusColor || 'none',
+          isVerified: profileData.isVerified !== undefined ? profileData.isVerified : false,
+          badges: Array.isArray(profileData.badges) ? profileData.badges : [],
           socialLinks: {
-            ...DEFAULT_PROFILE.socialLinks,
             ...(profileData.socialLinks || {})
           },
-          groupByCategory: profileData.groupByCategory !== undefined ? Boolean(profileData.groupByCategory) : false,
+          groupByCategory: Boolean(profileData.groupByCategory),
           groupStyle: profileData.groupStyle || 'accordion',
           foldersDefaultExpanded: profileData.foldersDefaultExpanded !== undefined ? Boolean(profileData.foldersDefaultExpanded) : true,
-          showBadges: profileData.showBadges !== undefined ? Boolean(profileData.showBadges) : false,
-          layoutStyle: profileData.layoutStyle || profile.value?.layoutStyle || 'list',
+          showBadges: Boolean(profileData.showBadges),
+          layoutStyle: profileData.layoutStyle || 'list',
           mascotConfig: {
             ...DEFAULT_MASCOT_CONFIG,
-            ...(profileData.mascotConfig || profile.value?.mascotConfig || {})
+            ...(profileData.mascotConfig || {})
           }
         }
       }
@@ -1574,7 +1615,7 @@ export const useLinkStore = defineStore('links', () => {
         links.value = rawLinks.map(link => ({
           ...link,
           clicks: typeof link.clicks === 'number' ? link.clicks : 0,
-          customColor: (['emerald', 'purple'].includes(link.customColor) && (link.id <= 4 || link.id === 6 || link.id === 7)) ? 'default' : (link.customColor || 'default'),
+          customColor: link.customColor || 'default',
           icon: link.icon || 'auto',
           isScheduled: Boolean(link.isScheduled),
           scheduleStart: link.scheduleStart || null,
@@ -1605,7 +1646,7 @@ export const useLinkStore = defineStore('links', () => {
         if (themeData.theme) currentTheme.value = themeData.theme
       }
       try {
-        const analyticsRes = await fetch(`${API_BASE}/analytics`)
+        const analyticsRes = await fetch(`${API_BASE}/analytics`, { headers })
         if (analyticsRes.ok) {
           const analyticsData = await analyticsRes.json()
           analytics.value = analyticsData
@@ -1614,61 +1655,53 @@ export const useLinkStore = defineStore('links', () => {
         console.warn('Analitik verisi alınamadı:', anErr)
       }
 
-      // Mesajları çek (Admin yetkisi varsa)
-      try {
-        const msgRes = await fetch(`${API_BASE}/messages`, {
-          headers: getAuthHeaders()
-        })
-        if (msgRes.ok) {
-          const msgJson = await msgRes.json()
-          if (msgJson.success && Array.isArray(msgJson.data)) {
-            messages.value = msgJson.data
-            localStorage.setItem(STORAGE_KEYS.MESSAGES, JSON.stringify(msgJson.data))
+      // Mesajları çek (Oturumlu kullanıcı için kendi gelen kutusu)
+      if (hasToken) {
+        try {
+          const msgRes = await fetch(`${API_BASE}/messages`, { headers })
+          if (msgRes.ok) {
+            const msgJson = await msgRes.json()
+            if (msgJson.success && Array.isArray(msgJson.data)) {
+              messages.value = msgJson.data
+              localStorage.setItem(STORAGE_KEYS.MESSAGES, JSON.stringify(msgJson.data))
+            }
           }
-        }
-      } catch (msgErr) {
-        // Ziyaretçi modunda 401 normaldir
+        } catch (msgErr) {}
       }
 
-      // Kullanıcı listesi ve istatistiklerini çek (Admin)
-      try {
-        const userRes = await fetch(`${API_BASE}/users`, {
-          headers: getAuthHeaders()
-        })
-        if (userRes.ok) {
-          const userJson = await userRes.json()
-          if (userJson.success && Array.isArray(userJson.data)) {
-            users.value = userJson.data
-            localStorage.setItem(STORAGE_KEYS.USERS, JSON.stringify(userJson.data))
+      // Kullanıcı listesi ve istatistiklerini yalnızca Admin için çek
+      if (hasToken && currentAuthUser?.role === 'admin') {
+        try {
+          const userRes = await fetch(`${API_BASE}/users`, { headers })
+          if (userRes.ok) {
+            const userJson = await userRes.json()
+            if (userJson.success && Array.isArray(userJson.data)) {
+              users.value = userJson.data
+              localStorage.setItem(STORAGE_KEYS.USERS, JSON.stringify(userJson.data))
+            }
           }
-        }
-      } catch (e) {
-        console.warn('Kullanıcılar API senkronizasyonu atlandı:', e.message)
-      }
+        } catch (e) {}
 
-      try {
-        const statsRes = await fetch(`${API_BASE}/users/stats`, {
-          headers: getAuthHeaders()
-        })
-        if (statsRes.ok) {
-          const statsJson = await statsRes.json()
-          if (statsJson.success && statsJson.data) {
-            userStats.value = statsJson.data
+        try {
+          const statsRes = await fetch(`${API_BASE}/users/stats`, { headers })
+          if (statsRes.ok) {
+            const statsJson = await statsRes.json()
+            if (statsJson.success && statsJson.data) {
+              userStats.value = statsJson.data
+            }
           }
-        }
-      } catch (e) {}
+        } catch (e) {}
+      }
 
       // SEO ayarlarını çek
       try {
-        const seoRes = await fetch(`${API_BASE}/settings/seo`)
+        const seoRes = await fetch(`${API_BASE}/settings/seo`, { headers })
         if (seoRes.ok) {
           const seoData = await seoRes.json()
           seoSettings.value = { ...DEFAULT_SEO, ...seoData }
           localStorage.setItem(STORAGE_KEYS.SEO, JSON.stringify(seoSettings.value))
         }
-      } catch (seoErr) {
-        console.warn('SEO ayarları alınamadı:', seoErr)
-      }
+      } catch (seoErr) {}
 
       console.log('✅ PostgreSQL Backend API ile senkronize olundu.')
     } catch (err) {
@@ -1774,9 +1807,23 @@ export const useLinkStore = defineStore('links', () => {
     }
     
     try {
-      const res = await fetch(`${API_BASE}/profile/${encodeURIComponent(cleanUser)}`)
+      const res = await fetch(`${API_BASE}/profile/${encodeURIComponent(cleanUser)}`, {
+        headers: getAuthHeaders()
+      })
+      if (res.status === 403) {
+        const errData = await res.json().catch(() => ({}))
+        return {
+          success: false,
+          restricted: true,
+          status: errData.status || 'pending',
+          error: errData.error || 'Bu profil şu anda görüntülenemiyor.'
+        }
+      }
       if (res.ok) {
         const data = await res.json()
+        if (data.theme) {
+          currentTheme.value = data.theme
+        }
         if (data.profile) {
           profile.value = {
             ...DEFAULT_PROFILE,
@@ -1785,11 +1832,10 @@ export const useLinkStore = defineStore('links', () => {
             avatarShape: data.profile.avatarShape || 'circle',
             avatarGlow: data.profile.avatarGlow || 'yellow',
             statusText: data.profile.statusText !== undefined ? data.profile.statusText : 'Yeni Projelere & Fırsatlara Açık',
-            statusColor: data.profile.statusColor || 'emerald',
-            isVerified: data.profile.isVerified !== undefined ? data.profile.isVerified : true,
-            badges: Array.isArray(data.profile.badges) ? data.profile.badges : DEFAULT_PROFILE.badges,
+            statusColor: data.profile.statusColor || 'none',
+            isVerified: data.profile.isVerified !== undefined ? data.profile.isVerified : false,
+            badges: Array.isArray(data.profile.badges) ? data.profile.badges : [],
             socialLinks: {
-              ...DEFAULT_PROFILE.socialLinks,
               ...(data.profile.socialLinks || {})
             },
             groupByCategory: data.profile.groupByCategory !== undefined ? Boolean(data.profile.groupByCategory) : false,
@@ -1809,7 +1855,7 @@ export const useLinkStore = defineStore('links', () => {
           links.value = data.links.map(l => ({
             ...l,
             clicks: typeof l.clicks === 'number' ? l.clicks : 0,
-            customColor: (['emerald', 'purple'].includes(l.customColor) && (l.id <= 4 || l.id === 6 || l.id === 7)) ? 'default' : (l.customColor || 'default'),
+            customColor: l.customColor || 'default',
             icon: l.icon || 'auto',
             isActive: l.isActive !== undefined ? l.isActive : true,
             isScheduled: Boolean(l.isScheduled),
@@ -1836,7 +1882,7 @@ export const useLinkStore = defineStore('links', () => {
             cardBadge: l.cardBadge || ''
           }))
         }
-        return { success: true, profile: profile.value, links: links.value }
+        return { success: true, profile: profile.value, links: links.value, theme: data.theme }
       }
     } catch (err) {
       console.warn('API üzerinden profil çekilemedi, yerel veri kontrol ediliyor:', err)
@@ -1844,6 +1890,14 @@ export const useLinkStore = defineStore('links', () => {
 
     // Backend yanıt vermediyse veya çevrimdışıysa bilinen kullanıcı havuzunu tara
     if (matchedLocalUser) {
+      if (matchedLocalUser.status === 'pending' || matchedLocalUser.status === 'suspended') {
+        return {
+          success: false,
+          restricted: true,
+          status: matchedLocalUser.status,
+          error: matchedLocalUser.status === 'pending' ? 'Bu profil henüz yönetici onayı bekliyor.' : 'Bu hesap geçici olarak askıya alınmıştır.'
+        }
+      }
       const localData = buildLocalPublicUserData(matchedLocalUser, cleanUser)
       profile.value = localData.userProfile
       links.value = localData.userLinks
@@ -1858,12 +1912,13 @@ export const useLinkStore = defineStore('links', () => {
     return { success: false, notFound: true, message: `'${targetUsername}' profili bulunamadı.` }
   }
 
-  // İlk yüklemede yalnızca ana/admin/login rotasında API senkronizasyonu başlat
+  // İlk yüklemede yalnızca ana/admin/dashboard/login rotasında API senkronizasyonu başlat
   const initialPathname = typeof window !== 'undefined' ? window.location.pathname.replace(/\/+$/, '') : ''
   const isDirectPublicUserRoute = Boolean(
     initialPathname &&
     initialPathname !== '/' &&
     initialPathname !== '/admin' &&
+    initialPathname !== '/dashboard' &&
     initialPathname !== '/login'
   )
   if (isDirectPublicUserRoute) {
@@ -1921,6 +1976,7 @@ export const useLinkStore = defineStore('links', () => {
   watch(
     currentTheme,
     (newVal) => {
+      if (isViewingPublicProfile.value) return
       try {
         localStorage.setItem(STORAGE_KEYS.THEME, JSON.stringify(newVal))
       } catch (e) {
@@ -2343,7 +2399,9 @@ export const useLinkStore = defineStore('links', () => {
   // Ziyaret & QR Cihaz Analitiği Aksiyonları
   const fetchAnalytics = async () => {
     try {
-      const res = await fetch(`${API_BASE}/analytics`)
+      const res = await fetch(`${API_BASE}/analytics`, {
+        headers: getAuthHeaders()
+      })
       if (res.ok) {
         const data = await res.json()
         analytics.value = data
@@ -2353,34 +2411,36 @@ export const useLinkStore = defineStore('links', () => {
     }
   }
 
-  const trackVisit = async ({ device = 'desktop', source = 'direct', os = '', model = '', browser = '' }) => {
+  const trackVisit = async ({ device = 'desktop', source = 'direct', os = '', model = '', browser = '', username = null, userId = null } = {}) => {
     const validDevice = device === 'mobile' ? 'mobile' : 'desktop'
     const validSource = source === 'qr' ? 'qr' : 'direct'
 
-    // Yerel store'u güncelle
-    const cur = analytics.value || { ...DEFAULT_ANALYTICS }
-    cur.totalVisits = (cur.totalVisits || 0) + 1
-    if (validDevice === 'mobile') {
-      cur.totalMobile = (cur.totalMobile || 0) + 1
-    } else {
-      cur.totalDesktop = (cur.totalDesktop || 0) + 1
-    }
-
-    if (validSource === 'qr') {
-      cur.qrVisits = (cur.qrVisits || 0) + 1
+    // Yerel store'u yalnızca kendi panelimizde günceller (public profil ziyaretinde kendi istatistiğimiz bozulmasın)
+    if (!isViewingPublicProfile.value) {
+      const cur = analytics.value || { ...DEFAULT_ANALYTICS }
+      cur.totalVisits = (cur.totalVisits || 0) + 1
       if (validDevice === 'mobile') {
-        cur.qrMobile = (cur.qrMobile || 0) + 1
+        cur.totalMobile = (cur.totalMobile || 0) + 1
       } else {
-        cur.qrDesktop = (cur.qrDesktop || 0) + 1
+        cur.totalDesktop = (cur.totalDesktop || 0) + 1
       }
-    } else {
-      cur.directVisits = (cur.directVisits || 0) + 1
-    }
 
-    const qrTotal = cur.qrVisits || 0
-    cur.qrMobilePercent = qrTotal > 0 ? Math.round(((cur.qrMobile || 0) / qrTotal) * 100) : 0
-    cur.qrDesktopPercent = qrTotal > 0 ? Math.round(((cur.qrDesktop || 0) / qrTotal) * 100) : 0
-    analytics.value = { ...cur }
+      if (validSource === 'qr') {
+        cur.qrVisits = (cur.qrVisits || 0) + 1
+        if (validDevice === 'mobile') {
+          cur.qrMobile = (cur.qrMobile || 0) + 1
+        } else {
+          cur.qrDesktop = (cur.qrDesktop || 0) + 1
+        }
+      } else {
+        cur.directVisits = (cur.directVisits || 0) + 1
+      }
+
+      const qrTotal = cur.qrVisits || 0
+      cur.qrMobilePercent = qrTotal > 0 ? Math.round(((cur.qrMobile || 0) / qrTotal) * 100) : 0
+      cur.qrDesktopPercent = qrTotal > 0 ? Math.round(((cur.qrDesktop || 0) / qrTotal) * 100) : 0
+      analytics.value = { ...cur }
+    }
 
     // Backend varsa asenkron kaydet
     if (isBackendConnected.value) {
@@ -2393,7 +2453,9 @@ export const useLinkStore = defineStore('links', () => {
             source: validSource,
             os,
             model,
-            browser
+            browser,
+            username: username || profile.value?.username,
+            userId: userId || profile.value?.userId
           })
         })
       } catch (e) {
@@ -2451,11 +2513,13 @@ export const useLinkStore = defineStore('links', () => {
     }
   }
 
-  const sendMessage = async ({ name, email, message }) => {
+  const sendMessage = async ({ name, email, message, targetUsername = null, userId = null }) => {
     const payload = {
       name: (name || '').trim(),
       email: (email || '').trim().toLowerCase(),
-      message: (message || '').trim()
+      message: (message || '').trim(),
+      targetUsername: targetUsername || profile.value?.username,
+      userId: userId || profile.value?.userId
     }
 
     if (isBackendConnected.value) {
@@ -2467,7 +2531,7 @@ export const useLinkStore = defineStore('links', () => {
         })
         const resData = await res.json()
         if (res.ok && resData.success) {
-          if (resData.data) {
+          if (resData.data && !isViewingPublicProfile.value) {
             messages.value.unshift(resData.data)
             localStorage.setItem(STORAGE_KEYS.MESSAGES, JSON.stringify(messages.value))
           }
@@ -2748,11 +2812,35 @@ export const useLinkStore = defineStore('links', () => {
     return { success: true, isVerified: user.isVerified }
   }
 
+  const approveUser = async (userId) => {
+    const user = users.value.find(u => u.id === userId)
+    if (user) {
+      user.status = 'active'
+      try {
+        localStorage.setItem(STORAGE_KEYS.USERS, JSON.stringify(users.value))
+      } catch (e) {}
+    }
+
+    if (isBackendConnected.value) {
+      try {
+        const res = await fetch(`${API_BASE}/users/${userId}/approve`, {
+          method: 'PUT',
+          headers: getAuthHeaders()
+        })
+        const data = await res.json()
+        if (res.ok && data.success) {
+          return { success: true, message: data.message, status: 'active' }
+        }
+      } catch (e) {}
+    }
+    return { success: true, message: 'Üyelik onaylandı ve aktif edildi!', status: 'active' }
+  }
+
   const toggleUserStatus = async (userId) => {
     if (userId === 1) return { success: false, error: 'Ana yönetici hesabı askıya alınamaz.' }
     const user = users.value.find(u => u.id === userId)
     if (!user) return { success: false }
-    const nextStatus = user.status === 'suspended' ? 'active' : 'suspended'
+    const nextStatus = user.status === 'suspended' || user.status === 'pending' ? 'active' : 'suspended'
     user.status = nextStatus
     try {
       localStorage.setItem(STORAGE_KEYS.USERS, JSON.stringify(users.value))
@@ -2781,7 +2869,7 @@ export const useLinkStore = defineStore('links', () => {
         if (action === 'verify') u.isVerified = true
         if (action === 'unverify') u.isVerified = false
         if (action === 'suspend' && id !== 1) u.status = 'suspended'
-        if (action === 'activate') u.status = 'active'
+        if (action === 'activate' || action === 'approve') u.status = 'active'
       })
     }
 
@@ -3464,6 +3552,8 @@ export const useLinkStore = defineStore('links', () => {
     BADGE_COLOR_STYLES,
     isBackendConnected,
     fetchFromApi,
+    resetWorkspace,
+    fetchDirectory,
     fetchPublicProfile,
     isViewingPublicProfile,
     clearPublicProfile,
@@ -3505,6 +3595,7 @@ export const useLinkStore = defineStore('links', () => {
     deleteUser,
     updateUser,
     toggleUserVerification,
+    approveUser,
     toggleUserStatus,
     batchUpdateUsers,
     exportUsersAsCsv,

@@ -42,8 +42,8 @@ class CacheService {
    */
   middleware(ttlSeconds = 60, keyGenerator = null) {
     return (req, res, next) => {
-      // Yalnızca GET istekleri önbelleğe alınır
-      if (req.method !== 'GET') {
+      // Yalnızca anonim GET istekleri önbelleğe alınır (Oturumlu kullanıcı verileri sızdırılmaz)
+      if (req.method !== 'GET' || req.headers.authorization) {
         return next()
       }
 

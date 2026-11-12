@@ -1,108 +1,58 @@
 import { Router } from 'express'
 import bcrypt from 'bcryptjs'
 import { query } from '../db.js'
-import { requireAuth } from '../middleware/authMiddleware.js'
+import { requireAuth, requireAdmin } from '../middleware/authMiddleware.js'
+import { invalidateCache } from '../middleware/cacheService.js'
+import {
+  RESERVED_USERNAMES,
+  mockUsers,
+  mockProfilesByUserId,
+  mockLinksByUserId,
+  mockSettingsByUserId,
+  mockMessagesByUserId,
+  allocateMockUserId,
+  ensureMockUserState,
+  formatUserSummary
+} from '../mockState.js'
+
+export { mockUsers }
 
 const router = Router()
 
-// Bellek içi yedek kullanıcılar listesi (Veritabanı çevrimdışı veya demo modunda kesintisiz çalışması için)
-export const mockUsers = [
-  {
-    id: 1,
-    username: 'tubagul',
-    name: 'Tuba Gül',
-    email: 'admin@linktree.local',
-    role: 'admin',
-    status: 'active',
-    avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=300&auto=format&fit=crop&q=80',
-    bio: 'Full-Stack Web Geliştirici & UI/UX Meraklısı 🚀\nModern web teknolojileri ve açık kaynak projeler üretiyorum.',
-    isVerified: true,
-    linkCount: 4,
-    profileUrl: '/@tubagul',
-    layoutStyle: 'bento',
-    createdAt: '2026-10-15T10:00:00.000Z',
-    lastSeen: '2026-11-10T11:45:00.000Z'
-  },
-  {
-    id: 2,
-    username: 'mert.dev',
-    name: 'Mert Yılmaz',
-    email: 'mert.yilmaz@devmail.io',
-    role: 'user',
-    status: 'active',
-    avatar: 'https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?w=300&auto=format&fit=crop&q=80',
-    bio: 'Senior Backend Engineer • Node.js & Go • Açık Kaynak Geliştirici 💻',
-    isVerified: true,
-    linkCount: 3,
-    profileUrl: '/@mert.dev',
-    layoutStyle: 'list',
-    createdAt: '2026-10-22T14:20:00.000Z',
-    lastSeen: '2026-11-10T09:30:00.000Z'
-  },
-  {
-    id: 3,
-    username: 'selin.design',
-    name: 'Selin Kaya',
-    email: 'selin.design@creatives.co',
-    role: 'user',
-    status: 'active',
-    avatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=300&auto=format&fit=crop&q=80',
-    bio: 'Product & Brand Designer • Design Systems • Minimalist UI/UX 🎨',
-    isVerified: true,
-    linkCount: 5,
-    profileUrl: '/@selin.design',
-    layoutStyle: 'bento',
-    createdAt: '2026-10-28T09:15:00.000Z',
-    lastSeen: '2026-11-09T17:10:00.000Z'
-  },
-  {
-    id: 4,
-    username: 'can.tech',
-    name: 'Can Demir',
-    email: 'can.demir@cloudtech.com',
-    role: 'user',
-    status: 'active',
-    avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=300&auto=format&fit=crop&q=80',
-    bio: 'Cloud Architect & DevOps • AWS Certified • Kubernetes & CI/CD ☁️',
-    isVerified: false,
-    linkCount: 2,
-    profileUrl: '/@can.tech',
-    layoutStyle: 'list',
-    createdAt: '2026-11-04T16:45:00.000Z',
-    lastSeen: '2026-11-08T12:00:00.000Z'
-  }
-]
-
-// 1. GET /api/users (Tüm kayıtlı kullanıcıları ve profil özetlerini getir)
-router.get('/', requireAuth, async (req, res) => {
+// 1. GET /api/users (Tüm kayıtlı kullanıcıları ve profil özetlerini getir - Yalnızca Admin)
+router.get('/', requireAuth, requireAdmin, async (req, res) => {
   try {
     try {
       const result = await query(`
         SELECT 
           u.id, 
-          u.username, 
+          COALESCE(NULLIF(REPLACE(p.username, '@', ''), ''), u.username) AS "username",
+          u.username AS "loginUsername",
           u.email, 
-          u.name, 
+          COALESCE(p.name, u.name) AS "name", 
           COALESCE(u.role, 'user') AS "role",
+          COALESCE(u.status, 'active') AS "status",
           u.created_at AS "createdAt",
           COALESCE(p.avatar, '') AS "avatar",
           COALESCE(p.bio, '') AS "bio",
-          COALESCE(p.is_verified, true) AS "isVerified",
+          COALESCE(p.is_verified, false) AS "isVerified",
           COALESCE(p.layout_style, 'list') AS "layoutStyle",
           (
             SELECT COUNT(*)::int 
             FROM links l 
-            WHERE l.is_active = true
+            WHERE l.user_id = u.id AND l.is_active = true
           ) AS "linkCount"
         FROM users u
-        LEFT JOIN profiles p ON LOWER(REPLACE(p.username, '@', '')) = LOWER(u.username)
-        ORDER BY u.created_at DESC
+        LEFT JOIN profiles p ON p.user_id = u.id
+        ORDER BY 
+          CASE WHEN COALESCE(u.status, 'active') = 'pending' THEN 0 ELSE 1 END,
+          u.created_at DESC
       `)
 
       if (result.rows.length > 0) {
         const enrichedUsers = result.rows.map(user => ({
           ...user,
-          profileUrl: `/@${user.username.replace(/^@/, '')}`
+          profileUrl: `/@${(user.username || '').replace(/^@/, '')}`
         }))
         return res.json({
           success: true,
@@ -114,11 +64,18 @@ router.get('/', requireAuth, async (req, res) => {
       console.warn('⚠️ [DB Çevrimdışı] Kullanıcılar bellek listesinden getiriliyor:', dbError.message)
     }
 
-    // Veritabanı sorgusu boşsa veya çevrimdışıysa mockUsers listesini dön
+    const fallbackList = mockUsers
+      .map(formatUserSummary)
+      .sort((a, b) => {
+        if (a.status === 'pending' && b.status !== 'pending') return -1
+        if (b.status === 'pending' && a.status !== 'pending') return 1
+        return new Date(b.createdAt) - new Date(a.createdAt)
+      })
+
     return res.json({
       success: true,
-      count: mockUsers.length,
-      data: mockUsers
+      count: fallbackList.length,
+      data: fallbackList
     })
   } catch (error) {
     console.error('Kullanıcı listesi hatası:', error)
@@ -126,11 +83,13 @@ router.get('/', requireAuth, async (req, res) => {
   }
 })
 
-// 2. GET /api/users/stats (Yönetici İstatistik KPI Özeti)
-router.get('/stats', requireAuth, async (req, res) => {
+// 2. GET /api/users/stats (Yönetici İstatistik KPI Özeti - Yalnızca Admin)
+router.get('/stats', requireAuth, requireAdmin, async (req, res) => {
   try {
     try {
       const usersRes = await query('SELECT COUNT(*)::int AS count FROM users')
+      const pendingRes = await query("SELECT COUNT(*)::int AS count FROM users WHERE status = 'pending'")
+      const suspendedRes = await query("SELECT COUNT(*)::int AS count FROM users WHERE status = 'suspended'")
       const profilesRes = await query('SELECT COUNT(*)::int AS count FROM profiles')
       const linksRes = await query('SELECT COUNT(*)::int AS count FROM links WHERE is_active = true')
       const recentUsersRes = await query(`
@@ -142,26 +101,28 @@ router.get('/stats', requireAuth, async (req, res) => {
       return res.json({
         success: true,
         data: {
-          totalUsers: usersRes.rows[0]?.count || mockUsers.length,
-          activeProfiles: profilesRes.rows[0]?.count || mockUsers.length,
-          totalLinks: linksRes.rows[0]?.count || 14,
-          newUsersThisMonth: recentUsersRes.rows[0]?.count || 2
+          totalUsers: usersRes.rows[0]?.count || 0,
+          pendingUsers: pendingRes.rows[0]?.count || 0,
+          suspendedUsers: suspendedRes.rows[0]?.count || 0,
+          activeProfiles: profilesRes.rows[0]?.count || 0,
+          totalLinks: linksRes.rows[0]?.count || 0,
+          newUsersThisMonth: recentUsersRes.rows[0]?.count || 0
         }
       })
     } catch (dbError) {
       console.warn('⚠️ [DB Çevrimdışı] Kullanıcı istatistikleri bellekten hesaplanıyor')
     }
 
-    const totalUsers = mockUsers.length
-    const totalLinks = mockUsers.reduce((sum, u) => sum + (u.linkCount || 0), 0)
-
+    const summary = mockUsers.map(formatUserSummary)
     res.json({
       success: true,
       data: {
-        totalUsers,
-        activeProfiles: totalUsers,
-        totalLinks,
-        newUsersThisMonth: 2
+        totalUsers: summary.length,
+        pendingUsers: summary.filter(u => u.status === 'pending').length,
+        suspendedUsers: summary.filter(u => u.status === 'suspended').length,
+        activeProfiles: summary.filter(u => u.status === 'active').length,
+        totalLinks: summary.reduce((sum, u) => sum + (u.linkCount || 0), 0),
+        newUsersThisMonth: summary.length
       }
     })
   } catch (error) {
@@ -170,10 +131,10 @@ router.get('/stats', requireAuth, async (req, res) => {
   }
 })
 
-// 3. POST /api/users (Yönetici Paneli Üzerinden Yeni Kullanıcı Hesabı Tanımlama)
-router.post('/', requireAuth, async (req, res) => {
+// 3. POST /api/users (Yönetici Panelinden Doğrudan Kullanıcı Tanımlama - Yalnızca Admin)
+router.post('/', requireAuth, requireAdmin, async (req, res) => {
   try {
-    const { name, username, email, password, role = 'user', bio = '' } = req.body
+    const { name, username, email, password, role = 'user', status = 'active', bio = '' } = req.body
 
     if (!name || !username || !email) {
       return res.status(400).json({ error: 'İsim, kullanıcı adı ve e-posta zorunludur' })
@@ -183,14 +144,20 @@ router.post('/', requireAuth, async (req, res) => {
     const trimmedEmail = email.trim().toLowerCase()
     const trimmedName = name.trim()
     const rawPassword = password || '123456'
+    const finalStatus = ['active', 'pending', 'suspended'].includes(status) ? status : 'active'
 
-    // Kullanıcı adı geçerlilik kontrolü
     if (trimmedUsername.length < 3 || trimmedUsername.length > 30) {
       return res.status(400).json({ error: 'Kullanıcı adı 3 ile 30 karakter arasında olmalıdır' })
     }
 
+    if (RESERVED_USERNAMES.has(trimmedUsername)) {
+      return res.status(400).json({ error: 'Bu kullanıcı adı sistem tarafından ayrılmıştır' })
+    }
+
+    const passwordHash = bcrypt.hashSync(rawPassword, 10)
+    const defaultAvatar = `https://api.dicebear.com/7.x/notionists/svg?seed=${trimmedUsername}`
+
     try {
-      // Benzersiz kullanıcı adı kontrolü
       const existingUser = await query(
         'SELECT id FROM users WHERE LOWER(username) = $1 OR LOWER(email) = $2',
         [trimmedUsername, trimmedEmail]
@@ -200,70 +167,81 @@ router.post('/', requireAuth, async (req, res) => {
         return res.status(409).json({ error: 'Bu kullanıcı adı veya e-posta adresi zaten kullanımda' })
       }
 
-      const passwordHash = bcrypt.hashSync(rawPassword, 10)
-
       const userResult = await query(`
-        INSERT INTO users (username, email, password_hash, name, role)
-        VALUES ($1, $2, $3, $4, $5)
-        RETURNING id, username, email, name, role, created_at AS "createdAt"
-      `, [trimmedUsername, trimmedEmail, passwordHash, trimmedName, role])
+        INSERT INTO users (username, email, password_hash, name, role, status)
+        VALUES ($1, $2, $3, $4, $5, $6)
+        RETURNING id, username, email, name, role, status, created_at AS "createdAt"
+      `, [trimmedUsername, trimmedEmail, passwordHash, trimmedName, role, finalStatus])
 
       const newUser = userResult.rows[0]
 
-      // Otomatik profil kaydı oluştur
-      const defaultAvatar = `https://api.dicebear.com/7.x/notionists/svg?seed=${trimmedUsername}`
       await query(`
-        INSERT INTO profiles (name, username, bio, avatar, social_links)
-        VALUES ($1, $2, $3, $4, '{}'::jsonb)
-        ON CONFLICT DO NOTHING
-      `, [trimmedName, `@${trimmedUsername}`, bio || `${trimmedName} kişisel profil sayfası ✨`, defaultAvatar])
+        INSERT INTO profiles (user_id, name, username, bio, avatar, avatar_mode, is_verified, social_links)
+        VALUES ($1, $2, $3, $4, $5, 'photo', false, '{}'::jsonb)
+      `, [newUser.id, trimmedName, `@${trimmedUsername}`, bio || `${trimmedName} kişisel profil sayfası ✨`, defaultAvatar])
 
-      const createdObj = {
-        ...newUser,
-        avatar: defaultAvatar,
-        bio: bio || `${trimmedName} kişisel profil sayfası ✨`,
-        isVerified: false,
-        linkCount: 0,
-        profileUrl: `/@${trimmedUsername}`,
-        layoutStyle: 'list'
-      }
+      await query(`
+        INSERT INTO settings (user_id, key, value)
+        VALUES ($1, 'theme', 'midnight')
+        ON CONFLICT (user_id, key) DO NOTHING
+      `, [newUser.id])
 
-      mockUsers.unshift(createdObj)
+      await query(`
+        INSERT INTO links (id, user_id, title, url, is_active, icon, custom_color, clicks, order_index, grid_span)
+        VALUES ($1, $2, $3, $4, true, 'globe', 'default', 0, 0, 'full')
+      `, [Date.now(), newUser.id, `${trimmedName} Web Sitesi`, 'https://github.com'])
+
+      invalidateCache('profile')
+
       return res.status(201).json({
         success: true,
-        message: 'Kullanıcı başarıyla oluşturuldu',
-        data: createdObj
+        message: 'Kullanıcı hesabı oluşturuldu',
+        data: {
+          ...newUser,
+          avatar: defaultAvatar,
+          bio: bio || `${trimmedName} kişisel profil sayfası ✨`,
+          isVerified: false,
+          linkCount: 1,
+          profileUrl: `/@${trimmedUsername}`,
+          layoutStyle: 'list'
+        }
       })
     } catch (dbError) {
       console.warn('⚠️ [DB Çevrimdışı] Kullanıcı belleğe ekleniyor:', dbError.message)
     }
 
-    // Mock kayıt
-    const existsInMock = mockUsers.some(u => u.username.toLowerCase() === trimmedUsername || u.email.toLowerCase() === trimmedEmail)
+    const existsInMock = mockUsers.some(u =>
+      u.username.toLowerCase() === trimmedUsername ||
+      (u.profileUsername && u.profileUsername.toLowerCase() === trimmedUsername) ||
+      u.email.toLowerCase() === trimmedEmail
+    )
     if (existsInMock) {
       return res.status(409).json({ error: 'Bu kullanıcı adı veya e-posta zaten kullanımda' })
     }
 
     const fallbackUser = {
-      id: Date.now(),
+      id: allocateMockUserId(),
       username: trimmedUsername,
+      profileUsername: trimmedUsername,
       name: trimmedName,
       email: trimmedEmail,
+      passwordHash,
       role,
-      avatar: `https://api.dicebear.com/7.x/notionists/svg?seed=${trimmedUsername}`,
+      status: finalStatus,
+      avatar: defaultAvatar,
       bio: bio || `${trimmedName} kişisel bağlantıları ✨`,
       isVerified: false,
-      linkCount: 0,
-      profileUrl: `/@${trimmedUsername}`,
       layoutStyle: 'list',
       createdAt: new Date().toISOString()
     }
-
+    ensureMockUserState(fallbackUser)
     mockUsers.unshift(fallbackUser)
+    invalidateCache('profile')
+
     res.status(201).json({
       success: true,
-      message: 'Kullanıcı başarıyla oluşturuldu (Bellek Modu)',
-      data: fallbackUser
+      message: 'Kullanıcı hesabı oluşturuldu',
+      data: formatUserSummary(fallbackUser)
     })
   } catch (error) {
     console.error('Kullanıcı oluşturma hatası:', error)
@@ -271,45 +249,86 @@ router.post('/', requireAuth, async (req, res) => {
   }
 })
 
-// 4. DELETE /api/users/:id (Kullanıcı Silme)
-router.delete('/:id', requireAuth, async (req, res) => {
+// 4. PUT /api/users/:id/approve (Onay Bekleyen Üyeyi Onayla - Yalnızca Admin)
+router.put('/:id/approve', requireAuth, requireAdmin, async (req, res) => {
   try {
     const targetId = parseInt(req.params.id, 10)
-
     if (isNaN(targetId)) {
       return res.status(400).json({ error: 'Geçersiz kullanıcı ID formatı' })
     }
 
-    // Ana yönetici hesabını koruma
+    try {
+      const result = await query(`
+        UPDATE users 
+        SET status = 'active', updated_at = CURRENT_TIMESTAMP 
+        WHERE id = $1 
+        RETURNING id, username, email, name, role, status
+      `, [targetId])
+
+      if (result.rows.length > 0) {
+        invalidateCache('profile')
+        const mockUser = mockUsers.find(u => u.id === targetId)
+        if (mockUser) mockUser.status = 'active'
+        return res.json({
+          success: true,
+          message: `${result.rows[0].name} üyeliği onaylandı ve aktif edildi!`,
+          data: result.rows[0]
+        })
+      }
+    } catch (dbErr) {
+      console.warn('⚠️ [DB Çevrimdışı] Üye bellekte onaylanıyor:', dbErr.message)
+    }
+
+    const mockUser = mockUsers.find(u => u.id === targetId)
+    if (!mockUser) {
+      return res.status(404).json({ error: 'Kullanıcı bulunamadı' })
+    }
+    mockUser.status = 'active'
+    invalidateCache('profile')
+    return res.json({
+      success: true,
+      message: `${mockUser.name} üyeliği onaylandı ve aktif edildi!`,
+      data: formatUserSummary(mockUser)
+    })
+  } catch (error) {
+    console.error('Üye onaylama hatası:', error)
+    res.status(500).json({ error: 'Üye onaylanamadı' })
+  }
+})
+
+// 5. DELETE /api/users/:id (Kullanıcı Silme / Başvuru Reddetme - Yalnızca Admin)
+router.delete('/:id', requireAuth, requireAdmin, async (req, res) => {
+  try {
+    const targetId = parseInt(req.params.id, 10)
+    if (isNaN(targetId)) {
+      return res.status(400).json({ error: 'Geçersiz kullanıcı ID formatı' })
+    }
+
     if (targetId === 1) {
       return res.status(403).json({ error: 'Ana yönetici hesabı sistem güvenliği için silinemez' })
     }
 
     try {
       const userRes = await query('SELECT username FROM users WHERE id = $1', [targetId])
-      if (userRes.rows.length === 0) {
-        // Mock'ta var mı kontrol et
+      if (userRes.rows.length > 0) {
+        await query('DELETE FROM click_events WHERE user_id = $1', [targetId])
+        await query('DELETE FROM visit_stats WHERE user_id = $1', [targetId])
+        await query('DELETE FROM messages WHERE user_id = $1', [targetId])
+        await query('DELETE FROM settings WHERE user_id = $1', [targetId])
+        await query('DELETE FROM links WHERE user_id = $1', [targetId])
+        await query('DELETE FROM profiles WHERE user_id = $1', [targetId])
+        await query('DELETE FROM users WHERE id = $1', [targetId])
+
         const mockIdx = mockUsers.findIndex(u => u.id === targetId)
-        if (mockIdx !== -1) {
-          mockUsers.splice(mockIdx, 1)
-          return res.json({ success: true, message: 'Kullanıcı hesabı başarıyla silindi' })
-        }
-        return res.status(404).json({ error: 'Kullanıcı bulunamadı' })
+        if (mockIdx !== -1) mockUsers.splice(mockIdx, 1)
+        mockProfilesByUserId.delete(targetId)
+        mockLinksByUserId.delete(targetId)
+        mockSettingsByUserId.delete(targetId)
+        mockMessagesByUserId.delete(targetId)
+
+        invalidateCache('profile')
+        return res.json({ success: true, message: 'Kullanıcı ve tüm verileri silindi' })
       }
-
-      const username = userRes.rows[0].username
-
-      // Kullanıcıyı ve profilini sil
-      await query('DELETE FROM users WHERE id = $1', [targetId])
-      await query('DELETE FROM profiles WHERE LOWER(REPLACE(username, \'@\', \'\')) = $1', [username.toLowerCase()])
-
-      // Mock listesinden de çıkar
-      const mockIdx = mockUsers.findIndex(u => u.id === targetId)
-      if (mockIdx !== -1) {
-        mockUsers.splice(mockIdx, 1)
-      }
-
-      return res.json({ success: true, message: 'Kullanıcı ve profili başarıyla silindi' })
     } catch (dbError) {
       console.warn('⚠️ [DB Çevrimdışı] Bellekten kullanıcı siliniyor:', dbError.message)
     }
@@ -317,6 +336,11 @@ router.delete('/:id', requireAuth, async (req, res) => {
     const mockIdx = mockUsers.findIndex(u => u.id === targetId)
     if (mockIdx !== -1) {
       mockUsers.splice(mockIdx, 1)
+      mockProfilesByUserId.delete(targetId)
+      mockLinksByUserId.delete(targetId)
+      mockSettingsByUserId.delete(targetId)
+      mockMessagesByUserId.delete(targetId)
+      invalidateCache('profile')
       return res.json({ success: true, message: 'Kullanıcı hesabı başarıyla silindi' })
     }
 
@@ -327,8 +351,8 @@ router.delete('/:id', requireAuth, async (req, res) => {
   }
 })
 
-// 5. PUT /api/users/:id (Kullanıcı Bilgilerini Güncelleme)
-router.put('/:id', requireAuth, async (req, res) => {
+// 6. PUT /api/users/:id (Kullanıcı Bilgilerini Güncelleme - Yalnızca Admin)
+router.put('/:id', requireAuth, requireAdmin, async (req, res) => {
   try {
     const targetId = parseInt(req.params.id, 10)
     if (isNaN(targetId)) {
@@ -336,6 +360,48 @@ router.put('/:id', requireAuth, async (req, res) => {
     }
 
     const { name, username, email, role, bio, isVerified, status, layoutStyle } = req.body
+    const cleanUsername = username !== undefined ? username.trim().toLowerCase().replace(/^@/, '') : undefined
+
+    try {
+      const existingRes = await query('SELECT * FROM users WHERE id = $1', [targetId])
+      if (existingRes.rows.length > 0) {
+        const currentUser = existingRes.rows[0]
+        const nextRole = targetId === 1 ? 'admin' : (role !== undefined ? role : currentUser.role)
+        const nextStatus = targetId === 1 ? 'active' : (status !== undefined ? status : currentUser.status)
+        const nextName = name !== undefined ? name.trim() : currentUser.name
+        const nextEmail = email !== undefined ? email.trim().toLowerCase() : currentUser.email
+        const nextLoginUsername = (targetId === 1) ? currentUser.username : (cleanUsername || currentUser.username)
+
+        await query(`
+          UPDATE users 
+          SET name = $1, email = $2, username = $3, role = $4, status = $5, updated_at = CURRENT_TIMESTAMP
+          WHERE id = $6
+        `, [nextName, nextEmail, nextLoginUsername, nextRole, nextStatus, targetId])
+
+        await query(`
+          UPDATE profiles
+          SET 
+            name = $1,
+            username = COALESCE($2, username),
+            bio = COALESCE($3, bio),
+            is_verified = COALESCE($4, is_verified),
+            layout_style = COALESCE($5, layout_style),
+            updated_at = CURRENT_TIMESTAMP
+          WHERE user_id = $6
+        `, [
+          nextName,
+          cleanUsername ? `@${cleanUsername}` : null,
+          bio !== undefined ? bio : null,
+          isVerified !== undefined ? Boolean(isVerified) : null,
+          layoutStyle !== undefined ? layoutStyle : null,
+          targetId
+        ])
+
+        invalidateCache('profile')
+      }
+    } catch (dbErr) {
+      console.warn('⚠️ [DB Çevrimdışı] Kullanıcı bellekte güncelleniyor:', dbErr.message)
+    }
 
     const mockIdx = mockUsers.findIndex(u => u.id === targetId)
     if (mockIdx !== -1) {
@@ -343,107 +409,200 @@ router.put('/:id', requireAuth, async (req, res) => {
       const updated = {
         ...current,
         name: name !== undefined ? name.trim() : current.name,
-        username: username !== undefined ? username.trim().toLowerCase().replace(/^@/, '') : current.username,
+        profileUsername: cleanUsername || current.profileUsername || current.username,
+        username: targetId === 1 ? current.username : (cleanUsername || current.username),
         email: email !== undefined ? email.trim().toLowerCase() : current.email,
-        role: role !== undefined ? role : current.role,
+        role: targetId === 1 ? 'admin' : (role !== undefined ? role : current.role),
         bio: bio !== undefined ? bio : current.bio,
         isVerified: isVerified !== undefined ? Boolean(isVerified) : current.isVerified,
-        status: status !== undefined ? status : (current.status || 'active'),
-        layoutStyle: layoutStyle !== undefined ? layoutStyle : (current.layoutStyle || 'bento')
+        status: targetId === 1 ? 'active' : (status !== undefined ? status : (current.status || 'active')),
+        layoutStyle: layoutStyle !== undefined ? layoutStyle : (current.layoutStyle || 'list')
       }
       mockUsers[mockIdx] = updated
-      return res.json({ success: true, message: 'Kullanıcı başarıyla güncellendi', data: updated })
+      const prof = mockProfilesByUserId.get(targetId)
+      if (prof) {
+        if (name !== undefined) prof.name = updated.name
+        if (cleanUsername) prof.username = `@${cleanUsername}`
+        if (bio !== undefined) prof.bio = bio
+        if (isVerified !== undefined) prof.isVerified = Boolean(isVerified)
+        if (layoutStyle !== undefined) prof.layoutStyle = layoutStyle
+      }
+      return res.json({ success: true, message: 'Kullanıcı başarıyla güncellendi', data: formatUserSummary(updated) })
     }
 
-    res.status(404).json({ error: 'Kullanıcı bulunamadı' })
+    return res.json({ success: true, message: 'Kullanıcı başarıyla güncellendi' })
   } catch (error) {
     console.error('Kullanıcı güncelleme hatası:', error)
     res.status(500).json({ error: 'Kullanıcı güncellenemedi' })
   }
 })
 
-// 6. PUT /api/users/:id/toggle-verify (Doğrulama Rozeti Aç/Kapat)
-router.put('/:id/toggle-verify', requireAuth, async (req, res) => {
+// 7. PUT /api/users/:id/toggle-verify (Doğrulama Rozeti Aç/Kapat - Yalnızca Admin)
+router.put('/:id/toggle-verify', requireAuth, requireAdmin, async (req, res) => {
   try {
     const targetId = parseInt(req.params.id, 10)
+    let nextVerified = null
+
+    try {
+      const profRes = await query('SELECT is_verified FROM profiles WHERE user_id = $1', [targetId])
+      if (profRes.rows.length > 0) {
+        nextVerified = !profRes.rows[0].is_verified
+        await query('UPDATE profiles SET is_verified = $1, updated_at = CURRENT_TIMESTAMP WHERE user_id = $2', [nextVerified, targetId])
+        invalidateCache('profile')
+      }
+    } catch (dbErr) {
+      console.warn('⚠️ [DB Çevrimdışı] Doğrulama rozeti bellekte değiştiriliyor:', dbErr.message)
+    }
+
     const mockIdx = mockUsers.findIndex(u => u.id === targetId)
     if (mockIdx !== -1) {
-      mockUsers[mockIdx].isVerified = !mockUsers[mockIdx].isVerified
-      return res.json({ 
-        success: true, 
-        message: mockUsers[mockIdx].isVerified ? 'Kullanıcı doğrulandı' : 'Doğrulama rozeti kaldırıldı',
-        data: mockUsers[mockIdx]
+      const nextVal = nextVerified !== null ? nextVerified : !mockUsers[mockIdx].isVerified
+      mockUsers[mockIdx].isVerified = nextVal
+      const prof = mockProfilesByUserId.get(targetId)
+      if (prof) prof.isVerified = nextVal
+      return res.json({
+        success: true,
+        message: nextVal ? 'Kullanıcı doğrulandı' : 'Doğrulama rozeti kaldırıldı',
+        data: formatUserSummary(mockUsers[mockIdx])
       })
     }
+
+    if (nextVerified !== null) {
+      return res.json({
+        success: true,
+        message: nextVerified ? 'Kullanıcı doğrulandı' : 'Doğrulama rozeti kaldırıldı',
+        data: { id: targetId, isVerified: nextVerified }
+      })
+    }
+
     res.status(404).json({ error: 'Kullanıcı bulunamadı' })
   } catch (error) {
     res.status(500).json({ error: 'Doğrulama durumu değiştirilemedi' })
   }
 })
 
-// 7. PUT /api/users/:id/toggle-status (Hesap Durumu Aktif/Askıda Değiştir)
-router.put('/:id/toggle-status', requireAuth, async (req, res) => {
+// 8. PUT /api/users/:id/toggle-status (Hesap Durumu Onayla / Aktifleştir / Askıya Al - Yalnızca Admin)
+router.put('/:id/toggle-status', requireAuth, requireAdmin, async (req, res) => {
   try {
     const targetId = parseInt(req.params.id, 10)
     if (targetId === 1) {
       return res.status(403).json({ error: 'Ana yönetici hesabı askıya alınamaz' })
     }
+
+    let nextStatus = null
+    try {
+      const userRes = await query('SELECT status FROM users WHERE id = $1', [targetId])
+      if (userRes.rows.length > 0) {
+        const cur = userRes.rows[0].status || 'active'
+        nextStatus = cur === 'active' ? 'suspended' : 'active'
+        await query('UPDATE users SET status = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2', [nextStatus, targetId])
+        invalidateCache('profile')
+      }
+    } catch (dbErr) {
+      console.warn('⚠️ [DB Çevrimdışı] Durum bellekte değiştiriliyor:', dbErr.message)
+    }
+
     const mockIdx = mockUsers.findIndex(u => u.id === targetId)
     if (mockIdx !== -1) {
-      const nextStatus = mockUsers[mockIdx].status === 'suspended' ? 'active' : 'suspended'
-      mockUsers[mockIdx].status = nextStatus
-      return res.json({ 
-        success: true, 
-        message: nextStatus === 'suspended' ? 'Hesap askıya alındı' : 'Hesap yeniden aktifleştirildi',
-        data: mockUsers[mockIdx]
+      const curMock = mockUsers[mockIdx].status || 'active'
+      const resolvedStatus = nextStatus || (curMock === 'active' ? 'suspended' : 'active')
+      mockUsers[mockIdx].status = resolvedStatus
+      return res.json({
+        success: true,
+        message: resolvedStatus === 'suspended' ? 'Hesap askıya alındı' : 'Hesap aktifleştirildi',
+        data: formatUserSummary(mockUsers[mockIdx])
       })
     }
+
+    if (nextStatus !== null) {
+      return res.json({
+        success: true,
+        message: nextStatus === 'suspended' ? 'Hesap askıya alındı' : 'Hesap aktifleştirildi',
+        data: { id: targetId, status: nextStatus }
+      })
+    }
+
     res.status(404).json({ error: 'Kullanıcı bulunamadı' })
   } catch (error) {
     res.status(500).json({ error: 'Hesap durumu değiştirilemedi' })
   }
 })
 
-// 8. POST /api/users/batch (Toplu Kullanıcı İşlemleri)
-router.post('/batch', requireAuth, async (req, res) => {
+// 9. POST /api/users/batch (Toplu Kullanıcı İşlemleri - Yalnızca Admin)
+router.post('/batch', requireAuth, requireAdmin, async (req, res) => {
   try {
     const { ids, action } = req.body
     if (!Array.isArray(ids) || ids.length === 0) {
       return res.status(400).json({ error: 'İşlem yapılacak kullanıcılar belirtilmedi' })
     }
 
+    const numericIds = ids.map(id => parseInt(id, 10)).filter(id => !isNaN(id))
     let affectedCount = 0
-    ids.forEach(id => {
-      const targetId = parseInt(id, 10)
+
+    try {
+      for (const targetId of numericIds) {
+        if (action === 'verify') {
+          const r = await query('UPDATE profiles SET is_verified = true WHERE user_id = $1', [targetId])
+          affectedCount += r.rowCount || 0
+        } else if (action === 'unverify') {
+          const r = await query('UPDATE profiles SET is_verified = false WHERE user_id = $1', [targetId])
+          affectedCount += r.rowCount || 0
+        } else if (action === 'suspend' && targetId !== 1) {
+          const r = await query("UPDATE users SET status = 'suspended' WHERE id = $1", [targetId])
+          affectedCount += r.rowCount || 0
+        } else if (action === 'activate' || action === 'approve') {
+          const r = await query("UPDATE users SET status = 'active' WHERE id = $1", [targetId])
+          affectedCount += r.rowCount || 0
+        } else if (action === 'delete' && targetId !== 1) {
+          await query('DELETE FROM click_events WHERE user_id = $1', [targetId])
+          await query('DELETE FROM visit_stats WHERE user_id = $1', [targetId])
+          await query('DELETE FROM messages WHERE user_id = $1', [targetId])
+          await query('DELETE FROM settings WHERE user_id = $1', [targetId])
+          await query('DELETE FROM links WHERE user_id = $1', [targetId])
+          await query('DELETE FROM profiles WHERE user_id = $1', [targetId])
+          const r = await query('DELETE FROM users WHERE id = $1', [targetId])
+          affectedCount += r.rowCount || 0
+        }
+      }
+      invalidateCache('profile')
+    } catch (dbErr) {
+      console.warn('⚠️ [DB Çevrimdışı] Toplu işlem bellekten yürütülüyor:', dbErr.message)
+    }
+
+    let mockAffected = 0
+    numericIds.forEach(targetId => {
       const u = mockUsers.find(x => x.id === targetId)
       if (!u) return
-
       if (action === 'verify') {
         u.isVerified = true
-        affectedCount++
+        const p = mockProfilesByUserId.get(targetId)
+        if (p) p.isVerified = true
+        mockAffected++
       } else if (action === 'unverify') {
         u.isVerified = false
-        affectedCount++
+        const p = mockProfilesByUserId.get(targetId)
+        if (p) p.isVerified = false
+        mockAffected++
       } else if (action === 'suspend' && targetId !== 1) {
         u.status = 'suspended'
-        affectedCount++
-      } else if (action === 'activate') {
+        mockAffected++
+      } else if (action === 'activate' || action === 'approve') {
         u.status = 'active'
-        affectedCount++
+        mockAffected++
       } else if (action === 'delete' && targetId !== 1) {
         const idx = mockUsers.findIndex(x => x.id === targetId)
         if (idx !== -1) {
           mockUsers.splice(idx, 1)
-          affectedCount++
+          mockAffected++
         }
       }
     })
 
-    res.json({ success: true, message: `${affectedCount} kullanıcı üzerinde işlem tamamlandı`, affectedCount })
+    const finalCount = Math.max(affectedCount, mockAffected)
+    res.json({ success: true, message: `${finalCount} kullanıcı üzerinde işlem tamamlandı`, affectedCount: finalCount })
   } catch (error) {
     res.status(500).json({ error: 'Toplu işlem gerçekleştirilemedi' })
   }
 })
 
 export default router
-

@@ -1,5 +1,5 @@
 <script setup>
-import { ref } from 'vue'
+import { ref, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useAuthStore } from '../stores/authStore'
 import { 
@@ -15,7 +15,8 @@ import {
   Sparkles,
   CheckCircle2,
   KeyRound,
-  Fingerprint
+  Fingerprint,
+  Clock
 } from 'lucide-vue-next'
 import { useLinkStore } from '../stores/linkStore'
 
@@ -35,16 +36,18 @@ const handlePasskeyLogin = async () => {
 
   if (result.success) {
     successMessage.value = 'Biyometrik doğrulama başarılı! Giriş yapılıyor...'
+    linkStore.resetWorkspace()
+    await linkStore.fetchFromApi(true)
     setTimeout(() => {
       const redirectPath = route.query.redirect || '/admin'
       router.push(redirectPath)
-    }, 600)
+    }, 500)
   } else {
     authStore.authError = result.error || 'Biyometrik doğrulama tamamlanamadı.'
   }
 }
 
-const isRegisterMode = ref(false)
+const isRegisterMode = ref(route.query.mode === 'register')
 const name = ref('')
 const username = ref('')
 const email = ref('')
@@ -52,16 +55,27 @@ const password = ref('')
 const showPassword = ref(false)
 const rememberMe = ref(true)
 const successMessage = ref('')
+const pendingApprovalInfo = ref(null)
+
+watch(() => route.query.mode, (mode) => {
+  isRegisterMode.value = mode === 'register'
+  authStore.authError = ''
+  successMessage.value = ''
+  pendingApprovalInfo.value = null
+})
 
 // Hızlı demo girişi için doldurma yardımcısı
 const fillDemoCredentials = () => {
   isRegisterMode.value = false
+  pendingApprovalInfo.value = null
   username.value = 'admin'
   password.value = 'admin123'
 }
 
 const handleSubmit = async () => {
   successMessage.value = ''
+  authStore.authError = ''
+  pendingApprovalInfo.value = null
 
   if (isRegisterMode.value) {
     if (!username.value.trim() || !email.value.trim() || !password.value.trim()) return
@@ -73,18 +87,34 @@ const handleSubmit = async () => {
       password: password.value
     })
 
+    if (result.success && result.pendingApproval) {
+      pendingApprovalInfo.value = {
+        username: result.user?.username || username.value.trim().toLowerCase().replace(/^@/, ''),
+        message: result.message
+      }
+      name.value = ''
+      username.value = ''
+      email.value = ''
+      password.value = ''
+      return
+    }
+
     if (result.success) {
       successMessage.value = 'Hesabınız başarıyla oluşturuldu! Yönlendiriliyorsunuz...'
+      linkStore.resetWorkspace()
+      await linkStore.fetchFromApi(true)
       setTimeout(() => {
         const redirectPath = route.query.redirect || '/admin'
         router.push(redirectPath)
-      }, 700)
+      }, 600)
     }
   } else {
     if (!username.value.trim() || !password.value.trim()) return
 
     const result = await authStore.login(username.value, password.value)
     if (result.success) {
+      linkStore.resetWorkspace()
+      await linkStore.fetchFromApi(true)
       const redirectPath = route.query.redirect || '/admin'
       router.push(redirectPath)
     }
@@ -107,7 +137,7 @@ const handleSubmit = async () => {
           class="inline-flex items-center gap-2 text-xs font-semibold text-[#8E8E93] hover:text-[#FFFF00] transition-colors group px-3.5 py-2 rounded-xl bg-[#161616] border border-[#282828] hover:border-[#FFFF00]/40 backdrop-blur-sm shadow-md"
         >
           <ArrowLeft class="w-3.5 h-3.5 group-hover:-translate-x-0.5 transition-transform" />
-          <span>Profil Sayfasına Dön</span>
+          <span>Ana Sayfaya Dön</span>
         </router-link>
       </div>
 
@@ -153,11 +183,32 @@ const handleSubmit = async () => {
             </div>
           </div>
           <h1 class="text-xl font-bold tracking-tight text-white flex items-center justify-center gap-2">
-            <span>{{ isRegisterMode ? 'Yeni Hesap Oluştur' : 'Yönetici Girişi' }}</span>
+            <span>{{ isRegisterMode ? 'Üyelik Başvurusu' : 'Üye & Yönetici Girişi' }}</span>
           </h1>
           <p class="text-xs text-[#8E8E93] mt-1">
-            {{ isRegisterMode ? 'Linktree sayfanızı oluşturmak için bilgilerinizi girin' : 'Linktree yönetim paneline erişmek için oturum açın' }}
+            {{ isRegisterMode ? 'Başvurunuz yönetici onayının ardından aktif edilir' : 'Kendi linkspace sayfanızı yönetmek için oturum açın' }}
           </p>
+        </div>
+
+        <!-- Yönetici Onayı Bekleniyor Bildirimi -->
+        <div 
+          v-if="pendingApprovalInfo"
+          class="mb-5 p-4 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-amber-200 text-xs space-y-2.5 animate-in fade-in duration-200"
+        >
+          <div class="flex items-center gap-2 font-bold text-amber-300 text-sm">
+            <Clock class="w-4 h-4 shrink-0 text-amber-400" />
+            <span>Üyelik Başvurunuz Alındı!</span>
+          </div>
+          <p class="leading-relaxed text-amber-100/90">
+            <span class="font-mono font-bold text-[#FFFF00]">@{{ pendingApprovalInfo.username }}</span> kullanıcı adlı hesabınız şu an <strong>yönetici onayı bekliyor</strong>. Yönetici onayladığında Giriş Yap sekmesinden panelinize erişebilirsiniz.
+          </p>
+          <button
+            type="button"
+            @click="isRegisterMode = false; pendingApprovalInfo = null"
+            class="px-3.5 py-1.5 rounded-xl bg-amber-400 text-black font-bold text-[11px] hover:bg-amber-300 transition-colors cursor-pointer"
+          >
+            Giriş Yap Sekmesine Geç
+          </button>
         </div>
 
         <!-- Başarı Bildirimi -->
@@ -302,7 +353,7 @@ const handleSubmit = async () => {
           >
             <span v-if="authStore.isLoading" class="w-4 h-4 border-2 border-black/30 border-t-black rounded-full animate-spin"></span>
             <component :is="isRegisterMode ? UserPlus : ShieldCheck" v-else class="w-4 h-4 group-hover:scale-110 transition-transform text-black" />
-            <span>{{ authStore.isLoading ? 'İşleniyor...' : (isRegisterMode ? 'Hesap Oluştur ve Başla' : 'Giriş Yap') }}</span>
+            <span>{{ authStore.isLoading ? 'İşleniyor...' : (isRegisterMode ? 'Üyelik Başvurusu Gönder' : 'Giriş Yap') }}</span>
           </button>
 
           <!-- Biyometrik Kimlik Doğrulama (Passkey / Touch ID / Face ID) -->

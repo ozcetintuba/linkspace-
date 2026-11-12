@@ -1,36 +1,43 @@
 import { Router } from 'express'
 import { query } from '../db.js'
-import { requireAuth } from '../middleware/authMiddleware.js'
-import { cacheMiddleware, invalidateCache, cacheService } from '../middleware/cacheService.js'
+import { requireAuth, optionalAuth, requireAdmin } from '../middleware/authMiddleware.js'
+import { invalidateCache, cacheService } from '../middleware/cacheService.js'
+import { mockSettingsByUserId, mockUsers, ensureMockUserState } from '../mockState.js'
 
 const router = Router()
 
-// Bellek İçi Çevrimdışı Yedek Verileri (In-Memory Fallback)
-const mockSettings = {
-  theme: 'midnight',
-  seo: {
-    metaTitle: 'Tuba Gül - Full-Stack Developer | linkspace',
-    metaDescription: 'Tuba Gül\'ün projeleri, portfolyosu, iletişim kanalları ve sosyal medya hesapları.',
-    ogImage: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=1200&h=630&fit=crop&q=80',
-    customDomain: 'tubagul.dev',
-    domainVerified: true
+const getDefaultSeoForUser = (userId = 1) => {
+  const existing = mockSettingsByUserId.get(userId)?.seo
+  if (existing) return existing
+  return {
+    metaTitle: 'linkspace Profili',
+    metaDescription: 'Projelerim, portfolyom ve tüm sosyal medya bağlantılarım.',
+    ogImage: '',
+    customDomain: '',
+    domainVerified: false
   }
 }
 
-// ========================================================
-// TEMA AYARLARI
-// ========================================================
+const getUserMockSettings = (userId = 1) => {
+  if (!mockSettingsByUserId.has(userId)) {
+    const u = mockUsers.find(x => x.id === userId)
+    if (u) ensureMockUserState(u)
+    else mockSettingsByUserId.set(userId, { theme: 'midnight', seo: getDefaultSeoForUser(userId) })
+  }
+  return mockSettingsByUserId.get(userId)
+}
 
-// GET /api/settings/theme (Herkese açık, 60s TTL & ETag Önbellekli)
-router.get('/theme', cacheMiddleware(60), async (req, res) => {
+// GET /api/settings/theme (Oturumlu kullanıcının teması veya varsayılan tema)
+router.get('/theme', optionalAuth, async (req, res) => {
+  const userId = req.user?.id || 1
   try {
     try {
-      const result = await query("SELECT value FROM settings WHERE key = 'theme'")
+      const result = await query("SELECT value FROM settings WHERE user_id = $1 AND key = 'theme'", [userId])
       const theme = result.rows.length > 0 ? result.rows[0].value : 'midnight'
       return res.json({ theme })
     } catch (dbErr) {
       console.warn('⚠️ [DB Çevrimdışı] Tema ayarı bellekten dönülüyor:', dbErr.message)
-      return res.json({ theme: mockSettings.theme })
+      return res.json({ theme: getUserMockSettings(userId).theme || 'midnight' })
     }
   } catch (error) {
     console.error('Tema getirme hatası:', error)
@@ -38,9 +45,10 @@ router.get('/theme', cacheMiddleware(60), async (req, res) => {
   }
 })
 
-// PUT /api/settings/theme (Yalnızca Yönetici)
+// PUT /api/settings/theme (Oturumlu kullanıcının kendi temasını kaydetmesi)
 router.put('/theme', requireAuth, async (req, res) => {
   try {
+    const userId = req.user.id
     const { theme } = req.body
     if (!theme) {
       return res.status(400).json({ error: 'Tema kimliği gereklidir' })
@@ -48,17 +56,18 @@ router.put('/theme', requireAuth, async (req, res) => {
 
     try {
       await query(`
-        INSERT INTO settings (key, value, updated_at)
-        VALUES ('theme', $1, CURRENT_TIMESTAMP)
-        ON CONFLICT (key) DO UPDATE 
+        INSERT INTO settings (user_id, key, value, updated_at)
+        VALUES ($1, 'theme', $2, CURRENT_TIMESTAMP)
+        ON CONFLICT (user_id, key) DO UPDATE 
         SET value = EXCLUDED.value, updated_at = CURRENT_TIMESTAMP
-      `, [theme])
+      `, [userId, theme])
     } catch (dbErr) {
       console.warn('⚠️ [DB Çevrimdışı] Tema ayarı belleğe kaydediliyor:', dbErr.message)
-      mockSettings.theme = theme
+      const s = getUserMockSettings(userId)
+      s.theme = theme
     }
 
-    invalidateCache('theme')
+    invalidateCache('profile')
     res.json({ theme, message: 'Tema başarıyla kaydedildi' })
   } catch (error) {
     console.error('Tema güncelleme hatası:', error)
@@ -66,53 +75,50 @@ router.put('/theme', requireAuth, async (req, res) => {
   }
 })
 
-// ========================================================
-// SEO & SOSYAL PAYLAŞIM AYARLARI (FAZ 16 - SEÇENEK B)
-// ========================================================
-
-// GET /api/settings/seo (Herkese açık - Profil ve Önizleme için, 60s TTL & ETag Önbellekli)
-router.get('/seo', cacheMiddleware(60), async (req, res) => {
+// GET /api/settings/seo (Oturumlu kullanıcının SEO ayarları)
+router.get('/seo', optionalAuth, async (req, res) => {
+  const userId = req.user?.id || 1
   try {
     try {
-      const result = await query("SELECT value FROM settings WHERE key = 'seo'")
+      const result = await query("SELECT value FROM settings WHERE user_id = $1 AND key = 'seo'", [userId])
       if (result.rows.length > 0) {
-        const parsed = JSON.parse(result.rows[0].value)
-        return res.json(parsed)
+        return res.json(JSON.parse(result.rows[0].value))
       }
     } catch (dbErr) {
       console.warn('⚠️ [DB Çevrimdışı] SEO ayarları bellekten dönülüyor:', dbErr.message)
     }
 
-    return res.json(mockSettings.seo)
+    return res.json(getUserMockSettings(userId).seo || getDefaultSeoForUser(userId))
   } catch (error) {
-    console.error('SEO ayarları getirme hatası:', error)
-    res.json(mockSettings.seo)
+    res.json(getDefaultSeoForUser(userId))
   }
 })
 
-// PUT /api/settings/seo (Yalnızca Yönetici)
+// PUT /api/settings/seo (Oturumlu kullanıcının kendi SEO ayarlarını güncellemesi)
 router.put('/seo', requireAuth, async (req, res) => {
   try {
+    const userId = req.user.id
     const { metaTitle, metaDescription, ogImage, customDomain, domainVerified } = req.body
 
     const updatedSeo = {
-      metaTitle: metaTitle || 'Tuba Gül | linkspace',
+      metaTitle: metaTitle || `${req.user.name || req.user.username} | linkspace`,
       metaDescription: metaDescription || '',
-      ogImage: ogImage || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=1200&h=630&fit=crop&q=80',
+      ogImage: ogImage || '',
       customDomain: (customDomain || '').trim().toLowerCase(),
       domainVerified: Boolean(domainVerified)
     }
 
     try {
       await query(`
-        INSERT INTO settings (key, value, updated_at)
-        VALUES ('seo', $1, CURRENT_TIMESTAMP)
-        ON CONFLICT (key) DO UPDATE 
+        INSERT INTO settings (user_id, key, value, updated_at)
+        VALUES ($1, 'seo', $2, CURRENT_TIMESTAMP)
+        ON CONFLICT (user_id, key) DO UPDATE 
         SET value = EXCLUDED.value, updated_at = CURRENT_TIMESTAMP
-      `, [JSON.stringify(updatedSeo)])
+      `, [userId, JSON.stringify(updatedSeo)])
     } catch (dbErr) {
       console.warn('⚠️ [DB Çevrimdışı] SEO ayarları belleğe kaydediliyor:', dbErr.message)
-      mockSettings.seo = updatedSeo
+      const s = getUserMockSettings(userId)
+      s.seo = updatedSeo
     }
 
     invalidateCache('seo')
@@ -129,9 +135,10 @@ router.put('/seo', requireAuth, async (req, res) => {
   }
 })
 
-// POST /api/settings/verify-domain (Yalnızca Yönetici - DNS Doğrulama Testi)
+// POST /api/settings/verify-domain (Oturumlu kullanıcı için DNS doğrulama simülasyonu)
 router.post('/verify-domain', requireAuth, async (req, res) => {
   try {
+    const userId = req.user.id
     const { domain } = req.body
     const cleanDomain = (domain || '').trim().toLowerCase()
 
@@ -139,13 +146,11 @@ router.post('/verify-domain', requireAuth, async (req, res) => {
       return res.status(400).json({ error: 'Lütfen geçerli bir alan adı girin (örn: tubagul.dev)' })
     }
 
-    // Basit alan adı format kontrolü
     const domainRegex = /^[a-zA-Z0-9][a-zA-Z0-9-]{0,61}[a-zA-Z0-9](?:\.[a-zA-Z]{2,})+$/
     if (!domainRegex.test(cleanDomain)) {
       return res.status(400).json({ error: 'Geçersiz alan adı formatı. Örnek: links.tubagul.com veya tubagul.dev' })
     }
 
-    // DNS Doğrulama Simülasyonu
     const verificationRecord = {
       domain: cleanDomain,
       verified: true,
@@ -155,13 +160,13 @@ router.post('/verify-domain', requireAuth, async (req, res) => {
       sslActive: true
     }
 
-    // SEO ayarlarına domain durumunu da yansıt
-    mockSettings.seo.customDomain = cleanDomain
-    mockSettings.seo.domainVerified = true
+    const mockS = getUserMockSettings(userId)
+    mockS.seo.customDomain = cleanDomain
+    mockS.seo.domainVerified = true
 
     try {
-      const seoRes = await query("SELECT value FROM settings WHERE key = 'seo'")
-      let currentSeo = mockSettings.seo
+      const seoRes = await query("SELECT value FROM settings WHERE user_id = $1 AND key = 'seo'", [userId])
+      let currentSeo = mockS.seo
       if (seoRes.rows.length > 0) {
         currentSeo = JSON.parse(seoRes.rows[0].value)
       }
@@ -169,14 +174,12 @@ router.post('/verify-domain', requireAuth, async (req, res) => {
       currentSeo.domainVerified = true
 
       await query(`
-        INSERT INTO settings (key, value, updated_at)
-        VALUES ('seo', $1, CURRENT_TIMESTAMP)
-        ON CONFLICT (key) DO UPDATE 
+        INSERT INTO settings (user_id, key, value, updated_at)
+        VALUES ($1, 'seo', $2, CURRENT_TIMESTAMP)
+        ON CONFLICT (user_id, key) DO UPDATE 
         SET value = EXCLUDED.value, updated_at = CURRENT_TIMESTAMP
-      `, [JSON.stringify(currentSeo)])
-    } catch (e) {
-      // Offline fallback
-    }
+      `, [userId, JSON.stringify(currentSeo)])
+    } catch (e) {}
 
     return res.json({
       success: true,
@@ -189,20 +192,16 @@ router.post('/verify-domain', requireAuth, async (req, res) => {
   }
 })
 
-// ========================================================
-// ÖNBELLEK & PERFORMANS YÖNETİMİ (FAZ 21)
-// ========================================================
-
-// GET /api/settings/cache/stats (Yalnızca Yönetici)
-router.get('/cache/stats', requireAuth, (req, res) => {
+// GET /api/settings/cache/stats (Yalnızca Sistem Yöneticisi)
+router.get('/cache/stats', requireAuth, requireAdmin, (req, res) => {
   res.json({
     success: true,
     data: cacheService.getStats()
   })
 })
 
-// POST /api/settings/cache/clear (Yalnızca Yönetici)
-router.post('/cache/clear', requireAuth, (req, res) => {
+// POST /api/settings/cache/clear (Yalnızca Sistem Yöneticisi)
+router.post('/cache/clear', requireAuth, requireAdmin, (req, res) => {
   const clearedCount = cacheService.clearAll()
   res.json({
     success: true,

@@ -1,472 +1,187 @@
 import { Router } from 'express'
 import { query } from '../db.js'
-import { requireAuth } from '../middleware/authMiddleware.js'
+import { requireAuth, optionalAuth } from '../middleware/authMiddleware.js'
 import { cacheMiddleware, invalidateCache } from '../middleware/cacheService.js'
-import { mockUsers } from './usersRoutes.js'
+import {
+  RESERVED_USERNAMES,
+  mockUsers,
+  mockProfilesByUserId,
+  mockLinksByUserId,
+  mockSettingsByUserId,
+  findMockUserByIdentifier,
+  ensureMockUserState
+} from '../mockState.js'
 
 const router = Router()
 
-// Varsayılan bellek içi profil (DB çevrimdışı fallback)
-const mockProfile = {
-  name: 'Tuba Gül',
-  username: '@tubagul',
-  bio: 'Full-Stack Web Geliştirici & UI/UX Meraklısı 🚀\nModern web teknolojileri ve açık kaynak projeler üretiyorum.',
-  avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=300&auto=format&fit=crop&q=80',
-  avatarShape: 'circle',
-  avatarGlow: 'yellow',
-  statusText: 'Yeni Projelere & Fırsatlara Açık',
-  statusColor: 'none',
-  isVerified: true,
-  banner: '',
-  bannerPattern: 'mesh',
-  badges: [],
-  socialLinks: {
-    github: 'https://github.com',
-    twitter: 'https://twitter.com',
-    linkedin: 'https://linkedin.com',
-    instagram: 'https://instagram.com'
-  },
-  groupByCategory: false,
-  foldersDefaultExpanded: true,
-  showBadges: false,
-  layoutStyle: 'list'
+const PROFILE_SELECT_COLUMNS = `
+  p.id,
+  p.user_id AS "userId",
+  p.name, 
+  p.username, 
+  p.bio, 
+  p.avatar, 
+  COALESCE(p.avatar_shape, 'circle') AS "avatarShape",
+  COALESCE(p.avatar_glow, 'yellow') AS "avatarGlow",
+  COALESCE(p.avatar_mode, 'photo') AS "avatarMode",
+  COALESCE(p.status_text, 'Yeni Projelere & Fırsatlara Açık') AS "statusText",
+  COALESCE(p.status_color, 'none') AS "statusColor",
+  COALESCE(p.is_verified, true) AS "isVerified",
+  COALESCE(p.banner, '') AS "banner", 
+  COALESCE(p.banner_pattern, 'mesh') AS "bannerPattern", 
+  COALESCE(p.badges, '[]'::jsonb) AS "badges", 
+  COALESCE(p.social_links, '{}'::jsonb) AS "socialLinks",
+  COALESCE(p.group_by_category, false) AS "groupByCategory",
+  COALESCE(p.group_style, 'accordion') AS "groupStyle",
+  COALESCE(p.folders_default_expanded, true) AS "foldersDefaultExpanded",
+  COALESCE(p.show_badges, false) AS "showBadges",
+  COALESCE(p.custom_domain, '') AS "customDomain",
+  COALESCE(p.subdomain, '') AS "subdomain",
+  COALESCE(p.layout_style, 'list') AS "layoutStyle"
+`
+
+export const buildMockPublicProfileResponse = (foundMock) => {
+  ensureMockUserState(foundMock)
+  const prof = mockProfilesByUserId.get(foundMock.id)
+  const links = (mockLinksByUserId.get(foundMock.id) || []).filter(l => l.isActive !== false)
+  const settings = mockSettingsByUserId.get(foundMock.id) || { theme: 'midnight' }
+  const cleanName = (prof?.username || foundMock.profileUsername || foundMock.username || '').replace(/^@/, '').toLowerCase()
+  const isMainOwner = foundMock.id === 1 || cleanName === 'tubagul'
+
+  return {
+    theme: settings.theme || 'midnight',
+    profile: {
+      userId: foundMock.id,
+      name: prof?.name || foundMock.name,
+      username: prof?.username || `@${cleanName}`,
+      bio: prof?.bio || `${foundMock.name} resmi bağlantıları ✨`,
+      avatar: prof?.avatar || foundMock.avatar,
+      avatarShape: prof?.avatarShape || 'circle',
+      avatarGlow: prof?.avatarGlow || 'yellow',
+      avatarMode: prof?.avatarMode || (isMainOwner ? 'switchable' : 'photo'),
+      role: foundMock.role || (isMainOwner ? 'admin' : 'user'),
+      status: foundMock.status || 'active',
+      statusText: prof?.statusText || 'Yeni Projelere & Fırsatlara Açık',
+      statusColor: prof?.statusColor || 'none',
+      isVerified: prof?.isVerified !== undefined ? prof.isVerified : Boolean(foundMock.isVerified),
+      banner: prof?.banner || '',
+      bannerPattern: prof?.bannerPattern || 'mesh',
+      badges: prof?.badges || [],
+      socialLinks: prof?.socialLinks || {},
+      groupByCategory: Boolean(prof?.groupByCategory),
+      groupStyle: prof?.groupStyle || 'accordion',
+      foldersDefaultExpanded: prof?.foldersDefaultExpanded !== undefined ? Boolean(prof.foldersDefaultExpanded) : true,
+      showBadges: Boolean(prof?.showBadges),
+      layoutStyle: prof?.layoutStyle || foundMock.layoutStyle || 'list'
+    },
+    links
+  }
 }
 
-export const getMockLinksForUser = (user) => {
-  const username = (user.username || '').replace(/^@/, '').toLowerCase()
-
-  if (username === 'tubagul' || username === 'admin') {
-    return [
-      { id: 1, title: 'Kişisel Web Sitem & Portfolyom', url: 'https://github.com/tubaaa7', isActive: true, icon: 'globe', customColor: 'default', clicks: 12, orderIndex: 0, gridSpan: 'featured', thumbnail: '', cardBadge: '⭐ Vitrin' },
-      { id: 2, title: 'GitHub Açık Kaynak Projelerim', url: 'https://github.com/tubaaa7/linkspace-', isActive: true, icon: 'github', customColor: 'default', clicks: 38, orderIndex: 1, gridSpan: 'half' },
-      { id: 3, title: 'Lo-Fi Chill Beats (Spotify)', url: 'https://open.spotify.com', isActive: true, icon: 'music', customColor: 'default', clicks: 19, orderIndex: 2, gridSpan: 'half' },
-      { id: 4, title: 'VIP Kodlama & Discord Topluluğu', url: 'https://discord.com', isActive: true, icon: 'globe', customColor: 'purple', clicks: 44, orderIndex: 3, gridSpan: 'full' }
-    ]
-  }
-
-  if (username === 'selin.design') {
-    return [
-      { id: 201, title: 'Selin Kaya Design Studio & Portfolyo', url: 'https://dribbble.com', isActive: true, icon: 'globe', customColor: 'default', clicks: 68, orderIndex: 0, gridSpan: 'featured', thumbnail: 'https://images.unsplash.com/photo-1561070791-2526d30994b5?w=600&auto=format&fit=crop&q=80', cardBadge: '🎨 Portfolyo' },
-      { id: 202, title: 'Figma UI Kit & Design System 2026', url: 'https://figma.com', isActive: true, icon: 'code', customColor: 'default', clicks: 45, orderIndex: 1, gridSpan: 'half', cardBadge: '🔥 Popüler' },
-      { id: 203, title: 'Dribbble Tasarım Vaka Analizleri', url: 'https://dribbble.com', isActive: true, icon: 'sparkles', customColor: 'default', clicks: 31, orderIndex: 2, gridSpan: 'half' },
-      { id: 204, title: 'Behance Marka Kimliği & İllüstrasyonlar', url: 'https://behance.net', isActive: true, icon: 'globe', customColor: 'default', clicks: 27, orderIndex: 3, gridSpan: 'full' },
-      { id: 205, title: 'Tasarım Danışmanlığı & Teklif İste', url: 'mailto:selin.design@creatives.co', isActive: true, icon: 'mail', customColor: 'emerald', clicks: 16, orderIndex: 4, gridSpan: 'full' }
-    ]
-  }
-
-  if (username === 'mert.dev') {
-    return [
-      { id: 301, title: 'GitHub Açık Kaynak Kütüphanelerim', url: 'https://github.com', isActive: true, icon: 'github', customColor: 'default', clicks: 84, orderIndex: 0, gridSpan: 'featured', thumbnail: 'https://images.unsplash.com/photo-1555066931-4365d14bab8c?w=600&auto=format&fit=crop&q=80', cardBadge: '🚀 Açık Kaynak' },
-      { id: 302, title: 'Node.js & Go Backend Mimarileri Blogu', url: 'https://medium.com', isActive: true, icon: 'book', customColor: 'default', clicks: 52, orderIndex: 1, gridSpan: 'half' },
-      { id: 303, title: 'LinkedIn & Profesyonel Kariyer Ağı', url: 'https://linkedin.com', isActive: true, icon: 'linkedin', customColor: 'default', clicks: 39, orderIndex: 2, gridSpan: 'half' }
-    ]
-  }
-
-  if (username === 'can.tech') {
-    return [
-      { id: 401, title: 'AWS Cloud & DevOps En İyi Uygulamaları', url: 'https://aws.amazon.com', isActive: true, icon: 'terminal', customColor: 'default', clicks: 43, orderIndex: 0, gridSpan: 'full', cardBadge: '☁️ Cloud' },
-      { id: 402, title: 'Kubernetes & CI/CD Pipeline Rehberim', url: 'https://kubernetes.io', isActive: true, icon: 'code', customColor: 'default', clicks: 29, orderIndex: 1, gridSpan: 'full' }
-    ]
-  }
-
-  // Genel veya yeni oluşturulan kullanıcılar için dinamik demo linkler
-  return [
-    { id: Date.now() + 1, title: `${user.name} Resmi Web Sitesi`, url: 'https://google.com', isActive: true, icon: 'globe', customColor: 'default', clicks: 12, orderIndex: 0, gridSpan: 'full' },
-    { id: Date.now() + 2, title: 'Sosyal Medya & İletişim', url: user.email ? `mailto:${user.email}` : 'https://instagram.com', isActive: true, icon: 'mail', customColor: 'default', clicks: 5, orderIndex: 1, gridSpan: 'full' }
-  ]
-}
-
-// GET /api/profile (Herkese açık, 60s TTL & ETag Önbellekli)
-router.get('/', cacheMiddleware(60), async (req, res) => {
+// 1. GET /api/profile/directory (Herkese açık aktif üye vitrini - Landing Showcase için)
+router.get('/directory', cacheMiddleware(30), async (req, res) => {
   try {
     try {
       const result = await query(`
         SELECT 
-          name, 
-          username, 
-          bio, 
-          avatar, 
-          COALESCE(avatar_shape, 'circle') AS "avatarShape",
-          COALESCE(avatar_glow, 'yellow') AS "avatarGlow",
-          COALESCE(status_text, 'Yeni Projelere & Fırsatlara Açık') AS "statusText",
-          COALESCE(status_color, 'none') AS "statusColor",
-          COALESCE(is_verified, true) AS "isVerified",
-          COALESCE(banner, '') AS "banner",
-          COALESCE(banner_pattern, 'mesh') AS "bannerPattern",
-          COALESCE(badges, '[]'::jsonb) AS "badges",
-          COALESCE(social_links, '{}'::jsonb) AS "socialLinks",
-          COALESCE(group_by_category, false) AS "groupByCategory",
-          COALESCE(group_style, 'accordion') AS "groupStyle",
-          COALESCE(folders_default_expanded, true) AS "foldersDefaultExpanded",
-          COALESCE(show_badges, false) AS "showBadges",
-          COALESCE(custom_domain, '') AS "customDomain",
-          COALESCE(subdomain, '') AS "subdomain",
-          COALESCE(layout_style, 'list') AS "layoutStyle"
-        FROM profiles 
-        ORDER BY id ASC 
-        LIMIT 1
+          u.id,
+          COALESCE(NULLIF(REPLACE(p.username, '@', ''), ''), u.username) AS "username",
+          COALESCE(p.name, u.name) AS "name",
+          COALESCE(p.bio, '') AS "bio",
+          COALESCE(p.avatar, '') AS "avatar",
+          COALESCE(p.is_verified, false) AS "isVerified",
+          COALESCE(p.layout_style, 'list') AS "layoutStyle",
+          COALESCE(u.role, 'user') AS "role",
+          (SELECT COUNT(*)::int FROM links l WHERE l.user_id = u.id AND l.is_active = true) AS "linkCount"
+        FROM users u
+        LEFT JOIN profiles p ON p.user_id = u.id
+        WHERE COALESCE(u.status, 'active') = 'active'
+        ORDER BY 
+          CASE WHEN u.role = 'admin' THEN 0 ELSE 1 END,
+          p.is_verified DESC,
+          u.created_at ASC
+        LIMIT 12
       `)
+
+      if (result.rows.length > 0) {
+        return res.json({
+          success: true,
+          data: result.rows.map(r => ({
+            ...r,
+            profileUrl: `/@${r.username.replace(/^@/, '')}`
+          }))
+        })
+      }
+    } catch (dbErr) {
+      console.warn('⚠️ [DB Çevrimdışı] Dizin bellekten dönülüyor:', dbErr.message)
+    }
+
+    const activeMockDirectory = mockUsers
+      .filter(u => (u.status || 'active') === 'active')
+      .map(u => {
+        ensureMockUserState(u)
+        const p = mockProfilesByUserId.get(u.id)
+        const links = mockLinksByUserId.get(u.id) || []
+        const handle = (p?.username || u.profileUsername || u.username).replace(/^@/, '')
+        return {
+          id: u.id,
+          username: handle,
+          name: p?.name || u.name,
+          bio: p?.bio || u.bio || '',
+          avatar: p?.avatar || u.avatar || '',
+          isVerified: p?.isVerified !== undefined ? p.isVerified : Boolean(u.isVerified),
+          layoutStyle: p?.layoutStyle || u.layoutStyle || 'list',
+          role: u.role || 'user',
+          linkCount: links.filter(l => l.isActive !== false).length,
+          profileUrl: `/@${handle}`
+        }
+      })
+
+    res.json({ success: true, data: activeMockDirectory })
+  } catch (error) {
+    console.error('Topluluk dizini hatası:', error)
+    res.status(500).json({ error: 'Topluluk dizini yüklenemedi' })
+  }
+})
+
+// 2. GET /api/profile (Oturumlu kullanıcının kendi profili veya varsayılan profil)
+router.get('/', optionalAuth, async (req, res) => {
+  try {
+    const targetUserId = req.user?.id
+    try {
+      const result = targetUserId
+        ? await query(`
+            SELECT ${PROFILE_SELECT_COLUMNS}, COALESCE(u.role, 'user') AS "role", COALESCE(u.status, 'active') AS "status"
+            FROM profiles p
+            LEFT JOIN users u ON u.id = p.user_id
+            WHERE p.user_id = $1
+            LIMIT 1
+          `, [targetUserId])
+        : await query(`
+            SELECT ${PROFILE_SELECT_COLUMNS}, 'admin' AS "role", 'active' AS "status"
+            FROM profiles p
+            ORDER BY p.id ASC
+            LIMIT 1
+          `)
+
       if (result.rows.length > 0) {
         return res.json(result.rows[0])
       }
     } catch (dbErr) {
       console.warn('⚠️ [DB Çevrimdışı] Profil verisi bellekten dönülüyor:', dbErr.message)
-      return res.json(mockProfile)
-    }
-    res.json(mockProfile)
-  } catch (error) {
-    console.error('Profil getirme hatası:', error)
-    res.json(mockProfile)
-  }
-})
-
-export const buildMockPublicProfileResponse = (foundMock) => {
-  const cleanName = (foundMock.username || '').replace(/^@/, '').toLowerCase()
-  const isMainOwner = cleanName === 'tubagul' || cleanName === 'admin'
-  return {
-    profile: {
-      name: foundMock.name,
-      username: `@${foundMock.username.replace(/^@/, '')}`,
-      bio: foundMock.bio || `${foundMock.name} resmi bağlantıları ✨`,
-      avatar: foundMock.avatar,
-      avatarShape: 'circle',
-      avatarGlow: 'yellow',
-      avatarMode: isMainOwner ? 'switchable' : 'photo',
-      role: foundMock.role || (isMainOwner ? 'admin' : 'user'),
-      statusText: 'Yeni Projelere & Fırsatlara Açık',
-      statusColor: 'none',
-      isVerified: foundMock.isVerified !== undefined ? foundMock.isVerified : true,
-      banner: '',
-      bannerPattern: 'mesh',
-      badges: [],
-      socialLinks: {
-        github: 'https://github.com',
-        linkedin: 'https://linkedin.com',
-        instagram: 'https://instagram.com'
-      },
-      groupByCategory: false,
-      foldersDefaultExpanded: true,
-      showBadges: false,
-      layoutStyle: foundMock.layoutStyle || 'list'
-    },
-    links: getMockLinksForUser(foundMock)
-  }
-}
-
-// GET /api/profile/:username (Giriş yapmamış ziyaretçiler için aktif linkleri döner, 60s TTL & ETag Önbellekli)
-router.get('/:username', cacheMiddleware(60), async (req, res) => {
-  try {
-    const { username } = req.params
-    if (!username) {
-      return res.status(400).json({ error: 'Kullanıcı adı belirtilmelidir' })
     }
 
-    const cleanUsername = username.replace(/^@/, '').trim().toLowerCase()
-
-    // Profil bilgisini çek
-    const profileResult = await query(`
-      SELECT 
-        id,
-        name, 
-        username, 
-        bio, 
-        avatar, 
-        COALESCE(avatar_shape, 'circle') AS "avatarShape",
-        COALESCE(avatar_glow, 'yellow') AS "avatarGlow",
-        COALESCE(status_text, 'Yeni Projelere & Fırsatlara Açık') AS "statusText",
-        COALESCE(status_color, 'none') AS "statusColor",
-        COALESCE(is_verified, true) AS "isVerified",
-        COALESCE(banner, '') AS "banner",
-        COALESCE(banner_pattern, 'mesh') AS "bannerPattern",
-        COALESCE(badges, '[]'::jsonb) AS "badges",
-        COALESCE(social_links, '{}'::jsonb) AS "socialLinks",
-        COALESCE(group_by_category, false) AS "groupByCategory",
-        COALESCE(group_style, 'accordion') AS "groupStyle",
-        COALESCE(folders_default_expanded, true) AS "foldersDefaultExpanded",
-        COALESCE(show_badges, false) AS "showBadges",
-        COALESCE(custom_domain, '') AS "customDomain",
-        COALESCE(subdomain, '') AS "subdomain",
-        COALESCE(layout_style, 'list') AS "layoutStyle"
-      FROM profiles 
-      WHERE LOWER(REPLACE(username, '@', '')) = $1
-      LIMIT 1
-    `, [cleanUsername])
-
-    if (profileResult.rows.length === 0) {
-      // Veritabanında profil bulunamadıysa mock kullanıcıları kontrol et
-      const foundMock = mockUsers.find(u => u.username.toLowerCase().replace(/^@/, '') === cleanUsername) ||
-        (cleanUsername === 'admin' || cleanUsername === 'tubagul' ? mockUsers[0] : null)
-
-      if (foundMock) {
-        return res.json(buildMockPublicProfileResponse(foundMock))
-      }
-
-      return res.status(404).json({ error: `'${username}' kullanıcısına ait profil bulunamadı` })
-    }
-
-    const profile = profileResult.rows[0]
-    const isMainOwner = cleanUsername === 'tubagul' || cleanUsername === 'admin'
-
-    let userLinks = []
-    if (isMainOwner) {
-      // Sadece aktif ve süresi dolmamış linkleri getir
-      const linksResult = await query(`
-        SELECT 
-          id, 
-          title, 
-          url, 
-          is_active AS "isActive", 
-          icon, 
-          custom_color AS "customColor", 
-          clicks, 
-          order_index AS "orderIndex",
-          COALESCE(is_scheduled, false) AS "isScheduled",
-          schedule_start AS "scheduleStart",
-          schedule_end AS "scheduleEnd",
-          COALESCE(show_countdown, true) AS "showCountdown",
-          COALESCE(category, '') AS "category",
-          COALESCE(embed_type, 'none') AS "embedType",
-          COALESCE(show_embed, false) AS "showEmbed",
-          COALESCE(is_locked, false) AS "isLocked",
-          COALESCE(lock_type, 'pin') AS "lockType",
-          COALESCE(passcode, '') AS "passcode",
-          COALESCE(lock_warning, '') AS "lockWarning",
-          COALESCE(is_header, false) AS "isHeader",
-          COALESCE(ab_test_enabled, false) AS "abTestEnabled",
-          COALESCE(title_b, '') AS "titleB",
-          COALESCE(url_b, '') AS "urlB",
-          COALESCE(clicks_a, 0) AS "clicksA",
-          COALESCE(clicks_b, 0) AS "clicksB",
-          COALESCE(views_a, 0) AS "viewsA",
-          COALESCE(views_b, 0) AS "viewsB",
-          COALESCE(grid_span, 'full') AS "gridSpan",
-          COALESCE(thumbnail, '') AS "thumbnail",
-          COALESCE(card_badge, '') AS "cardBadge"
-        FROM links 
-        WHERE is_active = true
-          AND (is_scheduled = false OR schedule_end IS NULL OR schedule_end >= CURRENT_TIMESTAMP)
-        ORDER BY order_index ASC, id DESC
-      `)
-      userLinks = linksResult.rows
-    } else {
-      userLinks = getMockLinksForUser({ ...profile, username: cleanUsername })
-    }
-
-    res.json({
-      profile: {
-        name: profile.name,
-        username: profile.username,
-        bio: profile.bio,
-        avatar: profile.avatar,
-        avatarShape: profile.avatarShape || 'circle',
-        avatarGlow: profile.avatarGlow || 'yellow',
-        avatarMode: isMainOwner ? 'switchable' : 'photo',
-        role: isMainOwner ? 'admin' : 'user',
-        statusText: profile.statusText || 'Yeni Projelere & Fırsatlara Açık',
-        statusColor: profile.statusColor || 'none',
-        isVerified: profile.isVerified !== undefined ? profile.isVerified : true,
-        banner: profile.banner || '',
-        bannerPattern: profile.bannerPattern || 'mesh',
-        badges: profile.badges || [],
-        socialLinks: profile.socialLinks,
-        groupByCategory: profile.groupByCategory !== undefined ? Boolean(profile.groupByCategory) : false,
-        groupStyle: profile.groupStyle || 'accordion',
-        foldersDefaultExpanded: profile.foldersDefaultExpanded !== undefined ? Boolean(profile.foldersDefaultExpanded) : true,
-        showBadges: profile.showBadges !== undefined ? Boolean(profile.showBadges) : false,
-        customDomain: profile.customDomain || '',
-        subdomain: profile.subdomain || '',
-        layoutStyle: profile.layoutStyle || 'list'
-      },
-      links: userLinks
+    const fallbackId = targetUserId || 1
+    const fallbackUser = mockUsers.find(u => u.id === fallbackId) || mockUsers[0]
+    ensureMockUserState(fallbackUser)
+    return res.json({
+      ...mockProfilesByUserId.get(fallbackUser.id),
+      role: fallbackUser.role,
+      status: fallbackUser.status
     })
   } catch (error) {
-    console.error('Kullanıcı profili getirme hatası:', error)
-
-    // Veritabanı çevrimdışıysa ve kullanıcı sorgulanıyorsa graceful fallback sun
-    const cleanUser = (req.params.username || '').replace(/^@/, '').trim().toLowerCase()
-    const foundMock = mockUsers.find(u => u.username.toLowerCase().replace(/^@/, '') === cleanUser) ||
-      (cleanUser === 'admin' || cleanUser === 'tubagul' ? mockUsers[0] : null)
-
-    if (foundMock) {
-      return res.json(buildMockPublicProfileResponse(foundMock))
-    }
-
-    res.status(404).json({ error: `'${req.params.username}' kullanıcısına ait profil bulunamadı` })
-  }
-})
-
-// PUT /api/profile (Yalnızca Yönetici)
-router.put('/', requireAuth, async (req, res) => {
-  try {
-    const { 
-      name, 
-      username, 
-      bio, 
-      avatar, 
-      avatarShape, 
-      avatarGlow, 
-      statusText, 
-      statusColor, 
-      isVerified, 
-      banner, 
-      bannerPattern, 
-      badges, 
-      socialLinks,
-      groupByCategory,
-      groupStyle,
-      foldersDefaultExpanded,
-      showBadges,
-      customDomain,
-      subdomain,
-      layoutStyle
-    } = req.body
-
-    if (!name || !username) {
-      return res.status(400).json({ error: 'İsim ve kullanıcı adı zorunludur' })
-    }
-
-    const safeSocialLinks = typeof socialLinks === 'object' && socialLinks !== null ? JSON.stringify(socialLinks) : '{}'
-    const safeBadges = Array.isArray(badges) ? JSON.stringify(badges) : '[]'
-    const safeBanner = banner || ''
-    const safeBannerPattern = bannerPattern || 'mesh'
-    const safeAvatarShape = avatarShape || 'circle'
-    const safeAvatarGlow = avatarGlow || 'yellow'
-    const safeStatusText = statusText !== undefined ? statusText : 'Yeni Projelere & Fırsatlara Açık'
-    const safeStatusColor = statusColor || 'none'
-    const safeIsVerified = isVerified !== undefined ? Boolean(isVerified) : true
-    const safeGroupByCategory = groupByCategory !== undefined ? Boolean(groupByCategory) : false
-    const safeGroupStyle = groupStyle || 'accordion'
-    const safeFoldersDefaultExpanded = foldersDefaultExpanded !== undefined ? Boolean(foldersDefaultExpanded) : true
-    const safeShowBadges = showBadges !== undefined ? Boolean(showBadges) : false
-    const safeCustomDomain = customDomain !== undefined ? String(customDomain).trim() : ''
-    const safeSubdomain = subdomain !== undefined ? String(subdomain).trim() : ''
-    const safeLayoutStyle = layoutStyle || 'list'
-
-    const result = await query(`
-      UPDATE profiles 
-      SET 
-        name = $1, 
-        username = $2, 
-        bio = $3, 
-        avatar = $4, 
-        banner = $5, 
-        banner_pattern = $6, 
-        badges = $7, 
-        social_links = $8,
-        avatar_shape = $9,
-        avatar_glow = $10,
-        status_text = $11,
-        status_color = $12,
-        is_verified = $13,
-        group_by_category = $14,
-        folders_default_expanded = $15,
-        show_badges = $16,
-        group_style = $17,
-        custom_domain = $18,
-        subdomain = $19,
-        layout_style = $20,
-        updated_at = CURRENT_TIMESTAMP
-      WHERE id = (SELECT id FROM profiles ORDER BY id ASC LIMIT 1)
-      RETURNING 
-        name, 
-        username, 
-        bio, 
-        avatar, 
-        COALESCE(avatar_shape, 'circle') AS "avatarShape",
-        COALESCE(avatar_glow, 'yellow') AS "avatarGlow",
-        COALESCE(status_text, 'Yeni Projelere & Fırsatlara Açık') AS "statusText",
-        COALESCE(status_color, 'none') AS "statusColor",
-        COALESCE(is_verified, true) AS "isVerified",
-        COALESCE(banner, '') AS "banner", 
-        COALESCE(banner_pattern, 'mesh') AS "bannerPattern", 
-        COALESCE(badges, '[]'::jsonb) AS "badges", 
-        COALESCE(social_links, '{}'::jsonb) AS "socialLinks",
-        COALESCE(group_by_category, false) AS "groupByCategory",
-        COALESCE(group_style, 'accordion') AS "groupStyle",
-        COALESCE(folders_default_expanded, true) AS "foldersDefaultExpanded",
-        COALESCE(show_badges, false) AS "showBadges",
-        COALESCE(custom_domain, '') AS "customDomain",
-        COALESCE(subdomain, '') AS "subdomain",
-        COALESCE(layout_style, 'list') AS "layoutStyle"
-    `, [
-      name.trim(), 
-      username.trim(), 
-      bio || '', 
-      avatar || '', 
-      safeBanner, 
-      safeBannerPattern, 
-      safeBadges, 
-      safeSocialLinks,
-      safeAvatarShape,
-      safeAvatarGlow,
-      safeStatusText,
-      safeStatusColor,
-      safeIsVerified,
-      safeGroupByCategory,
-      safeFoldersDefaultExpanded,
-      safeShowBadges,
-      safeGroupStyle,
-      safeCustomDomain,
-      safeSubdomain,
-      safeLayoutStyle
-    ])
-
-    if (result.rows.length === 0) {
-      // Eğer profil yoksa yeni oluştur
-      const insertResult = await query(`
-        INSERT INTO profiles (
-          name, username, bio, avatar, banner, banner_pattern, badges, social_links, avatar_shape, avatar_glow, status_text, status_color, is_verified, group_by_category, folders_default_expanded, show_badges
-        )
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)
-        RETURNING 
-          name, 
-          username, 
-          bio, 
-          avatar, 
-          COALESCE(avatar_shape, 'circle') AS "avatarShape",
-          COALESCE(avatar_glow, 'yellow') AS "avatarGlow",
-          COALESCE(status_text, 'Yeni Projelere & Fırsatlara Açık') AS "statusText",
-          COALESCE(status_color, 'none') AS "statusColor",
-          COALESCE(is_verified, true) AS "isVerified",
-          COALESCE(banner, '') AS "banner", 
-          COALESCE(banner_pattern, 'mesh') AS "bannerPattern", 
-          COALESCE(badges, '[]'::jsonb) AS "badges", 
-          COALESCE(social_links, '{}'::jsonb) AS "socialLinks",
-          COALESCE(group_by_category, false) AS "groupByCategory",
-          COALESCE(folders_default_expanded, true) AS "foldersDefaultExpanded",
-          COALESCE(show_badges, false) AS "showBadges"
-      `, [
-        name.trim(), 
-        username.trim(), 
-        bio || '', 
-        avatar || '', 
-        safeBanner, 
-        safeBannerPattern, 
-        safeBadges, 
-        safeSocialLinks,
-        safeAvatarShape,
-        safeAvatarGlow,
-        safeStatusText,
-        safeStatusColor,
-        safeIsVerified,
-        safeGroupByCategory,
-        safeFoldersDefaultExpanded,
-        safeShowBadges
-      ])
-      invalidateCache('profile')
-      return res.json(insertResult.rows[0])
-    }
-
-    invalidateCache('profile')
-    res.json(result.rows[0])
-  } catch (error) {
-    console.warn('⚠️ [DB Çevrimdışı] Profil bellekte güncelleniyor:', error.message)
-    mockProfile = {
-      ...mockProfile,
-      ...req.body
-    }
-    invalidateCache('profile')
-    return res.json(mockProfile)
+    console.error('Profil getirme hatası:', error)
+    res.json(mockProfilesByUserId.get(1))
   }
 })
 
@@ -477,14 +192,14 @@ export const buildVCardString = (profile, req) => {
   const firstName = nameParts[0] || ''
   const lastName = nameParts.slice(1).join(' ') || ''
   const cleanUsername = (profile.username || 'user').replace('@', '').trim()
-  
+
   const social = typeof profile.socialLinks === 'string' ? JSON.parse(profile.socialLinks || '{}') : (profile.socialLinks || {})
-  const email = social.email || `${cleanUsername}@gmail.com`
+  const email = social.email || `${cleanUsername}@linkspace.me`
   const phone = social.phone || ''
-  
+
   const host = req?.get ? req.get('host') : 'linkspace-app.onrender.com'
   const protocol = req?.protocol || 'https'
-  const profileUrl = `${protocol}://${host}/`
+  const profileUrl = `${protocol}://${host}/@${cleanUsername}`
 
   const lines = [
     'BEGIN:VCARD',
@@ -507,11 +222,11 @@ export const buildVCardString = (profile, req) => {
   return lines.join('\r\n')
 }
 
-// GET /api/profile/vcard (Ziyaretçinin rehberine kişi kaydetmesi için .vcf dosyası)
+// GET /api/profile/vcard
 router.get('/vcard', async (req, res) => {
   try {
     const profileRes = await query('SELECT * FROM profiles ORDER BY id ASC LIMIT 1')
-    const profile = profileRes.rows[0] || mockProfile
+    const profile = profileRes.rows[0] || mockProfilesByUserId.get(1)
     const vcardContent = buildVCardString(profile, req)
     const cleanUsername = (profile.username || 'contact').replace('@', '').trim()
 
@@ -519,46 +234,27 @@ router.get('/vcard', async (req, res) => {
     res.setHeader('Content-Disposition', `attachment; filename="${cleanUsername}.vcf"`)
     res.send(vcardContent)
   } catch (error) {
-    console.error('vCard üretme hatası:', error)
-    const fallbackVCard = buildVCardString(mockProfile, req)
+    const fallbackVCard = buildVCardString(mockProfilesByUserId.get(1), req)
     res.setHeader('Content-Type', 'text/vcard; charset=utf-8')
     res.setHeader('Content-Disposition', 'attachment; filename="contact.vcf"')
     res.send(fallbackVCard)
   }
 })
 
-// GET /api/profile/:username/vcard (Belirli kullanıcı için .vcf)
-router.get('/:username/vcard', async (req, res) => {
-  try {
-    const cleanUsername = (req.params.username || '').replace(/^@/, '').trim().toLowerCase()
-    const profileRes = await query('SELECT * FROM profiles WHERE LOWER(REPLACE(username, \'@\', \'\')) = $1 LIMIT 1', [cleanUsername])
-    const profile = profileRes.rows[0] || mockProfile
-    const vcardContent = buildVCardString(profile, req)
-
-    res.setHeader('Content-Type', 'text/vcard; charset=utf-8')
-    res.setHeader('Content-Disposition', `attachment; filename="${cleanUsername}.vcf"`)
-    res.send(vcardContent)
-  } catch (error) {
-    console.error('vCard üretme hatası:', error)
-    res.status(500).send('vCard oluşturulamadı')
-  }
-})
-
-// GET /api/profile/export (Data Portability: Tüm profil, link ve istatistikleri .json veya .csv indir)
+// GET /api/profile/export (Yalnızca kendi profil, link ve ayarları)
 router.get('/export', requireAuth, async (req, res) => {
   try {
     const format = (req.query.format || 'json').toLowerCase()
+    const userId = req.user.id
 
-    const profileRes = await query('SELECT * FROM profiles ORDER BY id ASC LIMIT 1')
-    const linksRes = await query('SELECT * FROM links ORDER BY order_index ASC, id DESC')
-    const profile = profileRes.rows[0] || mockProfile
+    const profileRes = await query('SELECT * FROM profiles WHERE user_id = $1 LIMIT 1', [userId])
+    const linksRes = await query('SELECT * FROM links WHERE user_id = $1 ORDER BY order_index ASC, id DESC', [userId])
+    const profile = profileRes.rows[0] || mockProfilesByUserId.get(userId) || mockProfilesByUserId.get(1)
     const links = linksRes.rows || []
 
     if (format === 'csv') {
-      // CSV Formatında Link Ağacı Dışa Aktarımı
       const headers = ['id', 'title', 'url', 'category', 'clicks', 'is_active', 'is_scheduled', 'is_header', 'created_at']
       const escapeCsv = (str) => `"${String(str || '').replace(/"/g, '""')}"`
-      
       const rows = links.map(l => [
         l.id,
         escapeCsv(l.title),
@@ -579,8 +275,7 @@ router.get('/export', requireAuth, async (req, res) => {
       return res.send(csvContent)
     }
 
-    // JSON Formatında Eksiksiz Yedekleme (Full Profile + Links + Settings)
-    const settingsRes = await query('SELECT * FROM settings')
+    const settingsRes = await query('SELECT key, value, updated_at FROM settings WHERE user_id = $1', [userId])
     const backupData = {
       version: 'linkspace-backup-v1.0',
       exportedAt: new Date().toISOString(),
@@ -651,42 +346,39 @@ router.get('/export', requireAuth, async (req, res) => {
   }
 })
 
-// POST /api/profile/import (Data Portability: JSON yedek dosyasından tüm verileri geri yükle)
+// POST /api/profile/import (Yalnızca kendi profilini geri yükle)
 router.post('/import', requireAuth, async (req, res) => {
   try {
+    const userId = req.user.id
     const { profile, links } = req.body || {}
 
     if (!profile && (!Array.isArray(links) || links.length === 0)) {
       return res.status(400).json({ error: 'Geçersiz yedek dosyası içeriği. Profile veya links bulunamadı.' })
     }
 
-    // 1. Profil Geri Yükle
     if (profile) {
       await query(`
         UPDATE profiles
         SET 
           name = COALESCE($1, name),
-          username = COALESCE($2, username),
-          bio = COALESCE($3, bio),
-          avatar = COALESCE($4, avatar),
-          banner = COALESCE($5, banner),
-          banner_pattern = COALESCE($6, banner_pattern),
-          badges = COALESCE($7, badges),
-          social_links = COALESCE($8, social_links),
-          avatar_shape = COALESCE($9, avatar_shape),
-          avatar_glow = COALESCE($10, avatar_glow),
-          status_text = COALESCE($11, status_text),
-          status_color = COALESCE($12, status_color),
-          is_verified = COALESCE($13, is_verified),
-          group_by_category = COALESCE($14, group_by_category),
-          group_style = COALESCE($15, group_style),
-          folders_default_expanded = COALESCE($16, folders_default_expanded),
-          show_badges = COALESCE($17, show_badges),
+          bio = COALESCE($2, bio),
+          avatar = COALESCE($3, avatar),
+          banner = COALESCE($4, banner),
+          banner_pattern = COALESCE($5, banner_pattern),
+          badges = COALESCE($6, badges),
+          social_links = COALESCE($7, social_links),
+          avatar_shape = COALESCE($8, avatar_shape),
+          avatar_glow = COALESCE($9, avatar_glow),
+          status_text = COALESCE($10, status_text),
+          status_color = COALESCE($11, status_color),
+          group_by_category = COALESCE($12, group_by_category),
+          group_style = COALESCE($13, group_style),
+          folders_default_expanded = COALESCE($14, folders_default_expanded),
+          show_badges = COALESCE($15, show_badges),
           updated_at = CURRENT_TIMESTAMP
-        WHERE id = (SELECT id FROM profiles ORDER BY id ASC LIMIT 1)
+        WHERE user_id = $16
       `, [
         profile.name,
-        profile.username,
         profile.bio,
         profile.avatar,
         profile.banner,
@@ -697,32 +389,31 @@ router.post('/import', requireAuth, async (req, res) => {
         profile.avatarGlow,
         profile.statusText,
         profile.statusColor,
-        profile.isVerified,
         profile.groupByCategory,
         profile.groupStyle,
         profile.foldersDefaultExpanded,
-        profile.showBadges
+        profile.showBadges,
+        userId
       ])
     }
 
-    // 2. Linkleri Geri Yükle
     let restoredCount = 0
     if (Array.isArray(links) && links.length > 0) {
-      // İsteğe bağlı olarak mevcut linkleri koru veya sil ve yenileri ekle
       await query('BEGIN')
-      await query('DELETE FROM links')
+      await query('DELETE FROM links WHERE user_id = $1', [userId])
       for (let i = 0; i < links.length; i++) {
         const l = links[i]
-        const linkId = l.id || (Date.now() + i)
+        const linkId = Date.now() + i
         await query(`
           INSERT INTO links (
-            id, title, url, is_active, icon, custom_color, clicks, order_index,
+            id, user_id, title, url, is_active, icon, custom_color, clicks, order_index,
             category, embed_type, show_embed, is_locked, lock_type, passcode, lock_warning,
             is_header, ab_test_enabled, title_b, url_b, clicks_a, clicks_b, views_a, views_b
           )
-          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23)
+          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24)
         `, [
           linkId,
+          userId,
           l.title || 'Bağlantı',
           l.url || '',
           l.isActive !== undefined ? l.isActive : true,
@@ -761,6 +452,324 @@ router.post('/import', requireAuth, async (req, res) => {
     await query('ROLLBACK').catch(() => {})
     console.error('İçe aktarma hatası:', error)
     res.status(500).json({ error: 'Yedek geri yüklenirken bir hata oluştu: ' + error.message })
+  }
+})
+
+// GET /api/profile/:username/vcard
+router.get('/:username/vcard', async (req, res) => {
+  try {
+    const cleanUsername = (req.params.username || '').replace(/^@/, '').trim().toLowerCase()
+    const profileRes = await query("SELECT * FROM profiles WHERE LOWER(REPLACE(username, '@', '')) = $1 LIMIT 1", [cleanUsername])
+    const profile = profileRes.rows[0] || mockProfilesByUserId.get(findMockUserByIdentifier(cleanUsername)?.id || 1)
+    const vcardContent = buildVCardString(profile, req)
+
+    res.setHeader('Content-Type', 'text/vcard; charset=utf-8')
+    res.setHeader('Content-Disposition', `attachment; filename="${cleanUsername}.vcf"`)
+    res.send(vcardContent)
+  } catch (error) {
+    const fallbackVCard = buildVCardString(mockProfilesByUserId.get(1), req)
+    res.setHeader('Content-Type', 'text/vcard; charset=utf-8')
+    res.setHeader('Content-Disposition', 'attachment; filename="contact.vcf"')
+    res.send(fallbackVCard)
+  }
+})
+
+// GET /api/profile/:username (Herkese Açık Üye Linktree Profili + Aktif Linkler + Üye Teması)
+router.get('/:username', optionalAuth, cacheMiddleware(60), async (req, res) => {
+  try {
+    const { username } = req.params
+    if (!username) {
+      return res.status(400).json({ error: 'Kullanıcı adı belirtilmelidir' })
+    }
+
+    const cleanUsername = username.replace(/^@/, '').trim().toLowerCase()
+
+    const profileResult = await query(`
+      SELECT 
+        ${PROFILE_SELECT_COLUMNS},
+        COALESCE(u.role, 'user') AS "role",
+        COALESCE(u.status, 'active') AS "status"
+      FROM profiles p
+      LEFT JOIN users u ON u.id = p.user_id OR LOWER(u.username) = LOWER(REPLACE(p.username, '@', ''))
+      WHERE LOWER(REPLACE(p.username, '@', '')) = $1
+         OR ($1 = 'admin' AND p.user_id = 1)
+      LIMIT 1
+    `, [cleanUsername])
+
+    if (profileResult.rows.length === 0) {
+      const foundMock = findMockUserByIdentifier(cleanUsername)
+      if (foundMock) {
+        const isRequesterAdmin = req.user?.role === 'admin'
+        const isOwner = req.user?.id === foundMock.id
+        if (foundMock.status === 'pending' && !isRequesterAdmin && !isOwner) {
+          return res.status(403).json({ error: 'Bu profil henüz yönetici onayı bekliyor.', status: 'pending' })
+        }
+        if (foundMock.status === 'suspended' && !isRequesterAdmin) {
+          return res.status(403).json({ error: 'Bu hesap geçici olarak askıya alınmıştır.', status: 'suspended' })
+        }
+        return res.json(buildMockPublicProfileResponse(foundMock))
+      }
+
+      return res.status(404).json({ error: `'${username}' kullanıcısına ait profil bulunamadı` })
+    }
+
+    const profile = profileResult.rows[0]
+    const profileUserId = profile.userId || 1
+    const isRequesterAdmin = req.user?.role === 'admin'
+    const isOwner = req.user?.id === profileUserId
+
+    if (profile.status === 'pending' && !isRequesterAdmin && !isOwner) {
+      return res.status(403).json({ error: 'Bu profil henüz yönetici onayı bekliyor.', status: 'pending' })
+    }
+    if (profile.status === 'suspended' && !isRequesterAdmin) {
+      return res.status(403).json({ error: 'Bu hesap geçici olarak askıya alınmıştır.', status: 'suspended' })
+    }
+
+    const linksResult = await query(`
+      SELECT 
+        id, title, url, is_active AS "isActive", icon, custom_color AS "customColor", 
+        clicks, order_index AS "orderIndex",
+        COALESCE(is_scheduled, false) AS "isScheduled",
+        schedule_start AS "scheduleStart",
+        schedule_end AS "scheduleEnd",
+        COALESCE(show_countdown, true) AS "showCountdown",
+        COALESCE(category, '') AS "category",
+        COALESCE(embed_type, 'none') AS "embedType",
+        COALESCE(show_embed, false) AS "showEmbed",
+        COALESCE(is_locked, false) AS "isLocked",
+        COALESCE(lock_type, 'pin') AS "lockType",
+        COALESCE(passcode, '') AS "passcode",
+        COALESCE(lock_warning, '') AS "lockWarning",
+        COALESCE(is_header, false) AS "isHeader",
+        COALESCE(ab_test_enabled, false) AS "abTestEnabled",
+        COALESCE(title_b, '') AS "titleB",
+        COALESCE(url_b, '') AS "urlB",
+        COALESCE(clicks_a, 0) AS "clicksA",
+        COALESCE(clicks_b, 0) AS "clicksB",
+        COALESCE(views_a, 0) AS "viewsA",
+        COALESCE(views_b, 0) AS "viewsB",
+        COALESCE(grid_span, 'full') AS "gridSpan",
+        COALESCE(thumbnail, '') AS "thumbnail",
+        COALESCE(card_badge, '') AS "cardBadge"
+      FROM links 
+      WHERE user_id = $1
+        AND is_active = true
+        AND (is_scheduled = false OR schedule_end IS NULL OR schedule_end >= CURRENT_TIMESTAMP)
+      ORDER BY order_index ASC, id DESC
+    `, [profileUserId])
+
+    const themeRes = await query("SELECT value FROM settings WHERE user_id = $1 AND key = 'theme' LIMIT 1", [profileUserId])
+    const userTheme = themeRes.rows[0]?.value || 'midnight'
+    const isMainOwner = profileUserId === 1 || cleanUsername === 'tubagul' || cleanUsername === 'admin'
+
+    res.json({
+      theme: userTheme,
+      profile: {
+        userId: profileUserId,
+        name: profile.name,
+        username: profile.username,
+        bio: profile.bio,
+        avatar: profile.avatar,
+        avatarShape: profile.avatarShape || 'circle',
+        avatarGlow: profile.avatarGlow || 'yellow',
+        avatarMode: profile.avatarMode || (isMainOwner ? 'switchable' : 'photo'),
+        role: profile.role || (isMainOwner ? 'admin' : 'user'),
+        status: profile.status || 'active',
+        statusText: profile.statusText || 'Yeni Projelere & Fırsatlara Açık',
+        statusColor: profile.statusColor || 'none',
+        isVerified: profile.isVerified !== undefined ? profile.isVerified : true,
+        banner: profile.banner || '',
+        bannerPattern: profile.bannerPattern || 'mesh',
+        badges: profile.badges || [],
+        socialLinks: profile.socialLinks,
+        groupByCategory: Boolean(profile.groupByCategory),
+        groupStyle: profile.groupStyle || 'accordion',
+        foldersDefaultExpanded: profile.foldersDefaultExpanded !== undefined ? Boolean(profile.foldersDefaultExpanded) : true,
+        showBadges: Boolean(profile.showBadges),
+        customDomain: profile.customDomain || '',
+        subdomain: profile.subdomain || '',
+        layoutStyle: profile.layoutStyle || 'list'
+      },
+      links: linksResult.rows
+    })
+  } catch (error) {
+    console.warn('⚠️ [DB Çevrimdışı] Kullanıcı profili bellekten yükleniyor:', error.message)
+    const cleanUser = (req.params.username || '').replace(/^@/, '').trim().toLowerCase()
+    const foundMock = findMockUserByIdentifier(cleanUser)
+    if (foundMock) {
+      const isRequesterAdmin = req.user?.role === 'admin'
+      const isOwner = req.user?.id === foundMock.id
+      if (foundMock.status === 'pending' && !isRequesterAdmin && !isOwner) {
+        return res.status(403).json({ error: 'Bu profil henüz yönetici onayı bekliyor.', status: 'pending' })
+      }
+      if (foundMock.status === 'suspended' && !isRequesterAdmin) {
+        return res.status(403).json({ error: 'Bu hesap geçici olarak askıya alınmıştır.', status: 'suspended' })
+      }
+      return res.json(buildMockPublicProfileResponse(foundMock))
+    }
+
+    res.status(404).json({ error: `'${req.params.username}' kullanıcısına ait profil bulunamadı` })
+  }
+})
+
+// PUT /api/profile (Oturumlu Kullanıcının Kendi Profilini Güncellemesi)
+router.put('/', requireAuth, async (req, res) => {
+  try {
+    const userId = req.user.id
+    const {
+      name,
+      username,
+      bio,
+      avatar,
+      avatarShape,
+      avatarGlow,
+      avatarMode,
+      statusText,
+      statusColor,
+      isVerified,
+      banner,
+      bannerPattern,
+      badges,
+      socialLinks,
+      groupByCategory,
+      groupStyle,
+      foldersDefaultExpanded,
+      showBadges,
+      customDomain,
+      subdomain,
+      layoutStyle
+    } = req.body
+
+    if (!name || !username) {
+      return res.status(400).json({ error: 'İsim ve kullanıcı adı zorunludur' })
+    }
+
+    const cleanTargetHandle = username.trim().toLowerCase().replace(/^@/, '')
+    if (cleanTargetHandle.length < 3) {
+      return res.status(400).json({ error: 'Kullanıcı adı en az 3 karakter olmalıdır' })
+    }
+    if (RESERVED_USERNAMES.has(cleanTargetHandle) && userId !== 1) {
+      return res.status(400).json({ error: 'Bu kullanıcı adı sistem tarafından ayrılmıştır' })
+    }
+
+    const safeSocialLinks = typeof socialLinks === 'object' && socialLinks !== null ? JSON.stringify(socialLinks) : '{}'
+    const safeBadges = Array.isArray(badges) ? JSON.stringify(badges) : '[]'
+    const safeBanner = banner || ''
+    const safeBannerPattern = bannerPattern || 'mesh'
+    const safeAvatarShape = avatarShape || 'circle'
+    const safeAvatarGlow = avatarGlow || 'yellow'
+    const safeAvatarMode = avatarMode || 'photo'
+    const safeStatusText = statusText !== undefined ? statusText : 'Yeni Projelere & Fırsatlara Açık'
+    const safeStatusColor = statusColor || 'none'
+    const safeGroupByCategory = groupByCategory !== undefined ? Boolean(groupByCategory) : false
+    const safeGroupStyle = groupStyle || 'accordion'
+    const safeFoldersDefaultExpanded = foldersDefaultExpanded !== undefined ? Boolean(foldersDefaultExpanded) : true
+    const safeShowBadges = showBadges !== undefined ? Boolean(showBadges) : false
+    const safeCustomDomain = customDomain !== undefined ? String(customDomain).trim() : ''
+    const safeSubdomain = subdomain !== undefined ? String(subdomain).trim() : ''
+    const safeLayoutStyle = layoutStyle || 'list'
+
+    try {
+      // Kullanıcı adı başka bir üyede kullanılıyor mu kontrol et
+      const conflictCheck = await query(`
+        SELECT id FROM profiles 
+        WHERE LOWER(REPLACE(username, '@', '')) = $1 AND user_id != $2
+        LIMIT 1
+      `, [cleanTargetHandle, userId])
+
+      if (conflictCheck.rows.length > 0) {
+        return res.status(409).json({ error: 'Bu kullanıcı adı başka bir üye tarafından kullanılıyor' })
+      }
+
+      // Doğrulama rozeti yalnızca admin tarafından veya mevcut değer korunarak tutulur
+      const safeIsVerified = req.user.role === 'admin' && isVerified !== undefined ? Boolean(isVerified) : undefined
+
+      const result = await query(`
+        UPDATE profiles 
+        SET 
+          name = $1, 
+          username = $2, 
+          bio = $3, 
+          avatar = $4, 
+          banner = $5, 
+          banner_pattern = $6, 
+          badges = $7, 
+          social_links = $8,
+          avatar_shape = $9,
+          avatar_glow = $10,
+          avatar_mode = $11,
+          status_text = $12,
+          status_color = $13,
+          is_verified = COALESCE($14, is_verified),
+          group_by_category = $15,
+          folders_default_expanded = $16,
+          show_badges = $17,
+          group_style = $18,
+          custom_domain = $19,
+          subdomain = $20,
+          layout_style = $21,
+          updated_at = CURRENT_TIMESTAMP
+        WHERE user_id = $22
+        RETURNING 
+          ${PROFILE_SELECT_COLUMNS}
+      `, [
+        name.trim(),
+        `@${cleanTargetHandle}`,
+        bio || '',
+        avatar || '',
+        safeBanner,
+        safeBannerPattern,
+        safeBadges,
+        safeSocialLinks,
+        safeAvatarShape,
+        safeAvatarGlow,
+        safeAvatarMode,
+        safeStatusText,
+        safeStatusColor,
+        safeIsVerified !== undefined ? safeIsVerified : null,
+        safeGroupByCategory,
+        safeFoldersDefaultExpanded,
+        safeShowBadges,
+        safeGroupStyle,
+        safeCustomDomain,
+        safeSubdomain,
+        safeLayoutStyle,
+        userId
+      ])
+
+      await query('UPDATE users SET name = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2', [name.trim(), userId])
+
+      if (result.rows.length > 0) {
+        invalidateCache('profile')
+        return res.json(result.rows[0])
+      }
+    } catch (dbErr) {
+      console.warn('⚠️ [DB Çevrimdışı] Profil bellekte güncelleniyor:', dbErr.message)
+    }
+
+    const userObj = mockUsers.find(u => u.id === userId) || mockUsers[0]
+    ensureMockUserState(userObj)
+    const currentMock = mockProfilesByUserId.get(userObj.id)
+    const updatedMock = {
+      ...currentMock,
+      ...req.body,
+      userId: userObj.id,
+      name: name.trim(),
+      username: `@${cleanTargetHandle}`,
+      isVerified: req.user.role === 'admin' && isVerified !== undefined ? Boolean(isVerified) : currentMock.isVerified
+    }
+    mockProfilesByUserId.set(userObj.id, updatedMock)
+    userObj.name = name.trim()
+    userObj.profileUsername = cleanTargetHandle
+    userObj.bio = bio || ''
+    userObj.avatar = avatar || userObj.avatar
+    userObj.layoutStyle = safeLayoutStyle
+
+    invalidateCache('profile')
+    return res.json(updatedMock)
+  } catch (error) {
+    console.error('Profil güncelleme hatası:', error)
+    res.status(500).json({ error: 'Profil güncellenemedi' })
   }
 })
 
